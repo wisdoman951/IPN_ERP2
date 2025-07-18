@@ -7,7 +7,10 @@ from app.models.stress_test_model import (
     update_stress_test,
     delete_stress_test, 
     get_stress_test_by_id,
-    get_stress_tests_by_member_id
+    get_stress_tests_by_member_id,
+    add_stress_test_with_answers,   # ← 新增用這個
+    update_stress_test_with_answers, # ← 更新用這個
+    get_stress_test_by_id_with_answers
 )
 from app.middleware import auth_required
 
@@ -20,12 +23,17 @@ def get_stress_tests():
     try:
         user_store_level = request.store_level
         user_store_id = request.store_id
-        
+
+        # 改成這樣，全部欄位都給預設空字串
         filters = {
-            'name': request.args.get('name'),
-            'test_date': request.args.get('test_date')
+            'name': request.args.get('name', ''),
+            'test_date': request.args.get('test_date', ''),
+            'position': request.args.get('position', ''),
+            'member_id': request.args.get('member_id', ''),
+            'phone': request.args.get('phone', ''),
         }
-        
+        print("🚩API收到filters: ", filters)  # debug用，正式可移除
+
         results = get_all_stress_tests(user_store_level, user_store_id, filters)
         return jsonify({"success": True, "data": results})
     except Exception as e:
@@ -50,7 +58,7 @@ def get_member_stress_tests(member_id):
 def get_stress_test(stress_id):
     """獲取單筆壓力測試，並檢查權限"""
     try:
-        result = get_stress_test_by_id(stress_id)
+        result = get_stress_test_by_id_with_answers(stress_id)
         if not result:
             return jsonify({"success": False, "error": "找不到該壓力測試記錄"}), 404
 
@@ -64,6 +72,7 @@ def get_stress_test(stress_id):
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @stress_test.route('/add', methods=['POST'])
 @auth_required
@@ -79,10 +88,18 @@ def add_stress_test_route():
         test_date = data.get('testDate')
         all_answers = {**data.get('formA', {}), **data.get('formB', {})}
 
+        # 計算分數
+        score_map = {'A': {'a': 10, 'b': 0, 'c': 5, 'd': 0}, 'B': {'a': 0, 'b': 10, 'c': 0, 'd': 5}}
+        scores = {'a': 0, 'b': 0, 'c': 0, 'd': 0}
+        for q_id, answer in all_answers.items():
+            if answer in score_map:
+                for score_type in scores:
+                    scores[score_type] += score_map[answer].get(score_type, 0)
+
         if not member_id or not test_date:
             return jsonify({"error": "必須選擇會員並指定檢測日期。"}), 400
 
-        result = add_stress_test(member_id, test_date, all_answers, user_store_id)
+        result = add_stress_test_with_answers(member_id, test_date, scores, all_answers, user_store_id)
 
         if result.get("success"):
             return jsonify(result), 201
@@ -95,10 +112,9 @@ def add_stress_test_route():
 @stress_test.route('/<int:stress_id>', methods=['PUT'])
 @auth_required
 def update_stress_test_route(stress_id):
-    """更新壓力測試，並檢查權限"""
     try:
         # 權限檢查
-        record_to_update = get_stress_test_by_id(stress_id)
+        record_to_update = get_stress_test_by_id_with_answers(stress_id)
         if not record_to_update:
             return jsonify({"error": "找不到要更新的紀錄"}), 404
 
@@ -108,18 +124,18 @@ def update_stress_test_route(stress_id):
             return jsonify({"error": "權限不足"}), 403
 
         data = request.json
-        scores = {'a_score': data.get('a_score'), 'b_score': data.get('b_score'), 'c_score': data.get('c_score'), 'd_score': data.get('d_score')}
-        
-        # 檢查分數是否都存在
-        if any(s is None for s in scores.values()):
-            return jsonify({"error": "缺少分數資料"}), 400
+        answers = data.get('answers', {})
 
-        update_stress_test(stress_id, scores)
+        if not answers:
+            return jsonify({"error": "缺少作答內容"}), 400
+
+        update_stress_test_with_answers(stress_id, answers)
         
         return jsonify({"success": True, "message": "壓力測試更新成功"})
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+
 
 @stress_test.route('/<int:test_id>', methods=['DELETE'])
 @auth_required

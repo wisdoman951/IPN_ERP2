@@ -94,7 +94,12 @@ const MedicalRecord: React.FC = () => {
                     </Col>
                     <Col md={6} className="d-flex justify-content-end gap-2">
                         <Button variant="info" className="text-white" onClick={handleSearch}>搜尋</Button>
-                        <Button variant="info" className="text-white" onClick={() => navigate("/medical-record/add-medical-record")}>
+                        <Button variant="info" className="text-white" 
+                            onClick={() => {
+                                localStorage.removeItem('medicalRecordData');
+                                navigate('/medical-record/add-medical-record');
+                            }}
+                            >
                             新增
                         </Button>
                     </Col>

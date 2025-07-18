@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Form, Col, Row } from "react-bootstrap";
-import { getMemberById } from "../services/ＭedicalService"; // 確保路徑正確
+import { getMemberById } from "../services/MedicalService"; // 確保路徑正確
 import { MemberData } from "../types/medicalTypes"; // 確保路徑正確
 
 // ***** 修正 1：在 Props 中加入 isEditMode *****

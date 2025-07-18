@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Button, Form, Row, Col, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import IconButton from "../../components/IconButton";
-import { createMedicalRecord } from "../../services/ＭedicalService";
+import { createMedicalRecord } from "../../services/MedicalService";
 
 // 第一頁表單數據的類型
 interface MedicalFormData {

@@ -4,7 +4,7 @@ import {
     searchMedicalRecords, 
     deleteMedicalRecord, 
     exportMedicalRecords 
-} from '../services/ＭedicalService';
+} from '../services/MedicalService';
 
 // 定義健康檢查紀錄的常量
 export enum HealthRecordIndex {

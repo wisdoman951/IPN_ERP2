@@ -1,3 +1,4 @@
+// client\src\pages\medical_record\AddMedicalRecord.tsx
 import { Button, Form, Row, Col, Alert } from "react-bootstrap"; // 新增 Alert
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -166,7 +167,7 @@ const AddMedicalRecord = () => {
                                 {submitLoading ? "處理中..." : "確認"} {/* 文字修改為 "確認" */}
                             </Button>
                             <Button
-                                onClick={() => navigate(-1)}
+                                onClick={() => navigate('/medical-record')}
                                 variant="info"
                                 className="text-white"
                                 type="button"

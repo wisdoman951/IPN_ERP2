@@ -1,6 +1,6 @@
-// src/hooks/useMedicalRecordForm.ts (最終完整版)
+// src/hooks/useMedicalRecordForm.ts
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import {
     MedicalFormType,
@@ -14,7 +14,7 @@ import {
     createMedicalRecord,
     getMedicalRecordById,
     updateMedicalRecord
-} from "../services/ＭedicalService";
+} from "../services/MedicalService";
 import { contraindicatedKeywords } from "../utils/symptomUtils";
 
 // --- 這就是您需要的 generateSummary 輔助函式 ---
@@ -106,66 +106,98 @@ export const useMedicalRecordForm = (id?: string) => {
 
     const [form, setForm] = useState<MedicalFormType>(initialFormState);
 
+    const didLoadFromLocal = useRef(false);
+
     useEffect(() => {
-        if (!isEditMode || !id) return;
-
-        console.log("params id:", id, "isEditMode:", isEditMode);
-
-        const loadData = async () => {
-            if (isEditMode && id) {
-                try {
-                    const recordData = await getMedicalRecordById(parseInt(id, 10));
-                    if (recordData) {
-                        const healthStatusParsed = typeof recordData.healthStatus === 'string' 
-                            ? JSON.parse(recordData.healthStatus) 
-                            : recordData.healthStatus;
-
-                        const symptomParsed = typeof recordData.symptom === 'string'
-                            ? JSON.parse(recordData.symptom)
-                            : recordData.symptom;
-
-                        const familyHistoryParsed = typeof recordData.familyHistory === 'string'
-                            ? JSON.parse(recordData.familyHistory)
-                            : recordData.familyHistory;
-
-                        const healthSummary = generateSummary(healthStatusParsed, 'health');
-                        const symptomSummary = generateSummary(symptomParsed, 'symptom');
-                        const familySummary = generateSummary(familyHistoryParsed, 'family');
-
-                        setForm({
-                            ...initialFormState,
-                            ...recordData,
-                            healthStatus: healthStatusParsed,
-                            symptom: symptomParsed,
-                            familyHistory: familyHistoryParsed,
-                            healthStatusSummary: healthSummary,
-                            symptomSummary: symptomSummary,
-                            familySummary: familySummary,
-                        });
-                    }
-                } catch (err) {
-                    console.error("獲取紀錄失敗", err);
-                    setError("無法載入該筆紀錄，請返回列表頁重試。");
-                }
-            } else {
+        console.log('[debug] useMedicalRecordForm triggered', {id, isEditMode, locationState: location.state, didLoadFromLocal: didLoadFromLocal.current});
+        
+        // 新增模式 (沒有 id) 時，localStorage 暫存也要優先回填
+        if (!isEditMode) {
+            // 只做一次初始化
+            if (!didLoadFromLocal.current) {
                 const savedData = localStorage.getItem('medicalRecordData');
                 if (savedData) {
                     try {
                         const parsedData = JSON.parse(savedData);
-                        setForm(prevForm => ({ ...prevForm, ...parsedData }));
+                        setForm(prevForm => ({
+                            ...prevForm,
+                            ...parsedData
+                        }));
+                        didLoadFromLocal.current = true;
+                        // 清掉狀態避免後續 loop（這裡 navigate 不用帶 id，保持在 add）
+                        setTimeout(() => {
+                            navigate(location.pathname, { replace: true, state: {} });
+                        }, 0);
+                        return;
                     } catch (e) {
                         console.error("解析 medicalRecordData 失敗", e);
                     }
                 }
             }
-        };
+            return; // 新增模式就直接 return，不進行下面流程
+        }
 
+        // ----（以下是原本的 edit 判斷，一樣保留）----
+        // 是否從 symptoms-and-history 頁面回來
+        if (!didLoadFromLocal.current) {
+            const isFromSymptomsOrHealth = location.state?.fromSymptomsPage || location.state?.fromHealthStatusPage;
+            const savedData = localStorage.getItem('medicalRecordData');
+            if (isFromSymptomsOrHealth && savedData) {
+                try {
+                    const parsedData = JSON.parse(savedData);
+                    setForm(prevForm => ({
+                        ...prevForm,
+                        ...parsedData
+                    }));
+                    didLoadFromLocal.current = true; // 標記已經吃過 local
+                    setTimeout(() => {
+                        navigate(location.pathname, { replace: true, state: {} });
+                    }, 0);
+                    return;
+                } catch (e) {
+                    console.error("解析 medicalRecordData 失敗", e);
+                }
+            }
+        }
+        if (didLoadFromLocal.current) return;
+
+        // API 資料
+        const loadData = async () => {
+            try {
+                const recordData = await getMedicalRecordById(parseInt(id, 10));
+                const healthStatusParsed = typeof recordData.healthStatus === 'string' 
+                    ? JSON.parse(recordData.healthStatus) 
+                    : recordData.healthStatus;
+                const symptomParsed = typeof recordData.symptom === 'string'
+                    ? JSON.parse(recordData.symptom)
+                    : recordData.symptom;
+                const familyHistoryParsed = typeof recordData.familyHistory === 'string'
+                    ? JSON.parse(recordData.familyHistory)
+                    : recordData.familyHistory;
+                const healthSummary = generateSummary(healthStatusParsed, 'health');
+                const symptomSummary = generateSummary(symptomParsed, 'symptom');
+                const familySummary = generateSummary(familyHistoryParsed, 'family');
+                setForm({
+                    ...initialFormState,
+                    ...recordData,
+                    healthStatus: healthStatusParsed,
+                    symptom: symptomParsed,
+                    familyHistory: familyHistoryParsed,
+                    healthStatusSummary: healthSummary,
+                    symptomSummary: symptomSummary,
+                    familySummary: familySummary,
+                });
+            } catch (err) {
+                console.error("獲取紀錄失敗", err);
+                setError("無法載入該筆紀錄，請返回列表頁重試。");
+            }
+        };
         loadData();
 
-        if (location.state?.fromSymptomsPage || location.state?.fromHealthStatusPage) {
-            navigate(location.pathname, { replace: true, state: {} });
-        }
+        // eslint-disable-next-line
     }, [id, isEditMode, location.state, navigate]);
+
+
 
 
     useEffect(() => {
@@ -258,7 +290,7 @@ export const useMedicalRecordForm = (id?: string) => {
         if (!await preNavigationCheck()) return;
         try {
             localStorage.setItem('medicalRecordData', JSON.stringify(form));
-            navigate("/medical-record/symptoms-and-history");
+            navigate("/medical-record/symptoms-and-history", { state: { returnTo: location.pathname } });
         } catch (e) {
             console.error("儲存 medicalRecordData 到 localStorage 失敗:", e);
             setError("系統暫存資料時發生錯誤，請稍後再試。");

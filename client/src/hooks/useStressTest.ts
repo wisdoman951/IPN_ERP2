@@ -15,9 +15,10 @@ interface StressTest {
 
 export interface SearchFilters {
   name: string;
-  test_date: string; // 新增
-  position: string;  // 新增
-  // member_id?: string; // 移除或設為可選
+  test_date: string;
+  position: string;
+  member_id: string;   // 新增
+  phone: string;       // 新增
 }
 
 /**
@@ -28,7 +29,7 @@ export const useStressTest = () => {
   const [tests, setTests] = useState<StressTest[]>([]);
   const [selectedTests, setSelectedTests] = useState<number[]>([]);
   const [loading, setLoading] = useState(false);
-
+  
   // 獲取壓力測試數據
   const fetchTests = useCallback(async (filters?: SearchFilters) => {
     try {

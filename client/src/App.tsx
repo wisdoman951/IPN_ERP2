@@ -25,8 +25,7 @@ import UsualSymptomsAndFamilyHistory from "./pages/medical_record/UsualSymptomsA
 // Health
 import HealthDataAnalysis from "./pages/health/HealthDataAnalysis";
 import StressTest from "./pages/health/stress_test/StressTest";
-import AddStressTestPage1 from "./pages/health/stress_test/AddStressTestPage1";
-import AddStressTestPage2 from "./pages/health/stress_test/AddStressTestPage2";
+import StressTestForm from "./pages/health/stress_test/StressTestForm";
 import HealthRecord from "./pages/health/pure_medical_record/PureMedicalRecord";
 import AddPureMedicalRecord from "./pages/health/pure_medical_record/AddPureMedicalRecord";
 import { StressTestProvider } from './hooks/StressTestContext';
@@ -172,23 +171,24 @@ const App: React.FC = () => {
                     <Route path="/backend/stores"  element={<ProtectedRoute element={<StoreManagement />} adminOnly={true} />} />
                     <Route path="/backend/add-product" element={<ProtectedRoute element={<AddProduct />} />} />
                     <Route path="/backend/add-therapy" element={<ProtectedRoute element={<AddTherapy />} />} />
+                    
 
                     {/* Health */}
                     <Route path="/health-data-analysis" element={<ProtectedRoute element={<HealthDataAnalysis />} />} />
                     <Route
-                    path="/health-data-analysis/stress-test/*"
-                    element={
-                        <StressTestProvider>
-                        <Routes>
-                            {/* 內層路由應該使用相對路徑 */}
-                            <Route path="/" element={<ProtectedRoute element={<StressTest />} />} />
-                            <Route path="select-member" element={<ProtectedRoute element={<SelectMember />} />} />
-                            <Route path="add/page1" element={<ProtectedRoute element={<AddStressTestPage1 />} />} />
-                            <Route path="add/page2" element={<ProtectedRoute element={<AddStressTestPage2 />} />} />
-                        </Routes>
-                        </StressTestProvider>
-                    }
-                    />
+                        path="/health-data-analysis/stress-test/*"
+                        element={
+                            <StressTestProvider>
+                            <Routes>
+                                {/* 相對路徑，前面不要加斜線！ */}
+                                <Route path="" element={<ProtectedRoute element={<StressTest />} />} />
+                                <Route path="select-member" element={<ProtectedRoute element={<SelectMember />} />} />
+                                <Route path="add" element={<ProtectedRoute element={<StressTestForm />} />} />
+                                <Route path="edit/:id" element={<ProtectedRoute element={<StressTestForm />} />} />
+                            </Routes>
+                            </StressTestProvider>
+                        }
+                        />
 
                     <Route path="/health-data-analysis/pure-medical-record" element={<ProtectedRoute element={<HealthRecord />} />} />
                     <Route path="/health-data-analysis/add-pure-medical-record" element={<ProtectedRoute element={<AddPureMedicalRecord />} />} />

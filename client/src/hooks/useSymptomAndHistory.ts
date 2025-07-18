@@ -212,7 +212,8 @@ export const useSymptomAndHistory = () => {
             // 也可以考慮用一個臨時的 key，然後讓 useMedicalRecordForm 來讀取和合併
             // localStorage.setItem('tempAllSelections', JSON.stringify(allSelections));
 
-            navigate("/medical-record/add", { state: { fromSymptomsPage: true, fromHealthStatusPage: true } }); // 標記返回
+            const destination = location.state?.returnTo || "/medical-record/add";
+            navigate(destination, { state: { fromSymptomsPage: true, fromHealthStatusPage: true } }); // 標記返回
             return true;
         } catch (err) {
             console.error("Failed to save all selections data:", err);
