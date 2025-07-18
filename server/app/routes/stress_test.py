@@ -86,20 +86,17 @@ def add_stress_test_route():
         user_store_id = request.store_id
         member_id = data.get('memberId')
         test_date = data.get('testDate')
-        all_answers = {**data.get('formA', {}), **data.get('formB', {})}
+        answers = data.get('answers', {})   # <-- 這裡直接用 answers
 
-        # 計算分數
-        score_map = {'A': {'a': 10, 'b': 0, 'c': 5, 'd': 0}, 'B': {'a': 0, 'b': 10, 'c': 0, 'd': 5}}
-        scores = {'a': 0, 'b': 0, 'c': 0, 'd': 0}
-        for q_id, answer in all_answers.items():
-            if answer in score_map:
-                for score_type in scores:
-                    scores[score_type] += score_map[answer].get(score_type, 0)
+        print("收到 answers:", answers)
 
         if not member_id or not test_date:
             return jsonify({"error": "必須選擇會員並指定檢測日期。"}), 400
 
-        result = add_stress_test_with_answers(member_id, test_date, scores, all_answers, user_store_id)
+        if not answers or not isinstance(answers, dict):
+            return jsonify({"error": "缺少答案資料"}), 400
+
+        result = add_stress_test_with_answers(member_id, test_date, answers, user_store_id)
 
         if result.get("success"):
             return jsonify(result), 201
