@@ -1,0 +1,53 @@
+/* 全局樣式 */
+
+/* 自定義Bootstrap顏色變數 */
+:root {
+  --bs-info: #03B0BF;
+  --bs-info-rgb: 3, 176, 191;
+  
+  /* 對應的淺色和深色變體 */
+  --bs-info-dark: #029aa8;
+  --bs-info-light: #45c6d3;
+  
+  /* 文字顏色變數，確保按鈕中的文字顏色正確 */
+  --bs-btn-color: #fff;
+  --bs-btn-hover-color: #fff;
+}
+
+/* 確保某些特定組件的顏色也被覆蓋 */
+.btn-info {
+  background-color: var(--bs-info) !important;
+  border-color: var(--bs-info) !important;
+}
+
+.btn-info:hover, .btn-info:active, .btn-info:focus {
+  background-color: var(--bs-info-dark) !important;
+  border-color: var(--bs-info-dark) !important;
+}
+
+.bg-info {
+  background-color: var(--bs-info) !important;
+}
+
+.text-info {
+  color: var(--bs-info) !important;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* 主佈局 */
+.app-layout {
+  min-height: 100vh;
+}
+
+/* 確保所有頁面內容不被側邊欄覆蓋 */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 90;
+  width: 100%;
+}

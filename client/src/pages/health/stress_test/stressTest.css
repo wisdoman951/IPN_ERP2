@@ -1,0 +1,115 @@
+/* 固定頂部 header */
+.questionnaire-item .form-check-inline {
+  display: inline-flex; /* 改為 inline-flex 以便更好地控制內部對齊 */
+  align-items: baseline; /* 垂直對齊基線 */
+  margin-right: 1rem; /* 調整選項間的間距 */
+}
+
+.questionnaire-item .form-check-label {
+  white-space: normal; /* 允許選項文字換行 */
+  display: inline; /* 確保 label 也是 inline */
+}
+
+.questionnaire-item .form-check-input {
+  margin-top: 0.3rem; /* 稍微調整 radio 按鈕的垂直位置，如果需要 */
+}
+
+/* 讓題號和第一個選項在同一行 */
+.questionnaire-item > .row > .col-xs-12 > .fw-bold {
+  margin-right: 0.5em;
+}
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 主容器設置 */
+.page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 內容容器包裝 */
+.content-wrapper {
+  display: flex;
+  justify-content: center;
+  flex: 1;
+}
+
+/* 主內容區域 */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px); /* 減去header高度 */
+}
+
+/* 搜索區域 */
+.search-area {
+  margin-bottom: 15px;
+}
+
+/* 表格容器設置為固定高度和滾動 */
+.table-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 15px;
+  height: calc(100vh - 250px); /* 表格固定高度 */
+  min-height: 300px; /* 最小高度 */
+}
+
+/* 表格滾動容器 */
+.table-scroll-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+}
+
+/* 表格頭部固定 */
+.table-header-sticky th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 10;
+  border-bottom: 2px solid #dee2e6;
+}
+
+/* 表格樣式 */
+.table-scroll-container .table {
+  margin-bottom: 0;
+}
+
+/* 美化滾動條 */
+.table-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 按鈕區域 */
+.button-area {
+  width: 100%;
+  margin-top: 15px;
+} 

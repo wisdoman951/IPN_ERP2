@@ -1,0 +1,119 @@
+/* 固定頂部 header */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030; /* 確保 header 在其他元素之上 */
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 添加陰影效果增強視覺層次 */
+}
+
+/* 主容器設置 */
+.page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 內容容器包裝 */
+.content-wrapper {
+  display: flex;
+  justify-content: center;
+  flex: 1;
+}
+
+/* 主內容區域 - 設定寬度為75% (col-md-9) */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px); /* 減去header高度 */
+}
+
+/* 搜索區域 */
+.search-area {
+  margin-bottom: 15px;
+}
+
+/* 表格容器設置為固定高度和滾動 */
+.table-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 15px;
+  height: calc(100vh - 250px); /* 表格固定高度 */
+  min-height: 300px; /* 最小高度 */
+}
+
+/* 表格滾動容器 */
+.table-scroll-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+}
+
+/* 表格頭部固定 */
+.table-header-sticky th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 10;
+  border-bottom: 2px solid #dee2e6;
+}
+
+/* 表格樣式 */
+.table-scroll-container .table {
+  margin-bottom: 0;
+}
+
+/* 美化滾動條 */
+.table-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 確保表頭下的表體正確顯示 */
+.table-scroll-container .table thead th {
+  border-bottom: none;
+}
+
+/* 表格底部邊框修正 */
+.table-scroll-container .table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* 底部按鈕區域 */
+.button-area {
+  width: 100%;
+}
+
+/* 確保整個頁面結構是彈性的 */
+.d-flex.flex-column.min-vh-100 {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 確保主內容區域佔滿剩餘空間 */
+.ms-auto.d-flex.flex-column {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 0px); /* 因為header現在是固定的，不需要減去它的高度 */
+} 

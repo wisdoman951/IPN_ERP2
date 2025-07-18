@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="7200">
+    <title>瓦斯資料查詢清單</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+        
+</head>
+
+<body style="margin: 50px;">
+    <h1>瓦斯資料查詢清單</h1>
+    <form action="update_warning_value.php" method="post"> 
+    <table class="table">
+    <thead class="sticky-top">
+    <tr>
+            <th scope="col">客戶編號</th>
+            <th scope="col">客戶名稱</th>
+            <th scope="col">總重量 (kg)</th>
+            <th scope="col">瓦斯存量</th>
+            <th scope="col">規格</th>
+            <th scope="col">警戒值</th>
+            <th scope="col">平均用量</th>
+            <th scope="col">資料時間點</th>
+            <th scope="col">備註</th>
+            <th scope="col">設備編號</th>
+            <!-- 新增7天用量 -->
+            <th scope="col">day1</th>
+            <th scope="col">day2</th>
+            <th scope="col">day3</th>
+            <th scope="col">day4</th>
+            <th scope="col">day5</th>
+            <th scope="col">day6</th>
+            <th scope="col">day7</th>
+        </tr>
+        </thead>
+        <tbody>
+            <?php
+            set_time_limit(300);
+            $servername = "database-1.cxzg4akd6dhy.ap-northeast-1.rds.amazonaws.com";
+            $username = "admin";
+            $password = "Bk+w%H86";
+            $dbname = "gasstation";
+
+            // 创建连接
+            $conn = new mysqli($servername, $username, $password, $dbname);
+
+            // 检查连接
+            if ($conn->connect_error) {
+                die("连接失败: " . $conn->connect_error);
+            }
+
+            $conn->set_charset("utf8");
+
+            // 从会话中获取 company_id
+            session_start();
+            $company_id = isset($_SESSION['Manager_ID']) ? $_SESSION['Manager_ID'] : 0;
+
+            $rows = [];
+
+            // 使用准备好的语句以防止 SQL 注入
+            $stmt = $conn->prepare("SELECT CUSTOMER_Id FROM customer WHERE COMPANY_Id = ?");
+            $stmt->bind_param("i", $company_id);
+            $stmt->execute();
+            $result_customer_ids = $stmt->get_result();
+
+            if ($result_customer_ids && $result_customer_ids->num_rows > 0) {
+                while ($row_customer_id = $result_customer_ids->fetch_assoc()) {
+                    $customer_id = $row_customer_id["CUSTOMER_Id"];
+
+                    $stmt_sensor_ids = $conn->prepare("SELECT SENSOR_Id FROM iot WHERE CUSTOMER_Id = ?");
+                    $stmt_sensor_ids->bind_param("i", $customer_id);
+                    $stmt_sensor_ids->execute();
+                    $result_sensor_ids = $stmt_sensor_ids->get_result();
+
+                    if ($result_sensor_ids && $result_sensor_ids->num_rows > 0) {
+                        while ($row_sensor_id = $result_sensor_ids->fetch_assoc()) {
+                            $sensor_id = $row_sensor_id["SENSOR_Id"];
+
+                            // 查询最新的 SENSOR 数据
+                            $stmt_latest_sensor = $conn->prepare("
+                    SELECT SENSOR_Id, SENSOR_Index, SENSOR_Time, SENSOR_Weight, SENSOR_Battery
+                    FROM sensor_history
+                    WHERE SENSOR_Id = ? AND SENSOR_Time = (
+                        SELECT MAX(SENSOR_Time)
+                        FROM sensor_history
+                        WHERE SENSOR_Id = ?
+                    )
+                ");
+                            $stmt_latest_sensor->bind_param("ii", $sensor_id, $sensor_id);
+                            $stmt_latest_sensor->execute();
+                            $result_latest_sensor = $stmt_latest_sensor->get_result();
+
+                            if ($result_latest_sensor && $row_sensor = $result_latest_sensor->fetch_assoc()) {
+                                $current_weight = round($row_sensor["SENSOR_Weight"] / 1000.0, 1);
+
+                                // 获取客户信息
+                                $stmt_customer_data = $conn->prepare("SELECT CUSTOMER_Id, CUSTOMER_Name, CUSTOMER_Address, CUSTOMER_Notes, CUSTOMER_Weight, Warning_value FROM customer WHERE CUSTOMER_Id = ?");
+                                $stmt_customer_data->bind_param("i", $customer_id);
+                                $stmt_customer_data->execute();
+                                $result_customer_data = $stmt_customer_data->get_result();
+
+                                if ($result_customer_data && $row_customer = $result_customer_data->fetch_assoc()) {
+                                    // 确保 CUSTOMER_Weight 字段是一个整数或数字字符串
+                                    $customer_weight = trim($row_customer["CUSTOMER_Weight"]);
+
+                                    // 直接使用 CUSTOMER_Weight 字段的值作为气缸规格
+                                    $cylinder_spec = (int) $customer_weight;
+
+                                    
+
+                                    
+
+                                    // 获取昨日第一笔数据
+                                    $stmt_yesterday_first = $conn->prepare("
+SELECT SENSOR_Weight
+FROM sensor_history
+WHERE SENSOR_Id = ? AND SENSOR_Time BETWEEN ? AND ?
+ORDER BY SENSOR_Time ASC
+LIMIT 1
+");
+                                    $yesterday_start = date('Y-m-d 00:00:00', strtotime('-1 day'));
+                                    $yesterday_end = date('Y-m-d 23:59:59', strtotime('-1 day'));
+                                    $stmt_yesterday_first->bind_param("iss", $sensor_id, $yesterday_start, $yesterday_end);
+                                    $stmt_yesterday_first->execute();
+                                    $result_yesterday_first = $stmt_yesterday_first->get_result();
+                                    $yesterday_weight_first = $result_yesterday_first->num_rows > 0 ? $result_yesterday_first->fetch_assoc()['SENSOR_Weight'] / 1000.0 : 0;
+
+
+                                    // 获取今日第一笔数据
+                                    $stmt_today_first = $conn->prepare("
+SELECT SENSOR_Weight
+FROM sensor_history
+WHERE SENSOR_Id = ? AND SENSOR_Time >= ?
+ORDER BY SENSOR_Time ASC
+LIMIT 1
+");
+                                    $today_start = date('Y-m-d 00:00:00');
+                                    $stmt_today_first->bind_param("is", $sensor_id, $today_start);
+                                    $stmt_today_first->execute();
+                                    $result_today_first = $stmt_today_first->get_result();
+                                    $today_weight_first = $result_today_first->num_rows > 0 ? $result_today_first->fetch_assoc()['SENSOR_Weight'] / 1000.0 : 0;
+
+                                    // 获取当天的日期
+$today_start = date('Y-m-d 00:00:00');
+$today_end = date('Y-m-d 23:59:59');
+
+// 查询当天（00:00到23:59）的第一笔传感器数据，包括 SENSOR_Time
+$stmt_today_first = $conn->prepare("
+    SELECT SENSOR_Time, SENSOR_Max_Weight
+    FROM sensor_history
+    WHERE SENSOR_Id = ? AND SENSOR_Time BETWEEN ? AND ?
+    ORDER BY SENSOR_Time ASC
+    LIMIT 1
+");
+$stmt_today_first->bind_param("iss", $sensor_id, $today_start, $today_end);
+$stmt_today_first->execute();
+$result_today_first = $stmt_today_first->get_result();
+
+if ($result_today_first->num_rows > 0) {
+    $row_today_first = $result_today_first->fetch_assoc();
+    $current_sensor_max_weight = $row_today_first['SENSOR_Max_Weight'];
+    $today_first_time = $row_today_first['SENSOR_Time']; // 确保获取到时间字段
+
+    
+        // 更新当天第一笔记录的 SENSOR_Max_Weight
+        $stmt_update_sensor_max_weight = $conn->prepare("
+            UPDATE daily_data
+            SET SENSOR_Max_Weight = ?
+            WHERE SENSOR_Id = ? 
+        ");
+        $stmt_update_sensor_max_weight->bind_param("di", $daily_usage, $sensor_id);
+        $stmt_update_sensor_max_weight->execute();
+        $stmt_update_sensor_max_weight->close();
+        //AND SENSOR_Time = ?
+        //, $today_first_time
+    }
+// 获取今日最新一笔数据及其记录时间
+$stmt_today_latest = $conn->prepare("
+SELECT SENSOR_Weight, SENSOR_Time
+FROM sensor_history
+WHERE SENSOR_Id = ? AND SENSOR_Time >= ?
+ORDER BY SENSOR_Time DESC
+LIMIT 1
+");
+$today_start = date('Y-m-d 00:00:00'); // 今天的开始时间
+$stmt_today_latest->bind_param("is", $sensor_id, $today_start);
+$stmt_today_latest->execute();
+$result_today_latest = $stmt_today_latest->get_result();
+
+if ($result_today_latest->num_rows > 0) {
+    $row = $result_today_latest->fetch_assoc();
+    $today_weight_latest = $row['SENSOR_Weight'];
+    $latest_record_time = $row['SENSOR_Time'];
+    $formatted_time = (new DateTime($latest_record_time))->format('Y-m-d H點');
+} else {
+    // 当日无数据，继续查找历史中最新的一笔数据
+    $stmt_previous_latest = $conn->prepare("
+    SELECT SENSOR_Weight, SENSOR_Time
+    FROM sensor_history
+    WHERE SENSOR_Id = ?
+    ORDER BY SENSOR_Time DESC
+    LIMIT 1
+    ");
+    $stmt_previous_latest->bind_param("i", $sensor_id);
+    $stmt_previous_latest->execute();
+    $result_previous_latest = $stmt_previous_latest->get_result();
+
+    if ($result_previous_latest->num_rows > 0) {
+        $row = $result_previous_latest->fetch_assoc();
+        $today_weight_latest = $row['SENSOR_Weight']; 
+        $latest_record_time = $row['SENSOR_Time'];
+    } else {
+        // 如果历史记录中也没有数据
+        $today_weight_latest = 0;
+        $latest_record_time = null;
+    }
+}
+
+
+// 获取今日最新的前一笔数据
+$stmt_today_previous = $conn->prepare("
+SELECT SENSOR_Weight
+FROM sensor_history
+WHERE SENSOR_Id = ? AND SENSOR_Time < ?
+ORDER BY SENSOR_Time DESC
+LIMIT 1
+");
+$stmt_today_previous->bind_param("is", $sensor_id, $latest_record_time);
+$stmt_today_previous->execute();
+$result_today_previous = $stmt_today_previous->get_result();
+
+// 获取前一笔记录的重量
+$today_weight_previous = 0;
+if ($result_today_previous->num_rows > 0) {
+    $row_previous = $result_today_previous->fetch_assoc();
+    $today_weight_previous = $row_previous['SENSOR_Weight'] / 1000.0; // 转换为公斤
+}
+
+// 比较两笔数据并更新 Gas_Original_Weight
+if ($today_weight_latest > $today_weight_previous) {
+    // 最新一笔数据比前一笔数据重 10 公斤，但不超过 20 公斤
+    if ($today_weight_latest - $today_weight_previous >= 10 && $today_weight_latest - $today_weight_previous < 20) {
+        // 更新 Gas_Original_Weight
+        $weight_in_grams = $today_weight_latest * 1000;
+        $stmt_update = $conn->prepare("UPDATE iot SET Gas_Original_Weight = ? WHERE SENSOR_Id = ?");
+        $stmt_update->bind_param("di", $weight_in_grams, $sensor_id);
+        $stmt_update->execute();
+    }
+    // 如果最新一笔数据比前一笔数据重超过 20 公斤，或者最新一笔数据比前一笔数据轻，则不更新 Gas_Original_Weight
+} else {
+    // 如果最新一笔数据比前一笔数据轻，或者两者相等，不更新 Gas_Original_Weight
+}
+
+
+
+
+                                    // 获取 `iot` 表中的 `Gas_Original_Weight`
+                                    $stmt_get_gas_original_weight = $conn->prepare("SELECT Gas_Original_Weight FROM iot WHERE SENSOR_Id = ?");
+                                    $stmt_get_gas_original_weight->bind_param("i", $sensor_id);
+                                    $stmt_get_gas_original_weight->execute();
+                                    $result_gas_original_weight = $stmt_get_gas_original_weight->get_result();
+                                    $gas_original_weight = $result_gas_original_weight->num_rows > 0 ? $result_gas_original_weight->fetch_assoc()['Gas_Original_Weight'] / 1000.0 : 0; // 转换为公斤
+            
+                                    // 计算累积用量
+                                    $accumulated_usage = round($gas_original_weight - $current_weight, 1);
+
+                                    // 如果无昨日数据，则根据今日第一笔数据和 Gas_Original_Weight 进行判断
+                                    if (is_null($yesterday_weight_first)) {
+                                        if ($today_weight_first > $gas_original_weight) {
+                                            // 更新 Gas_Original_Weight 为今日第一笔数据
+                                            $today_weight_first_in_grams = $today_weight_first * 1000; // 转换为克
+                                            $stmt_update_gas_weight = $conn->prepare("UPDATE iot SET Gas_Original_Weight = ? WHERE SENSOR_Id = ?");
+                                            $stmt_update_gas_weight->bind_param("di", $today_weight_first_in_grams, $sensor_id);
+                                            $stmt_update_gas_weight->execute();
+                                        }
+                                    } else {
+                                        // 如果昨日有数据，检查今日第一笔数据大于昨日最新数据 10 公斤以上的情况
+                                        if (($yesterday_weight_first - $today_weight_first) < -10.0) {
+                                            // 更新 Gas_Original_Weight 为今日第一笔数据
+                                            $today_weight_first_in_grams = $today_weight_first * 1000; // 转换为克
+                                            $stmt_update_gas_weight = $conn->prepare("UPDATE iot SET Gas_Original_Weight = ? WHERE SENSOR_Id = ?");
+                                            $stmt_update_gas_weight->bind_param("di", $today_weight_first_in_grams, $sensor_id);
+                                            $stmt_update_gas_weight->execute();
+                                        }
+                                    }
+
+                                    // 清理资源
+                                    $stmt_get_gas_original_weight->close();
+
+
+
+                                    // 如果累积用量为负，则显示为 0
+                                    if ($accumulated_usage < 0) {
+                                        $accumulated_usage = 0;
+                                    }
+
+                                    $seven_days_data = []; // 用于存储过去7天的日用量
+
+                                    for ($i = 0; $i < 6; $i++) {
+                                        $date = date('Y-m-d', strtotime("-$i days"));
+                                        
+                                        // 查询某天的所有记录，并将当天的所有日用量累加
+                                        $stmt_daily_usage = $conn->prepare("
+                                            SELECT Daily_Usage
+                                            FROM daily_data
+                                            WHERE SENSOR_Id = ? AND DATE(DailyCaculation_Time) = ?
+                                            ORDER BY DailyCaculation_Time ASC
+                                        ");
+                                        $stmt_daily_usage->bind_param("is", $sensor_id, $date);
+                                        $stmt_daily_usage->execute();
+                                        $result_daily_usage = $stmt_daily_usage->get_result();
+                                        
+                                        if ($result_daily_usage->num_rows > 0) {
+                                            $total_daily_usage = 0; // 初始化总日用量
+                                            while ($row = $result_daily_usage->fetch_assoc()) {
+                                                $total_daily_usage += $row['Daily_Usage']; // 累加每天的日用量
+                                            }
+                                            $seven_days_data[$date] = max(0, $total_daily_usage); // 如果有数据，存储总日用量
+                                        } else {
+                                            // 如果没有数据，日用量为0
+                                            $seven_days_data[$date] = "無";
+                                        }
+                                    }
+                                    // 计算七天的平均日用量
+$total_usage = array_sum($seven_days_data); // 计算七天的总日用量
+$average_daily_usage = $total_usage / 7; // 计算平均值
+$average_daily_usage = round($average_daily_usage, 1); // 四舍五入到小数点后一位
+                                    
+
+
+                                    
+// 计算日用量
+$daily_usage = 0; // 默认值为 0
+if ($yesterday_weight_first > 0 && $today_weight_first > 0) {
+    $daily_usage = round(($today_weight_first - $yesterday_weight_first), 1); // 四舍五入到小数点后一位
+    if ($daily_usage < 0) {
+        $daily_usage = 0; // 如果日用量为负数，则设为 0
+    }
+}
+
+// 将日用量记录到 sensor_history 数据表
+$stmt_insert_or_update = $conn->prepare("
+    INSERT INTO daily_data (SENSOR_Id, Daily_Usage)
+    VALUES (?, ?)
+    ON DUPLICATE KEY UPDATE
+        
+        Daily_Usage = VALUES(Daily_Usage)
+");
+
+//SENSOR_Time = VALUES(SENSOR_Time), 更新時間
+
+//$current_time = date('Y-m-d H:i:s');
+$stmt_insert_or_update->bind_param("id", $sensor_id, $daily_usage);
+
+if (!$stmt_insert_or_update->execute()) {
+    error_log("Failed to insert or update Daily_Usage for SENSOR_Id $sensor_id: " . $stmt_insert_or_update->error);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// 初始化 row_class 变量
+$row_class = "";
+
+// 查询最新的 SENSOR 数据
+$stmt_latest_sensor = $conn->prepare("
+SELECT SENSOR_Id, SENSOR_Index, SENSOR_Time, SENSOR_Weight, SENSOR_Battery
+FROM sensor_history
+WHERE SENSOR_Id = ? AND SENSOR_Time = (
+    SELECT MAX(SENSOR_Time)
+    FROM sensor_history
+    WHERE SENSOR_Id = ?
+)
+");
+$stmt_latest_sensor->bind_param("ii", $sensor_id, $sensor_id);
+$stmt_latest_sensor->execute();
+$result_latest_sensor = $stmt_latest_sensor->get_result();
+
+if ($result_latest_sensor && $row_sensor = $result_latest_sensor->fetch_assoc()) {
+    $latest_record_time = $row_sensor["SENSOR_Time"];
+    $current_weight = round($row_sensor["SENSOR_Weight"] / 1000.0, 1); // 当前重量
+
+    // 获取当前时间减去两天的时间
+    $two_days_ago = date('Y-m-d H:i:s', strtotime('-2 days'));
+
+    // 判断是否超过两天没有更新资料
+    if ($latest_record_time < $two_days_ago) {
+        $gas_stock = "異常"; // 超过两天没有数据
+        $row_class = "table-warning"; // 显示黄底
+    } else {
+        // 获取客户信息
+        $stmt_customer_data = $conn->prepare("SELECT CUSTOMER_Id, CUSTOMER_Name, CUSTOMER_Address, CUSTOMER_Notes, CUSTOMER_Weight, Warning_value FROM customer WHERE CUSTOMER_Id = ?");
+        $stmt_customer_data->bind_param("i", $customer_id);
+        $stmt_customer_data->execute();
+        $result_customer_data = $stmt_customer_data->get_result();
+
+        if ($result_customer_data && $row_customer = $result_customer_data->fetch_assoc()) {
+            $customer_weight = trim($row_customer["CUSTOMER_Weight"]); // 客户重量
+            $warning_value = $row_customer["Warning_value"]; // 获取警告值
+
+            // 计算瓦斯存量
+            $gas_stock = round($customer_weight - ($gas_original_weight - $current_weight), 1);
+
+            // 判断是否需要显示红底
+            if ($gas_stock < $warning_value) {
+                // 先检查是否已有黄底，如果有则保持黄底
+                if (empty($row_class)) {
+                    $row_class = "table-danger"; // 如果瓦斯存量小于警告值，则显示红底
+                }
+            }
+        }
+    }
+} else {
+    $gas_stock = "異常"; // 如果没有任何数据
+    $row_class = "table-warning"; // 显示黄底
+}
+
+
+
+                                    $rows[] = [
+                                        "row_class" => $row_class,
+                                        "CUSTOMER_Id" => $row_customer["CUSTOMER_Id"],
+                                        "CUSTOMER_Name" => $row_customer["CUSTOMER_Name"],
+                                        "current_weight" => $current_weight,
+                                        "Gas_stock" => $gas_stock,                                  
+                                        "CUSTOMER_Weight" => $row_customer["CUSTOMER_Weight"],
+                                        "Warning_Value" => $row_customer["Warning_value"],
+                                        "daily_usage" => $daily_usage,
+                                        "average_daily_usage" => $average_daily_usage,
+                                        "SENSOR_Id" => $sensor_id,
+                                        "CUSTOMER_Notes" => $row_customer["CUSTOMER_Notes"],
+                                        "SENSOR_Index" => isset($row_sensor["SENSOR_Index"]) ? $row_sensor["SENSOR_Index"] : '未定義',
+                                        "yesterday_time" => $yesterday_start,
+                                        "latest_time" => $formatted_time,  // 添加今日最新一笔数据的时间
+                                        "gas_original_weight" => $gas_original_weight, // 添加昨日最后一笔数
+                                        "seven_days_usage" => $seven_days_data // 新增的 7 天日用量
+                                    ];
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 排序并显示数据
+        /*
+                usort($rows, function ($a, $b) {
+                    // 首先检查是否为 table-danger
+                    if ($a['row_class'] === 'table-danger' && $b['row_class'] !== 'table-danger') {
+                        return -1;
+                    } elseif ($a['row_class'] !== 'table-danger' && $b['row_class'] === 'table-danger') {
+                        return 1;
+                    }
+
+                    如果两个 row_class 都是 table-danger 或都不是，则按照预计剩余天数排序
+                    if ($a['estimated_days_remaining'] === 'N/A')
+                        return 1;
+                    if ($b['estimated_days_remaining'] === 'N/A')
+                        return -1;
+                    return $a['estimated_days_remaining'] <=> $b['estimated_days_remaining'];
+                });
+        */
+        foreach ($rows as $row) {
+            // 根據瓦斯存量與警戒值比較來決定是否顯示紅底
+            $row_class = "";
+            if ($row['Gas_stock'] < $row['Warning_Value']) {
+                $row_class = "table-danger"; // 如果瓦斯存量小於警戒值，設置為紅底
+            }
+        
+            // 動態設置 <tr> 類別
+            echo "<tr class='{$row_class}'>";
+            echo "<td>{$row['CUSTOMER_Id']}</td>";
+            echo "<td>{$row['CUSTOMER_Name']}</td>";
+            echo "<td>{$row['current_weight']}</td>";
+            echo "<td>{$row['Gas_stock']}</td>"; // 顯示計算後的瓦斯存量
+            echo "<td>{$row['CUSTOMER_Weight']}</td>";
+            echo "<td><input type='number' name='warning_value[{$row['CUSTOMER_Id']}]' value='{$row['Warning_Value']}' class='form-control' required></td>";
+            echo "<td>{$row['average_daily_usage']}</td>";
+            echo "<td>{$row['latest_time']}</td>"; // 顯示今日最新一筆數據的時間
+            echo "<td>{$row['CUSTOMER_Notes']}</td>";
+            echo "<td>{$row['SENSOR_Id']}</td>";
+            echo "<td>{$row['daily_usage']}</td>";
+        
+            // 顯示7天用量
+            foreach ($row['seven_days_usage'] as $date => $usage) {
+                echo "<td>{$usage}</td>";
+            }
+        
+            echo "</tr>";
+        
+        
+                }
+            } else {
+                echo "<tr><td colspan='13'>沒有數據</td></tr>";
+            }
+
+            $conn->close();
+            ?>
+
+
+
+
+        </tbody>
+    </table>
+    <script>
+    document.addEventListener("keydown", function(event) {
+        if (event.key === "Enter") {
+            event.preventDefault(); // 阻止默认行为（防止换行）
+
+            // 弹出确认框
+            const confirmChange = confirm("确定更改?");
+
+            // 如果用户点击“确定”，则提交表单
+            if (confirmChange) {
+                document.querySelector("form").submit(); // 提交表单
+            }
+            // 如果用户点击“取消”，则不提交表单，什么也不做
+        }
+    });
+</script>
+
+</body>
+
+</html>

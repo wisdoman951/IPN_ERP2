@@ -1,0 +1,124 @@
+/* 固定頂部 header */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  width: 100%;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* 主容器設置 */
+.page-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* 內容容器包裝 */
+.content-wrapper {
+  display: flex;
+  justify-content: center;
+  flex: 1;
+}
+
+/* 主內容區域 */
+.main-content {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 60px); /* 減去header高度 */
+}
+
+/* 搜索區域 */
+.search-area {
+  margin-bottom: 15px;
+}
+
+/* 表格容器設置為固定高度和滾動 */
+.table-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 15px;
+  height: calc(100vh - 250px); /* 表格固定高度 */
+  min-height: 300px; /* 最小高度 */
+}
+
+/* 表格滾動容器 */
+.table-scroll-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+}
+
+/* 表格頭部固定 */
+.table-header-sticky th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 10;
+  border-bottom: 2px solid #dee2e6;
+}
+
+/* 表格樣式 */
+.table-scroll-container .table {
+  margin-bottom: 0;
+}
+
+/* 美化滾動條 */
+.table-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 按鈕區域 */
+.button-area {
+  width: 100%;
+  margin-top: 15px;
+}
+
+/* 產品表單樣式 */
+.form-label {
+  font-weight: 500;
+}
+
+/* 價格格式化 */
+.price-text {
+  font-weight: 600;
+  color: #dc3545;
+}
+
+/* 編輯按鈕樣式 */
+.action-button {
+  padding: 0.25rem 0.5rem;
+  margin: 0 0.25rem;
+}
+
+/* 模態框樣式 */
+.modal-header {
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.modal-footer {
+  background-color: #f8f9fa;
+  border-top: 1px solid #dee2e6;
+} 

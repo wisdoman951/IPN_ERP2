@@ -1,0 +1,190 @@
+# app/models/product_bundle_model.py
+
+import pymysql
+from app.config import DB_CONFIG
+from pymysql.cursors import DictCursor
+
+def connect_to_db():
+    """建立資料庫連線"""
+    return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
+
+def get_all_product_bundles():
+    """
+    獲取所有產品組合列表。
+    使用 GROUP_CONCAT 將每個組合的內容物（產品和療程名稱）合併成一個字串，
+    以利前端直接顯示。
+    """
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = """
+                SELECT 
+                    pb.bundle_id,
+                    pb.bundle_code,
+                    pb.name,
+                    pb.selling_price,
+                    pb.calculated_price,
+                    pb.created_at,
+                    -- 使用 IFNULL 避免組合內沒有項目時回傳 NULL
+                    IFNULL(
+                        GROUP_CONCAT(
+                            -- 根據項目類型選擇對應的名稱
+                            CASE
+                                WHEN pbi.item_type = 'Product' THEN p.name
+                                WHEN pbi.item_type = 'Therapy' THEN t.name
+                                ELSE NULL
+                            END
+                            SEPARATOR ', ' -- 使用逗號和空格分隔
+                        ),
+                        '' -- 如果沒有任何內容，回傳空字串
+                    ) AS bundle_contents
+                FROM 
+                    product_bundles pb
+                LEFT JOIN 
+                    product_bundle_items pbi ON pb.bundle_id = pbi.bundle_id
+                LEFT JOIN 
+                    product p ON pbi.item_id = p.product_id AND pbi.item_type = 'Product'
+                LEFT JOIN 
+                    therapy t ON pbi.item_id = t.therapy_id AND pbi.item_type = 'Therapy'
+                GROUP BY 
+                    pb.bundle_id
+                ORDER BY 
+                    pb.bundle_id DESC;
+            """
+            cursor.execute(query)
+            result = cursor.fetchall()
+            return result
+    finally:
+        conn.close()
+
+def create_product_bundle(data: dict):
+    """新增一筆產品組合紀錄"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            # 步驟 1: 修改 SQL 語句，使用 %s 作為佔位符
+            bundle_query = """
+                INSERT INTO product_bundles (bundle_code, name, calculated_price, selling_price)
+                VALUES (%s, %s, %s, %s)
+            """
+            # 步驟 2: 建立一個包含參數的元組 (tuple)，順序必須與 %s 對應
+            bundle_values = (
+                data['bundle_code'],
+                data['name'],
+                data['calculated_price'],
+                data['selling_price']
+            )
+            # 步驟 3: 執行 SQL
+            cursor.execute(bundle_query, bundle_values)
+            bundle_id = conn.insert_id()
+
+            # 步驟 4: 批量新增組合項目 (這部分邏輯不變)
+            items = data.get('items', [])
+            if items:
+                item_query = """
+                    INSERT INTO product_bundle_items (bundle_id, item_id, item_type, quantity)
+                    VALUES (%s, %s, %s, %s)
+                """
+                item_values = [
+                    (bundle_id, item['item_id'], item['item_type'], item.get('quantity', 1))
+                    for item in items
+                ]
+                cursor.executemany(item_query, item_values)
+            
+        conn.commit()
+        return bundle_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+# --- 未來可擴充的功能 ---
+
+def get_bundle_details_by_id(bundle_id: int):
+    """
+    獲取單一組合的詳細資料，包含其下的所有項目，用於編輯。
+    """
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            # 1. 獲取主組合資訊
+            cursor.execute("SELECT * FROM product_bundles WHERE bundle_id = %s", (bundle_id,))
+            bundle_details = cursor.fetchone()
+            if not bundle_details:
+                return None
+
+            # 2. 獲取該組合的所有項目
+            cursor.execute("SELECT item_id, item_type FROM product_bundle_items WHERE bundle_id = %s", (bundle_id,))
+            items = cursor.fetchall()
+            
+            # 3. 將項目資訊附加到主組合資料中
+            bundle_details['items'] = items
+            return bundle_details
+    finally:
+        conn.close()
+
+def update_product_bundle(bundle_id: int, data: dict):
+    """
+    更新一個現有的產品組合。
+    採用「先刪除舊項目，再新增新項目」的策略，最為簡單可靠。
+    """
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            # 步驟 1: 更新主組合的資訊
+            update_query = """
+                UPDATE product_bundles SET
+                    bundle_code = %s,
+                    name = %s,
+                    calculated_price = %s,
+                    selling_price = %s
+                WHERE bundle_id = %s
+            """
+            update_values = (
+                data['bundle_code'], data['name'],
+                data['calculated_price'], data['selling_price'],
+                bundle_id
+            )
+            cursor.execute(update_query, update_values)
+
+            # 步驟 2: 刪除此組合所有舊的項目
+            cursor.execute("DELETE FROM product_bundle_items WHERE bundle_id = %s", (bundle_id,))
+
+            # 步驟 3: 批量新增新的項目列表
+            items = data.get('items', [])
+            if items:
+                item_query = """
+                    INSERT INTO product_bundle_items (bundle_id, item_id, item_type, quantity)
+                    VALUES (%s, %s, %s, %s)
+                """
+                item_values = [
+                    (bundle_id, item['item_id'], item['item_type'], item.get('quantity', 1))
+                    for item in items
+                ]
+                cursor.executemany(item_query, item_values)
+        
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+def delete_product_bundle(bundle_id: int):
+    """
+    刪除一個產品組合。
+    由於資料庫設定了外鍵的 ON DELETE CASCADE，關聯的項目會被自動刪除。
+    """
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM product_bundles WHERE bundle_id = %s", (bundle_id,))
+        conn.commit()
+        return True
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

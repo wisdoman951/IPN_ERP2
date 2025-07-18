@@ -1,0 +1,68 @@
+version: "3.9"
+
+services:
+  client:
+    build:
+      context: ./client
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    working_dir: /app
+    command: npm run dev
+    environment:
+      - CHOKIDAR_USEPOLLING=true
+      - PYTHONUNBUFFERED=1
+
+
+  server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./server:/app  # 適用於開發，程式碼變更即時反映
+    working_dir: /app
+    command: python run.py
+    depends_on:
+      - db
+    environment:
+      - DB_HOST=db                     # 'db' 是 MySQL 服務的名稱，用於容器間通訊
+      - DB_PORT=3306
+      - DB_USER=root
+      - DB_PASSWORD=1234               # 必須與 db 服務的 MYSQL_ROOT_PASSWORD 一致
+      - DB_DATABASE=erp                # <-- 將 DB_NAME 修改為 DB_DATABASE
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY} # <-- 新增此行，從執行環境（通常是 .env）讀取 JWT_SECRET_KEY
+      - PYTHONUNBUFFERED=1
+
+
+  db:
+    image: mysql:8.0
+    container_name: mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_DATABASE: erp
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql-init-scripts:/docker-entrypoint-initdb.d
+  phpmyadmin:  # ⬅️ 確保這是在 services: 底下
+    image: phpmyadmin/phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      MYSQL_ROOT_PASSWORD: 1234
+    depends_on:
+      - db
+volumes:
+  mysql-data:
+
+   

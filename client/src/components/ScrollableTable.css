@@ -1,0 +1,65 @@
+/* 表格容器設置為固定高度和滾動 */
+.table-container {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  margin-bottom: 15px;
+  height: calc(100vh - 250px); /* 表格固定高度 */
+  min-height: 300px; /* 最小高度 */
+}
+
+/* 表格滾動容器 */
+.table-scroll-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow-y: auto;
+  border: 1px solid #dee2e6;
+  border-radius: 0.25rem;
+}
+
+/* 表格頭部固定 */
+.table-header-sticky th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 10;
+  border-bottom: 2px solid #dee2e6;
+}
+
+/* 表格樣式 */
+.table-scroll-container .table {
+  margin-bottom: 0;
+}
+
+/* 美化滾動條 */
+.table-scroll-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+.table-scroll-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.table-scroll-container::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 確保表頭下的表體正確顯示 */
+.table-scroll-container .table thead th {
+  border-bottom: none;
+}
+
+/* 表格底部邊框修正 */
+.table-scroll-container .table tbody tr:last-child td {
+  border-bottom: none;
+} 

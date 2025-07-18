@@ -1,0 +1,121 @@
+@media print {
+  /* 隱藏不需要列印的元素 */
+  .app-header,
+  button,
+  .d-flex.gap-3.mt-4 {
+    display: none !important;
+  }
+
+  /* 顯示整個頁面內容 */
+  .d-flex.flex-column.min-vh-100.bg-white {
+    display: block !important;
+    background-color: white !important;
+  }
+
+  /* 顯示列印時的標題 */
+  .print-title {
+    display: block !important;
+    text-align: center !important;
+    font-size: 24px !important;
+    margin-bottom: 20px !important;
+    color: black !important;
+    font-weight: bold !important;
+  }
+
+  /* 基本頁面設置 */
+  body {
+    background: white !important;
+    color: black !important;
+    padding: 20px !important;
+    visibility: visible !important;
+  }
+
+  /* 確保表單內容可見 */
+  Form, form {
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* 確保表單控件可見 */
+  .form-control,
+  .form-select {
+    display: block !important;
+    border: 1px solid #000 !important;
+    background-color: white !important;
+    color: black !important;
+    padding: 4px !important;
+    visibility: visible !important;
+  }
+
+  /* 確保表單標籤清晰可見 */
+  .form-label {
+    display: block !important;
+    color: black !important;
+    font-weight: bold !important;
+    margin-bottom: 4px !important;
+    visibility: visible !important;
+  }
+
+  /* 調整列印時的佈局 */
+  .col-md-6, .col {
+    width: 50% !important;
+    float: left !important;
+    page-break-inside: avoid !important;
+    padding: 8px !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* 確保打印容器可見 */
+  .print-container {
+    display: block !important;
+    visibility: visible !important;
+    width: 100% !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 10px !important;
+  }
+
+  /* 確保每個表單組之間有適當的間距 */
+  .form-group, .mb-3 {
+    margin-bottom: 15px !important;
+    display: block !important;
+    visibility: visible !important;
+  }
+
+  /* 確保列可見 */
+  .row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    visibility: visible !important;
+    page-break-inside: avoid !important;
+    width: 100% !important;
+  }
+
+  /* 移除不必要的背景色和陰影 */
+  * {
+    box-shadow: none !important;
+    text-shadow: none !important;
+  }
+  
+  /* 確保選項可見 */
+  option {
+    color: black !important;
+  }
+  
+  /* 確保所有內容在打印時可見 */
+  * {
+    visibility: visible !important;
+  }
+}
+
+/* 螢幕顯示時隱藏打印標題，但打印時顯示 */
+.print-title {
+  display: none;
+}
+
+@media print {
+  .print-title {
+    display: block !important;
+  }
+} 

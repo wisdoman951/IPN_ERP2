@@ -1,0 +1,47 @@
+.app-sidebar {
+    position: fixed;
+    left: 0;
+    /* top 和 height 由 JavaScript 動態控制 */
+    width: 200px;
+    background: #f8f9fa;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    z-index: 1000;
+    overflow-y: auto; /* 允許側邊欄內容滾動 */
+}
+
+.col-sidebar {
+  width: 100%;
+  padding: 15px 10px;
+  background: #f8f9fa;
+}
+
+.nav-button {
+  text-align: left;
+  padding: 8px 12px;
+  transition: background-color 0.2s;
+  margin-bottom: 5px;
+  border: none;
+}
+
+.nav-button:hover {
+  background-color: #e9ecef;
+}
+
+.sidebar-icon {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.nav-button span {
+  flex-grow: 1;
+}
+
+.store-info {
+  padding: 8px 0;
+}
+
+.nav-item-wrapper {
+  margin-bottom: 5px;
+  width: 100%;
+}
