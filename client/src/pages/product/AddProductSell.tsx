@@ -1,4 +1,3 @@
-/* client/src/pages/product/AddProductSell.tsx */
 import React, { useState, useEffect } from "react";
 import { Button, Container, Row, Col, Form, InputGroup, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
@@ -15,11 +14,6 @@ interface SelectedProduct {
   price: number;
   quantity: number;
   inventory_id: number;
-}
-
-interface MemberData {
-  member_id: number;
-  name: string;
 }
 
 const paymentMethodDisplayMap: { [key: string]: string } = {
@@ -69,21 +63,24 @@ const AddProductSell: React.FC = () => {
         if (data.length > 0 && !localStorage.getItem('productSellFormState')) {
           setSelectedStaffId(data[0].staff_id.toString());
         }
-      } catch (err) { console.error("載入銷售人員資料失敗：", err); setError("載入銷售人員資料失敗"); }
+      } catch (err) { 
+        console.error("載入銷售人員資料失敗：", err); 
+        setError("載入銷售人員資料失敗"); 
+      }
     };
     fetchStaffMembers();
-  }, []);
 
-  useEffect(() => {
+    // ---- 資料還原在這邊 ----
     const selectedProductsData = localStorage.getItem('selectedProducts');
     const formStateData = localStorage.getItem('productSellFormState');
     let initialProducts: SelectedProduct[] = [];
-
     if (selectedProductsData) {
-      try { initialProducts = JSON.parse(selectedProductsData); setSelectedProducts(initialProducts); }
+      try { 
+        initialProducts = JSON.parse(selectedProductsData); 
+        setSelectedProducts(initialProducts); 
+      }
       catch (e) { console.error("解析 selectedProducts 失敗", e); }
     }
-
     let currentTotalFromProds = 0;
     initialProducts.forEach(p => {
       currentTotalFromProds += (p.price || 0) * (p.quantity || 0);
@@ -98,13 +95,14 @@ const AddProductSell: React.FC = () => {
         if (formState.memberName) setMemberName(formState.memberName);
         if (formState.purchaseDate) setPurchaseDate(formState.purchaseDate);
         if (formState.paymentMethod && paymentMethodOptions.includes(formState.paymentMethod)) {
-            setPaymentMethod(formState.paymentMethod);
+          setPaymentMethod(formState.paymentMethod);
         }
         if (formState.transferCode) setTransferCode(formState.transferCode);
         if (formState.cardNumber) setCardNumber(formState.cardNumber);
         if (formState.saleCategory) setSaleCategory(formState.saleCategory);
         if (formState.note) setNote(formState.note);
         if (formState.selectedStaffId) setSelectedStaffId(formState.selectedStaffId);
+        if (formState.selectedStore) setSelectedStore(formState.selectedStore);
         if (typeof formState.discountAmount === 'number') {
           currentDiscAmount = formState.discountAmount;
           setOrderDiscountAmount(currentDiscAmount);
@@ -113,10 +111,11 @@ const AddProductSell: React.FC = () => {
     }
     setFinalPayableAmount(currentTotalFromProds - currentDiscAmount);
 
-    return () => {
-        localStorage.removeItem('selectedProducts');
-        localStorage.removeItem('productSellFormState');
-    };
+    // 千萬不要在這裡清除 localStorage！
+    // return () => {
+    //   localStorage.removeItem('selectedProducts');
+    //   localStorage.removeItem('productSellFormState');
+    // };
   }, []);
 
   useEffect(() => {
@@ -136,6 +135,7 @@ const AddProductSell: React.FC = () => {
   const handleError = (errorMsg: string) => setError(errorMsg);
   const openProductSelection = () => {
     const formState = {
+      selectedStore,
       memberId, memberName, purchaseDate, paymentMethod,
       transferCode, cardNumber, saleCategory, note,
       selectedStaffId, discountAmount: orderDiscountAmount,
@@ -194,7 +194,7 @@ const AddProductSell: React.FC = () => {
           card_number: paymentMethod === "信用卡" ? cardNumber : undefined,
           sale_category: saleCategory,
           quantity: product.quantity,
-          note: note, // *** FIX: Always send the 'note' key to match backend expectation ***
+          note: note,
           unit_price: product.price,
           discount_amount: itemDiscountAmount,
           final_price: itemFinalPrice,
@@ -202,6 +202,7 @@ const AddProductSell: React.FC = () => {
         await addProductSell(sellData);
       }
 
+      // 只在送出成功時清除
       localStorage.removeItem('productSellFormState');
       localStorage.removeItem('selectedProducts');
       alert("銷售記錄已成功新增！");
@@ -212,6 +213,12 @@ const AddProductSell: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    localStorage.removeItem('selectedProducts');
+    localStorage.removeItem('productSellFormState');
+    navigate(-1);
   };
   
   const content = (
@@ -333,11 +340,7 @@ const AddProductSell: React.FC = () => {
             <Button variant="info" className="text-white" type="submit" disabled={loading}>
               {loading ? "處理中..." : "確認"}
             </Button>
-            <Button variant="info" className="text-white" onClick={() => {
-                localStorage.removeItem('selectedProducts');
-                localStorage.removeItem('productSellFormState');
-                navigate(-1);
-            }} disabled={loading}>
+            <Button variant="info" className="text-white" onClick={() => {handleCancel}} disabled={loading}>
               取消
             </Button>
             <Button variant="info" className="text-white" onClick={handlePrint} disabled={loading}>

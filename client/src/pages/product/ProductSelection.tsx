@@ -1,31 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { Button, Container, Row, Col, Form, Table } from "react-bootstrap";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-// Import the updated Product interface and service function
 import { getAllProducts, Product } from "../../services/ProductSellService";
 
-// This interface represents a product row chosen by the user on this page
 interface SelectedProduct {
   product_id: number;
   name: string;
   price: number;
-  quantity: number; // The quantity the user wants to buy
-  inventory_id: number; // May not be directly used if stock is managed by product_id + store_id
-  stock_quantity?: number; // The available stock for the selected product
+  quantity: number;
+  inventory_id: number;
+  stock_quantity?: number;
 }
 
 const ProductSelection: React.FC = () => {
   const navigate = useNavigate();
-  const location = useLocation();
-  
-  // This state holds the master list of all available products from the backend
   const [products, setProducts] = useState<Product[]>([]);
-  
-  // This state holds the list of products the user is currently selecting
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
-  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
@@ -35,7 +27,6 @@ const ProductSelection: React.FC = () => {
       setLoading(true);
       setError(null);
       try {
-        // Fetch products with their aggregated inventory count
         const data = await getAllProducts();
         setProducts(data);
       } catch (err) {
@@ -48,14 +39,31 @@ const ProductSelection: React.FC = () => {
 
     fetchProducts();
 
-    // Restore state if navigating back to this page
-    const state = location.state as { selectedProducts?: SelectedProduct[] };
-    if (state?.selectedProducts) {
-      setSelectedProducts(state.selectedProducts);
+    // --- 關鍵修正：進頁時還原 localStorage ---
+    const selectedProductsData = localStorage.getItem('selectedProducts');
+    if (selectedProductsData) {
+      try {
+        const prods = JSON.parse(selectedProductsData);
+        if (Array.isArray(prods) && prods.length > 0) {
+          setSelectedProducts(prods);
+        } else {
+          setSelectedProducts([{
+            product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined
+          }]);
+        }
+      } catch {
+        setSelectedProducts([{
+          product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined
+        }]);
+      }
     } else {
-      addNewItem(); // Start with one empty item row
+      setSelectedProducts([{
+        product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined
+      }]);
     }
-  }, [location]);
+  }, []);
+
+  // ...其餘邏輯不用動...
 
   const calculateTotal = () => {
     return selectedProducts.reduce((total, item) => total + item.price * item.quantity, 0);
@@ -71,25 +79,22 @@ const ProductSelection: React.FC = () => {
     setSelectedProducts(newSelectedProducts);
   };
 
-  // This function is called when a user selects a product from the dropdown
   const updateSelectedProduct = (index: number, productId: number) => {
     const product = products.find(p => p.product_id === productId);
     const newSelectedProducts = [...selectedProducts];
 
     if (!product) {
-      // If "Please select" is chosen, reset the row
-      newSelectedProducts[index] = { 
-        product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined 
+      newSelectedProducts[index] = {
+        product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined
       };
     } else {
-      // When a product is selected, populate the row with its details
       newSelectedProducts[index] = {
         ...newSelectedProducts[index],
         product_id: product.product_id,
         name: product.product_name,
         price: Number(product.product_price),
-        inventory_id: product.inventory_id, // This comes from the service
-        stock_quantity: product.inventory_quantity // *** This is the crucial link to the inventory stock ***
+        inventory_id: product.inventory_id,
+        stock_quantity: product.inventory_quantity
       };
     }
     setSelectedProducts(newSelectedProducts);
@@ -97,44 +102,30 @@ const ProductSelection: React.FC = () => {
 
   const updateQuantity = (index: number, quantity: number) => {
     if (quantity < 1) return;
-    
     const newSelectedProducts = [...selectedProducts];
     const product = newSelectedProducts[index];
-    
-    // Optional: Prevent user from entering quantity greater than stock
     if (product.stock_quantity !== undefined && quantity > product.stock_quantity) {
-        // You can alert the user or cap the quantity
-        quantity = product.stock_quantity; 
+      quantity = product.stock_quantity;
     }
-
-    newSelectedProducts[index] = {
-      ...product,
-      quantity
-    };
+    newSelectedProducts[index] = { ...product, quantity };
     setSelectedProducts(newSelectedProducts);
   };
 
   const confirmSelection = () => {
     const validProducts = selectedProducts.filter(item => item.product_id !== 0 && item.quantity > 0);
-    
     if (validProducts.length === 0) {
       setError("請選擇至少一項產品並設定數量。");
       return;
     }
-    
-    // Check if any selected quantity exceeds available stock
     const invalidStockItems = validProducts.filter(item => item.stock_quantity !== undefined && item.quantity > item.stock_quantity);
     if (invalidStockItems.length > 0) {
-        setError(`產品 "${invalidStockItems[0].name}" 的庫存不足 (剩餘: ${invalidStockItems[0].stock_quantity})。`);
-        return;
+      setError(`產品 "${invalidStockItems[0].name}" 的庫存不足 (剩餘: ${invalidStockItems[0].stock_quantity})。`);
+      return;
     }
-    
     localStorage.setItem('selectedProducts', JSON.stringify(validProducts));
     localStorage.setItem('productTotalAmount', calculateTotal().toString());
-    
-    navigate(-1); // Go back to the previous page
+    navigate(-1); // 回到前一頁
   };
-
   const content = (
     <Container className="my-4">
       {error && <div className="alert alert-danger">{error}</div>}
@@ -246,13 +237,15 @@ const ProductSelection: React.FC = () => {
       <Row className="mt-4">
         <Col className="d-flex justify-content-end gap-3">
           <Button 
-            variant="secondary" 
+            variant="info"
+            className="text-white" 
             onClick={() => navigate(-1)}
           >
             取消
           </Button>
           <Button 
-            variant="primary"
+            variant="info"
+            className="text-white"
             onClick={confirmSelection}
           >
             確認選擇

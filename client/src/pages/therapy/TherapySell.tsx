@@ -47,6 +47,13 @@ const therapySaleCategoryValueToDisplayMap: { [key: string]: string } = {
   // "PreOrder": "預購", // 根據您資料庫的 ENUM('Sale', 'Gift', 'Discount', 'Ticket')
   // "Loan": "暫借",
 };
+const user = (() => {
+    try {
+      return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch (e) {
+      return {};
+    }
+  })();
 // --- 結束新增/修改映射表 ---
 
 const TherapySell: React.FC = () => {
@@ -56,6 +63,8 @@ const TherapySell: React.FC = () => {
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    
+    
     
     const storeId = (() => { // IIFE to get storeId once
         try {
@@ -72,60 +81,55 @@ const TherapySell: React.FC = () => {
             setError("請先設定店鋪或登入具有店鋪權限的帳號。後續操作可能無法正常執行。");
         }
     }, [storeId]);
+    
+    
+    useEffect(() => {
+        fetchSales();
+    }, []); // storeId 通常在登入後固定，如果會變動則加入依賴
+    
 
     const fetchSales = async () => {
-        if (!storeId && storeId !== 0) { // 允許 storeId 為 0 (如果0是有效ID)
-             setError("無法獲取店鋪資訊，無法載入銷售記錄。");
-             setLoading(false);
-             return;
-        }
+        setLoading(true);
+        setError(null);
         try {
-            setLoading(true);
-            setError(null);
-            const response = await getAllTherapySells(storeId); // 假設 getAllTherapySells 接收 storeId
-            if (Array.isArray(response)) {
-                setSales(response);
-            } else if (response && response.data && Array.isArray(response.data)) {
+            const response = await getAllTherapySells(storeId);
+            if (response && response.success && Array.isArray(response.data)) {
                 setSales(response.data);
             } else {
                 setSales([]);
-                console.error("API 返回的療程銷售數據不是預期的格式:", response);
                 setError("無法正確解析療程銷售數據");
             }
         } catch (error) {
-            console.error("獲取療程銷售失敗:", error);
-            setError("獲取療程銷售數據失敗，請重試");
             setSales([]);
+            setError("獲取療程銷售數據失敗，請重試");
         } finally {
             setLoading(false);
         }
     };
-
-    useEffect(() => {
-        fetchSales();
-    }, []); // storeId 通常在登入後固定，如果會變動則加入依賴
-
+    
+    
     const handleSearch = async () => {
-        if (!storeId && storeId !== 0) {
-            setError("無法獲取店鋪資訊，無法執行搜尋。");
-            return;
-        }
         try {
             setLoading(true);
             setError(null);
-            if (searchKeyword.trim() === "") {
-                await fetchSales();
+    
+            let response;
+            if (user.is_admin) {
+                response = await searchTherapySells(searchKeyword); // 不帶 storeId
             } else {
-                const response = await searchTherapySells(searchKeyword, storeId); // 假設 searchTherapySells 接收 storeId
-                if (Array.isArray(response)) {
-                    setSales(response);
-                } else if (response && response.data && Array.isArray(response.data)) {
-                    setSales(response.data);
-                } else {
-                    setSales([]);
-                    console.error("API 返回的搜尋結果不是預期的格式:", response);
-                    setError("無法正確解析搜尋結果");
-                }
+                response = await searchTherapySells(searchKeyword, storeId);
+            }
+    
+            if (response && Array.isArray(response.data)) {
+                setSales(response.data);
+            } else if (response && Array.isArray(response)) {
+                setSales(response);
+            } else if (response && response.data && Array.isArray(response.data.data)) {
+                setSales(response.data.data);
+            } else {
+                setSales([]);
+                console.error("API 返回的搜尋結果不是預期的格式:", response);
+                setError("無法正確解析搜尋結果");
             }
         } catch (error) {
             console.error("搜索療程銷售失敗:", error);
@@ -135,6 +139,7 @@ const TherapySell: React.FC = () => {
             setLoading(false);
         }
     };
+    
 
     const handleDelete = async () => {
         if (selectedItems.length === 0) {

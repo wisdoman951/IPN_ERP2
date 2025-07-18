@@ -50,6 +50,7 @@ def search_therapy_packages(keyword):
 
 def get_all_therapy_sells(store_id=None):
     """獲取所有療程銷售紀錄"""
+    print("--- store_id:", store_id, type(store_id))
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:

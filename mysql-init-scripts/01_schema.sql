@@ -404,3 +404,11 @@ CREATE TABLE `product_bundle_items` (
   PRIMARY KEY (`bundle_item_id`),
   FOREIGN KEY (`bundle_id`) REFERENCES `product_bundles`(`bundle_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE ipn_stress_answer (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  ipn_stress_id INT NOT NULL,
+  question_no VARCHAR(10) NOT NULL, 
+  answer CHAR(1) NOT NULL,      
+  FOREIGN KEY (ipn_stress_id) REFERENCES ipn_stress(ipn_stress_id)
+);

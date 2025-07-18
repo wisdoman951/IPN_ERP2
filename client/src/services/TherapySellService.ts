@@ -178,10 +178,11 @@ export const getAllStores = async (): Promise<ApiResponse<Store[]>> => {
 
 
 // --- 療程銷售記錄 API ---
-export const getAllTherapySells = async (storeId?: number): Promise<ApiResponse<TherapySellRow[]>> => {
+export const getAllTherapySells = async (storeId?: number, forceAll?: boolean): Promise<ApiResponse<TherapySellRow[]>> => {
     try {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
         let url = `${API_URL}/sales`;
-        if (storeId !== undefined) {
+        if (!forceAll && !user.is_admin && storeId !== undefined) {
             url += `?store_id=${storeId}`;
         }
         const response = await axios.get(url);

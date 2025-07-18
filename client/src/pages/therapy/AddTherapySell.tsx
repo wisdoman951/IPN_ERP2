@@ -99,7 +99,12 @@ const AddTherapySell: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
-      await addTherapySell(formData);
+      const payload = {
+        ...formData,
+        therapy_id: formData.therapyId,
+        therapyId: undefined  // 避免多傳
+      };
+      await addTherapySell([payload]);
       alert("銷售紀錄新增成功！");
       navigate("/therapy-sell");
     } catch (err) {
