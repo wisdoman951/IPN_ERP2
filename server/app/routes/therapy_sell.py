@@ -1,11 +1,11 @@
-from flask import Blueprint, request, jsonify, send_file, session
+from flask import Blueprint, request, jsonify, send_file
 from app.models.therapy_sell_model import (
-    get_all_therapy_sells, search_therapy_sells, 
+    get_all_therapy_sells, search_therapy_sells,
     insert_many_therapy_sells , update_therapy_sell, delete_therapy_sell,
     get_all_therapy_packages, search_therapy_packages,
-    get_all_members, get_all_staff, get_all_stores, get_remaining_sessions 
+    get_all_members, get_all_staff, get_all_stores, get_remaining_sessions
 )
-from app.middleware import login_required
+from app.middleware import auth_required, get_user_from_token
 import pandas as pd
 import io
 from datetime import datetime
@@ -63,79 +63,61 @@ def search_packages():
         return jsonify({"error": str(e)}), 500
 
 @therapy_sell.route('/sales', methods=['GET'])
-@login_required
+@auth_required
 def get_sales():
-    """獲取所有療程銷售紀錄"""
+    """根據權限獲取療程銷售紀錄"""
     try:
-        # 從 session 獲取用戶的 store_id，如果有的話
-        store_id = None
-        if 'user' in session and 'store_id' in session['user']:
-            store_id = session['user']['store_id']
-            
-        # 從 URL 參數中獲取 store_id，這會覆蓋 session 中的值
-        if request.args.get('store_id'):
-            store_id = request.args.get('store_id')
-        
-        # 檢查用戶是否是管理員，如果是，則允許他們查看所有店鋪的記錄
-        is_admin = False
-        if 'user' in session and 'is_admin' in session['user']:
-            is_admin = session['user']['is_admin']
-            
-        # 如果用戶不是管理員，必須提供 store_id
-        if not is_admin and not store_id:
-            return jsonify({"error": "缺少店鋪ID，非管理員必須指定店鋪"}), 400
-            
-        # 獲取數據
-        result = get_all_therapy_sells(store_id if not is_admin else None)
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+
+        # 是否為管理員 (總店)
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+
+        # 若為管理員可透過 query 參數指定店鋪
+        store_id_param = request.args.get('store_id')
+
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        result = get_all_therapy_sells(target_store)
         return jsonify(result)
     except Exception as e:
         print(f"獲取療程銷售失敗: {e}")
         return jsonify({"error": str(e)}), 500
 
 @therapy_sell.route('/sales/search', methods=['GET'])
-@login_required
+@auth_required
 def search_sales():
     """搜尋療程銷售紀錄"""
     try:
         keyword = request.args.get('keyword', '')
-        
-        # 從 session 獲取用戶的 store_id，如果有的話
-        store_id = None
-        if 'user' in session and 'store_id' in session['user']:
-            store_id = session['user']['store_id']
-            
-        # 從 URL 參數中獲取 store_id，這會覆蓋 session 中的值
-        if request.args.get('store_id'):
-            store_id = request.args.get('store_id')
-        
-        # 檢查用戶是否是管理員，如果是，則允許他們查看所有店鋪的記錄
-        is_admin = False
-        if 'user' in session and 'is_admin' in session['user']:
-            is_admin = session['user']['is_admin']
-            
-        # 如果用戶不是管理員，必須提供 store_id
-        if not is_admin and not store_id:
-            return jsonify({"error": "缺少店鋪ID，非管理員必須指定店鋪"}), 400
-            
-        result = search_therapy_sells(keyword, store_id if not is_admin else None)
+
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+
+        store_id_param = request.args.get('store_id')
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        result = search_therapy_sells(keyword, target_store)
         return jsonify(result)
     except Exception as e:
         print(f"搜尋療程銷售失敗: {e}")
         return jsonify({"error": str(e)}), 500
 
 @therapy_sell.route('/sales', methods=['POST'])
-@login_required
+@auth_required
 def create_sale():
     """新增療程銷售紀錄"""
     try:
         data = request.get_json()
-        
-        # 從 session 獲取用戶的 store_id 和 staff_id
-        if 'user' in session:
-            if 'store_id' in session['user'] and not data.get('storeId'):
-                data['storeId'] = session['user']['store_id']
-            if 'staff_id' in session['user'] and not data.get('staffId'):
-                data['staffId'] = session['user']['staff_id']
+
+        user = get_user_from_token(request)
+        if user:
+            if user.get('store_id') and not data.get('storeId'):
+                data['storeId'] = user.get('store_id')
+            if user.get('staff_id') and not data.get('staffId'):
+                data['staffId'] = user.get('staff_id')
                 
         # 驗證必要數據
         if not data.get('memberId'):
@@ -176,7 +158,7 @@ def update_sale(sale_id):
         return jsonify({"error": str(e)}), 500'''
 
 @therapy_sell.route('/sales/<int:sale_id>', methods=['DELETE'])
-@login_required
+@auth_required
 def delete_sale(sale_id):
     """刪除療程銷售紀錄"""
     try:
@@ -189,29 +171,19 @@ def delete_sale(sale_id):
         return jsonify({"error": str(e)}), 500
 
 @therapy_sell.route('/sales/export', methods=['GET'])
-@login_required
+@auth_required
 def export_sales():
     """匯出療程銷售紀錄"""
     try:
-        # 從 session 獲取用戶的 store_id
-        store_id = None
-        if 'user' in session and 'store_id' in session['user']:
-            store_id = session['user']['store_id']
-            
-        # 從 URL 參數中獲取 store_id，這會覆蓋 session 中的值
-        if request.args.get('store_id'):
-            store_id = request.args.get('store_id')
-        
-        # 檢查用戶是否是管理員，如果是，則允許他們匯出所有店鋪的記錄
-        is_admin = False
-        if 'user' in session and 'is_admin' in session['user']:
-            is_admin = session['user']['is_admin']
-            
-        # 如果用戶不是管理員，必須提供 store_id
-        if not is_admin and not store_id:
-            return jsonify({"error": "缺少店鋪ID，非管理員必須指定店鋪"}), 400
-            
-        sales = get_all_therapy_sells(store_id if not is_admin else None)
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+
+        store_id_param = request.args.get('store_id')
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        sales = get_all_therapy_sells(target_store)
         
         # 檢查是否有銷售記錄
         if not sales or (isinstance(sales, dict) and "error" in sales):
@@ -314,7 +286,7 @@ def get_stores():
         return jsonify({"error": str(e)}), 500 
 
 @therapy_sell.route("/remaining-sessions", methods=["GET"])
-@login_required
+@auth_required
 def remaining_sessions_route():
     """根據會員ID和療程ID，查詢剩餘堂數"""
     member_id = request.args.get("member_id")
