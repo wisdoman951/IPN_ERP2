@@ -180,9 +180,12 @@ export const getAllStores = async (): Promise<ApiResponse<Store[]>> => {
 // --- 療程銷售記錄 API ---
 export const getAllTherapySells = async (storeId?: number, forceAll?: boolean): Promise<ApiResponse<TherapySellRow[]>> => {
     try {
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const level = localStorage.getItem('store_level');
+        const perm = localStorage.getItem('permission');
+        const isAdmin = level === '總店' || perm === 'admin';
+
         let url = `${API_URL}/sales`;
-        if (!forceAll && !user.is_admin && storeId !== undefined) {
+        if (!forceAll && !isAdmin && storeId !== undefined) {
             url += `?store_id=${storeId}`;
         }
         const response = await axios.get(url);

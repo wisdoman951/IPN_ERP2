@@ -99,10 +99,12 @@ const AddTherapySell: React.FC = () => {
     setLoading(true);
     setError(null);
     try {
+      const storeId = localStorage.getItem('store_id');
       const payload = {
         ...formData,
         therapy_id: formData.therapyId,
-        therapyId: undefined  // 避免多傳
+        therapyId: undefined,  // 避免多傳
+        storeId: storeId ? Number(storeId) : undefined
       };
       await addTherapySell([payload]);
       alert("銷售紀錄新增成功！");
