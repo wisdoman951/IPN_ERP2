@@ -6,16 +6,16 @@ def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
-def get_all_inventory():
-    """獲取所有庫存記錄"""
+def get_all_inventory(store_id=None):
+    """獲取所有庫存記錄，可依店鋪篩選"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT 
-                    MAX(i.inventory_id) AS Inventory_ID, 
-                    p.product_id AS Product_ID, 
-                    p.name AS ProductName, 
+                SELECT
+                    MAX(i.inventory_id) AS Inventory_ID,
+                    p.product_id AS Product_ID,
+                    p.name AS ProductName,
                     p.code AS ProductCode, 
                     SUM(i.quantity) AS StockQuantity,
                     SUM(IFNULL(i.stock_in, 0)) AS StockIn,
@@ -28,10 +28,15 @@ def get_all_inventory():
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
-                GROUP BY p.product_id, p.name, p.code, st.store_name
-                ORDER BY p.name
             """
-            cursor.execute(query)
+            params = []
+            if store_id:
+                query += " WHERE i.store_id = %s"
+                params.append(store_id)
+
+            query += " GROUP BY p.product_id, p.name, p.code, st.store_name ORDER BY p.name"
+
+            cursor.execute(query, params)
             result = cursor.fetchall()
             return result
     except Exception as e:
@@ -40,15 +45,15 @@ def get_all_inventory():
     finally:
         conn.close()
 
-def search_inventory(keyword):
-    """搜尋庫存記錄"""
+def search_inventory(keyword, store_id=None):
+    """搜尋庫存記錄，可依店鋪篩選"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT 
-                    MAX(i.inventory_id) AS Inventory_ID, 
-                    p.product_id AS Product_ID, 
+                SELECT
+                    MAX(i.inventory_id) AS Inventory_ID,
+                    p.product_id AS Product_ID,
                     p.name AS ProductName, 
                     p.code AS ProductCode, 
                     SUM(i.quantity) AS StockQuantity,
@@ -62,12 +67,16 @@ def search_inventory(keyword):
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
-                WHERE p.name LIKE %s OR p.code LIKE %s
-                GROUP BY p.product_id, p.name, p.code, st.store_name
-                ORDER BY p.name
+                WHERE (p.name LIKE %s OR p.code LIKE %s)
             """
-            like = f"%{keyword}%"
-            cursor.execute(query, (like, like))
+            params = [f"%{keyword}%", f"%{keyword}%"]
+            if store_id:
+                query += " AND i.store_id = %s"
+                params.append(store_id)
+
+            query += " GROUP BY p.product_id, p.name, p.code, st.store_name ORDER BY p.name"
+
+            cursor.execute(query, params)
             result = cursor.fetchall()
             return result
     except Exception as e:
@@ -136,15 +145,15 @@ def get_inventory_by_id(inventory_id):
     finally:
         conn.close()
 
-def get_low_stock_inventory():
-    """獲取低於閾值的庫存記錄"""
+def get_low_stock_inventory(store_id=None):
+    """獲取低於閾值的庫存記錄，可依店鋪篩選"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT 
-                    MAX(i.inventory_id) AS Inventory_ID, 
-                    p.product_id AS Product_ID, 
+                SELECT
+                    MAX(i.inventory_id) AS Inventory_ID,
+                    p.product_id AS Product_ID,
                     p.name AS ProductName, 
                     p.code AS ProductCode, 
                     SUM(i.quantity) AS StockQuantity,
@@ -158,11 +167,15 @@ def get_low_stock_inventory():
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
-                GROUP BY p.product_id, p.name, p.code, st.store_name
-                HAVING SUM(i.quantity) <= MAX(IFNULL(i.stock_threshold, 5))
-                ORDER BY (SUM(i.quantity) / MAX(IFNULL(i.stock_threshold, 5))) ASC, p.name
             """
-            cursor.execute(query)
+            params = []
+            if store_id:
+                query += " WHERE i.store_id = %s"
+                params.append(store_id)
+
+            query += " GROUP BY p.product_id, p.name, p.code, st.store_name HAVING SUM(i.quantity) <= MAX(IFNULL(i.stock_threshold, 5)) ORDER BY (SUM(i.quantity) / MAX(IFNULL(i.stock_threshold, 5))) ASC, p.name"
+
+            cursor.execute(query, params)
             results = cursor.fetchall()
             return results
     except Exception as e:
@@ -327,7 +340,7 @@ def get_store_list():
     finally:
         conn.close()
 
-def export_inventory_data():
-    """匯出庫存資料"""
-    # 這個功能需要在路由處理中實現導出為Excel的邏輯
-    return get_all_inventory() 
+def export_inventory_data(store_id=None):
+    """匯出庫存資料，可依店鋪篩選"""
+    # 這個功能會在路由層處理實際的 Excel 產生
+    return get_all_inventory(store_id)
