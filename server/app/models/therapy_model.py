@@ -460,3 +460,20 @@ def get_all_therapies_for_dropdown():
     finally:
         conn.close()
 
+
+def insert_therapy(data: dict):
+    """新增療程"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            sql = "INSERT INTO therapy (code, name, price) VALUES (%s, %s, %s)"
+            cursor.execute(sql, (data['code'], data['name'], data['price']))
+            therapy_id = conn.insert_id()
+        conn.commit()
+        return therapy_id
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+

@@ -140,3 +140,23 @@ export const fetchTherapiesForDropdown = async (): Promise<Therapy[]> => {
         throw error;
     }
 };
+
+export const createProduct = async (payload: {code: string; name: string; price: number;}) => {
+    try {
+        const response = await axios.post(`${API_URL_PRODUCTS}/products`, payload, getAuthHeaders());
+        return response.data;
+    } catch (error) {
+        console.error('Service: 新增產品失敗:', error);
+        throw error;
+    }
+};
+
+export const createTherapy = async (payload: {code: string; name: string; price: number;}) => {
+    try {
+        const response = await axios.post(`${API_URL_THERAPIES}/`, payload, getAuthHeaders());
+        return response.data;
+    } catch (error) {
+        console.error('Service: 新增療程失敗:', error);
+        throw error;
+    }
+};
