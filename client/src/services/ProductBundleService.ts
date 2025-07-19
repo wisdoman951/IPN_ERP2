@@ -31,6 +31,7 @@ export interface BundleDetails extends Bundle {
     items: {
         item_id: number;
         item_type: 'Product' | 'Therapy';
+        quantity: number;
     }[];
 }
 

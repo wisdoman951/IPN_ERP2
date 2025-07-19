@@ -148,7 +148,7 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     return (
         <Modal show={show} onHide={onHide} size="lg" onExited={resetStates}>
             <Modal.Header closeButton>
-                <Modal.Title>{editingBundle ? '修改產品組合' : '建立產品組合'}</Modal.Title>
+                <Modal.Title>產品療程管理</Modal.Title>
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>

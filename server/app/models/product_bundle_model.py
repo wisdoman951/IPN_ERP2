@@ -28,15 +28,14 @@ def get_all_product_bundles():
                     -- 使用 IFNULL 避免組合內沒有項目時回傳 NULL
                     IFNULL(
                         GROUP_CONCAT(
-                            -- 根據項目類型選擇對應的名稱
                             CASE
-                                WHEN pbi.item_type = 'Product' THEN p.name
-                                WHEN pbi.item_type = 'Therapy' THEN t.name
+                                WHEN pbi.item_type = 'Product' THEN CONCAT(p.name, ' x', pbi.quantity)
+                                WHEN pbi.item_type = 'Therapy' THEN CONCAT(t.name, ' x', pbi.quantity)
                                 ELSE NULL
                             END
-                            SEPARATOR ', ' -- 使用逗號和空格分隔
+                            SEPARATOR ', '
                         ),
-                        '' -- 如果沒有任何內容，回傳空字串
+                        ''
                     ) AS bundle_contents
                 FROM 
                     product_bundles pb
@@ -115,7 +114,7 @@ def get_bundle_details_by_id(bundle_id: int):
                 return None
 
             # 2. 獲取該組合的所有項目
-            cursor.execute("SELECT item_id, item_type FROM product_bundle_items WHERE bundle_id = %s", (bundle_id,))
+            cursor.execute("SELECT item_id, item_type, quantity FROM product_bundle_items WHERE bundle_id = %s", (bundle_id,))
             items = cursor.fetchall()
             
             # 3. 將項目資訊附加到主組合資料中
