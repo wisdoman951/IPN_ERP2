@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../../components/Header';
 import DynamicContainer from '../../../components/DynamicContainer';
 import BundleCreateModal from './BundleCreateModal';
+import AddTherapyModal from './AddTherapyModal';
+import AddProductModal from './AddProductModal';
 import { fetchAllBundles, deleteBundle, Bundle } from '../../../services/ProductBundleService';
 
 const ProductBundleManagement: React.FC = () => {
@@ -13,6 +15,8 @@ const ProductBundleManagement: React.FC = () => {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [showModal, setShowModal] = useState(false);
     const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
+    const [showTherapyModal, setShowTherapyModal] = useState(false);
+    const [showProductModal, setShowProductModal] = useState(false);
     const navigate = useNavigate();
 
     const fetchBundles = useCallback(async () => {
@@ -47,6 +51,14 @@ const ProductBundleManagement: React.FC = () => {
         setShowModal(true);
     };
 
+    const handleShowTherapyModal = () => {
+        setShowTherapyModal(true);
+    };
+
+    const handleShowProductModal = () => {
+        setShowProductModal(true);
+    };
+
     const handleDelete = async (bundleId: number) => {
         setSuccessMessage(null); // 清除舊的成功訊息
         try {
@@ -78,14 +90,14 @@ const ProductBundleManagement: React.FC = () => {
                         <Button
                             variant="info"
                             className="text-white px-4"
-                            disabled
+                            onClick={handleShowTherapyModal}
                         >
                             新增療程
                         </Button>
                         <Button
                             variant="info"
                             className="text-white px-4"
-                            onClick={() => navigate('/backend/add-product')}
+                            onClick={handleShowProductModal}
                         >
                             新增產品
                         </Button>
@@ -151,6 +163,14 @@ const ProductBundleManagement: React.FC = () => {
                 onHide={handleCloseModal}
                 onSaveSuccess={fetchBundles}
                 editingBundle={editingBundle}
+            />
+            <AddTherapyModal
+                show={showTherapyModal}
+                onHide={() => setShowTherapyModal(false)}
+            />
+            <AddProductModal
+                show={showProductModal}
+                onHide={() => setShowProductModal(false)}
             />
         </>
     );

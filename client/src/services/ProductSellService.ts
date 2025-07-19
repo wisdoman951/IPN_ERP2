@@ -7,11 +7,13 @@ const API_URL = `${base_url}/product-sell`;
 // ✅ 加入 getAuthHeaders：自動帶上 Token + 其他自訂 Header
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");
+  const storeId = localStorage.getItem("store_id") || "";
+  const storeLevel = localStorage.getItem("store_level") || "";
   return {
     headers: {
       Authorization: `Bearer ${token}`,
-      "X-Store-ID": "1",
-      "X-Store-Level": "admin"
+      "X-Store-ID": storeId,
+      "X-Store-Level": storeLevel
     }
   };
 };

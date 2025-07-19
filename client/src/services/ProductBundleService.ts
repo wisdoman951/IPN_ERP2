@@ -8,11 +8,13 @@ const API_URL_THERAPIES = `${base_url}/therapy`;
 // 標準的 getAuthHeaders 函式
 const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
+    const storeId = localStorage.getItem("store_id") || "";
+    const storeLevel = localStorage.getItem("store_level") || "";
     return {
         headers: {
             Authorization: `Bearer ${token}`,
-            "X-Store-ID": "1",
-            "X-Store-Level": "admin"
+            "X-Store-ID": storeId,
+            "X-Store-Level": storeLevel
         }
     };
 };
@@ -31,6 +33,7 @@ export interface BundleDetails extends Bundle {
     items: {
         item_id: number;
         item_type: 'Product' | 'Therapy';
+        quantity: number;
     }[];
 }
 
@@ -136,6 +139,26 @@ export const fetchTherapiesForDropdown = async (): Promise<Therapy[]> => {
         return response.data;
     } catch(error) {
         console.error("Service: 獲取療程下拉選單失敗:", error);
+        throw error;
+    }
+};
+
+export const createProduct = async (payload: {code: string; name: string; price: number;}) => {
+    try {
+        const response = await axios.post(`${API_URL_PRODUCTS}/products`, payload, getAuthHeaders());
+        return response.data;
+    } catch (error) {
+        console.error('Service: 新增產品失敗:', error);
+        throw error;
+    }
+};
+
+export const createTherapy = async (payload: {code: string; name: string; price: number;}) => {
+    try {
+        const response = await axios.post(`${API_URL_THERAPIES}/`, payload, getAuthHeaders());
+        return response.data;
+    } catch (error) {
+        console.error('Service: 新增療程失敗:', error);
         throw error;
     }
 };

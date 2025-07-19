@@ -12,6 +12,7 @@ from app.models.product_sell_model import (
     search_products_with_inventory,
     export_product_sells
 )
+from app.models.product_model import insert_product
 from app.middleware import auth_required, admin_required, get_user_from_token
 
 product_sell_bp = Blueprint("product_sell", __name__, url_prefix='/api/product-sell')
@@ -142,6 +143,22 @@ def get_products():
     except Exception as e:
         print(f"Error in get_products: {e}")
         return jsonify({"error": f"無法獲取產品列表: {str(e)}"}), 500
+
+
+@product_sell_bp.route("/products", methods=["POST"])
+@admin_required
+def create_product():
+    """新增產品"""
+    data = request.json
+    if not all(k in data for k in ("code", "name", "price")):
+        return jsonify({"error": "缺少必要欄位"}), 400
+    try:
+        product_id = insert_product(data)
+        return jsonify({"message": "產品新增成功", "product_id": product_id}), 201
+    except Exception as e:
+        if "Duplicate entry" in str(e):
+            return jsonify({"error": "產品編號已存在"}), 409
+        return jsonify({"error": str(e)}), 500
 
 @product_sell_bp.route("/products/search", methods=["GET"])
 @auth_required

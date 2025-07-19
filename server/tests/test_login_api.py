@@ -5,6 +5,7 @@ import requests
 import json
 import jwt
 from datetime import datetime
+from flask import Flask
 from flask_cors import CORS
 
 app = Flask(__name__)

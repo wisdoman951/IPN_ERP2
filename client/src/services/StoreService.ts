@@ -5,10 +5,12 @@ const API_URL = `${base_url}/stores`; // API 路徑指向 /api/stores
 
 const getAuthHeaders = () => {
     const token = localStorage.getItem("token");
+    const storeId = localStorage.getItem("store_id") || "";
+    const storeLevel = localStorage.getItem("store_level") || "";
     return {
         Authorization: `Bearer ${token}`,
-        "X-Store-ID": "1",
-        "X-Store-Level": "admin"
+        "X-Store-ID": storeId,
+        "X-Store-Level": storeLevel
     };
 };
 // vvvvv 1. 新增 Store 的資料型別定義 vvvvv
