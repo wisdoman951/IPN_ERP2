@@ -21,10 +21,17 @@ staff_bp = Blueprint("staff", __name__)
 
 # --- 這個是您原有的，用於獲取完整員工列表 ---
 @staff_bp.route("/list", methods=["GET"])
+@auth_required
 def get_staff_list():
-    """獲取所有員工列表"""
+    """根據權限獲取員工列表"""
     try:
-        staff_list = get_all_staff()
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        staff_list = get_all_staff(target_store)
         return jsonify(staff_list)
     except Exception as e:
         print(f"獲取員工列表失敗: {e}")
@@ -42,17 +49,25 @@ def get_staff_for_dropdown_route():
         return jsonify({"error": str(e)}), 500
 
 @staff_bp.route("/search", methods=["GET"])
+@auth_required
 def search_staff_route():
     """搜尋員工"""
     keyword = request.args.get("keyword", "")
     try:
-        staff_list = search_staff(keyword)
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        staff_list = search_staff(keyword, target_store)
         return jsonify(staff_list)
     except Exception as e:
         print(f"搜尋員工失敗: {e}")
         return jsonify({"error": str(e)}), 500
 
 @staff_bp.route("/<int:staff_id>", methods=["GET"])
+@auth_required
 def get_staff_route(staff_id):
     """獲取單個員工信息"""
     try:
@@ -65,6 +80,7 @@ def get_staff_route(staff_id):
         return jsonify({"error": str(e)}), 500
 
 @staff_bp.route("/details/<int:staff_id>", methods=["GET"])
+@auth_required
 def get_staff_details_route(staff_id):
     """獲取員工詳細資料"""
     try:
