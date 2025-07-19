@@ -47,13 +47,12 @@ const therapySaleCategoryValueToDisplayMap: { [key: string]: string } = {
   // "PreOrder": "預購", // 根據您資料庫的 ENUM('Sale', 'Gift', 'Discount', 'Ticket')
   // "Loan": "暫借",
 };
-const user = (() => {
-    try {
-      return JSON.parse(localStorage.getItem('user') || '{}');
-    } catch (e) {
-      return {};
-    }
-  })();
+// 從 localStorage 判斷是否具有總店或管理員權限
+const isAdmin = (() => {
+    const level = localStorage.getItem('store_level');
+    const perm = localStorage.getItem('permission');
+    return level === '總店' || perm === 'admin';
+})();
 // --- 結束新增/修改映射表 ---
 
 const TherapySell: React.FC = () => {
@@ -114,7 +113,7 @@ const TherapySell: React.FC = () => {
             setError(null);
     
             let response;
-            if (user.is_admin) {
+            if (isAdmin) {
                 response = await searchTherapySells(searchKeyword); // 不帶 storeId
             } else {
                 response = await searchTherapySells(searchKeyword, storeId);

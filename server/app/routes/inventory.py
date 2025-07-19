@@ -11,38 +11,60 @@ from app.models.inventory_model import (
     add_inventory_item,
     delete_inventory_item,
     get_low_stock_inventory,
-    get_product_list
+    get_product_list,
+    export_inventory_data
 )
-from app.middleware import auth_required
+from app.middleware import auth_required, get_user_from_token
 
 inventory_bp = Blueprint("inventory", __name__)
 
 @inventory_bp.route("/list", methods=["GET"])
+@auth_required
 def get_inventory_list():
-    """獲取所有庫存記錄"""
+    """根據權限獲取庫存記錄"""
     try:
-        inventory_list = get_all_inventory()
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        inventory_list = get_all_inventory(target_store)
         return jsonify(inventory_list)
     except Exception as e:
         print(e)
         return jsonify({"error": str(e)}), 500
 
 @inventory_bp.route("/search", methods=["GET"])
+@auth_required
 def search_inventory_items():
     """搜尋庫存記錄"""
     keyword = request.args.get("keyword", "")
     try:
-        inventory_list = search_inventory(keyword)
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        inventory_list = search_inventory(keyword, target_store)
         return jsonify(inventory_list)
     except Exception as e:
         print(e)
         return jsonify({"error": str(e)}), 500
 
 @inventory_bp.route("/low-stock", methods=["GET"])
+@auth_required
 def get_low_stock_items():
     """獲取低於閾值的庫存記錄"""
     try:
-        inventory_list = get_low_stock_inventory()
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        inventory_list = get_low_stock_inventory(target_store)
         return jsonify(inventory_list)
     except Exception as e:
         print(e)
@@ -81,6 +103,12 @@ def add_inventory():
     """新增庫存記錄"""
     data = request.json
     try:
+        user_info = get_user_from_token(request)
+        if user_info.get('store_id') and not data.get('storeId'):
+            data['storeId'] = user_info.get('store_id')
+        if user_info.get('staff_id') and not data.get('staffId'):
+            data['staffId'] = user_info.get('staff_id')
+
         success = add_inventory_item(data)
         if success:
             return jsonify({"message": "庫存記錄新增成功", "success": True}), 201
@@ -115,10 +143,17 @@ def get_inventory_products():
         return jsonify({"error": str(e)}), 500
 
 @inventory_bp.route("/export", methods=["GET"])
+@auth_required
 def export_inventory():
     """匯出庫存資料為Excel"""
     try:
-        inventory_data = get_all_inventory()
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        inventory_data = export_inventory_data(target_store)
         
         # 使用pandas創建DataFrame
         df = pd.DataFrame(inventory_data)
