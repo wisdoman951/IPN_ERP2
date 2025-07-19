@@ -51,4 +51,3 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide }) => {
 };
 
 export default AddTherapyModal;
-

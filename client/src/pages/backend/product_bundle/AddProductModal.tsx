@@ -51,4 +51,3 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide }) => {
 };
 
 export default AddProductModal;
-

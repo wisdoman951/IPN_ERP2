@@ -449,6 +449,29 @@ def delete_therapy_sell(sale_id):
     conn.commit()
     conn.close()
 
+def insert_therapy(data: dict):
+    """新增療程基礎資料"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = (
+                "INSERT INTO therapy (code, name, price, content) "
+                "VALUES (%s, %s, %s, %s)"
+            )
+            cursor.execute(
+                query,
+                (
+                    data.get("code"),
+                    data.get("name"),
+                    data.get("price"),
+                    data.get("content", ""),
+                ),
+            )
+        conn.commit()
+        return conn.insert_id()
+    finally:
+        conn.close()
+
 def get_all_therapies_for_dropdown():
     """獲取所有療程的 ID 和名稱，用於下拉選單。"""
     conn = connect_to_db()

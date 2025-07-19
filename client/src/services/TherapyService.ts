@@ -136,3 +136,12 @@ export const getAllTherapiesForDropdown = async () => {
     const response = await axios.get(`${API_URL}/for-dropdown`);
     return response.data;
 };
+
+export const createTherapy = async (data: {
+    code: string;
+    name: string;
+    price: number;
+    content?: string;
+}) => {
+    return axios.post(`${API_URL}/`, data);
+};

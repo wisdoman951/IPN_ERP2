@@ -2,28 +2,29 @@ import pymysql
 from app.config import DB_CONFIG
 from pymysql.cursors import DictCursor
 
-
 def connect_to_db():
-    """建立資料庫連線"""
-    return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
+    return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
 
 def insert_product(data: dict):
-    """新增產品資料"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
             query = (
-                "INSERT INTO product (code, name, price) "
-                "VALUES (%s, %s, %s)"
+                "INSERT INTO product (code, name, unit, category, price) "
+                "VALUES (%s, %s, %s, %s, %s)"
             )
-            cursor.execute(query, (data['code'], data['name'], data['price']))
-            product_id = conn.insert_id()
+            cursor.execute(
+                query,
+                (
+                    data.get("code"),
+                    data.get("name"),
+                    data.get("unit"),
+                    data.get("category"),
+                    data.get("price"),
+                ),
+            )
         conn.commit()
-        return product_id
-    except Exception as e:
-        conn.rollback()
-        raise e
+        return conn.insert_id()
     finally:
         conn.close()
-

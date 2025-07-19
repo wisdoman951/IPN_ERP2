@@ -43,17 +43,17 @@ INSERT INTO `micro_surgery` (`micro_surgery_selection`, `micro_surgery_descripti
 ('複合式療程', '全臉美容'),
 ('醫學美容', '改善暗沉');
 
-INSERT INTO `product` (`code`, `name`, `price`) VALUES
-('SKN001', '保濕面膜', 580.00),
-('SKN002', '精華液', 1200.00),
-('SKN003', '潔面乳', 450.00),
-('SKN004', '保濕乳液', 780.00),
-('SKN005', '防曬霜', 650.00),
-('SUP001', '膠原蛋白粉', 1500.00),
-('SUP002', '維他命C', 850.00),
-('SUP003', '魚油', 720.00),
-('HRB001', '舒壓茶包', 380.00),
-('HRB002', '薰衣草精油', 550.00);
+INSERT INTO `product` (`code`, `name`, `unit`, `category`, `price`) VALUES
+('SKN001', '保濕面膜', '件', 'Skincare', 580.00),
+('SKN002', '精華液', '件', 'Skincare', 1200.00),
+('SKN003', '潔面乳', '件', 'Skincare', 450.00),
+('SKN004', '保濕乳液', '件', 'Skincare', 780.00),
+('SKN005', '防曬霜', '件', 'Skincare', 650.00),
+('SUP001', '膠原蛋白粉', '瓶', 'Supplement', 1500.00),
+('SUP002', '維他命C', '瓶', 'Supplement', 850.00),
+('SUP003', '魚油', '瓶', 'Supplement', 720.00),
+('HRB001', '舒壓茶包', '盒', 'Herb', 380.00),
+('HRB002', '薰衣草精油', '瓶', 'EssentialOil', 550.00);
 
 INSERT INTO `therapy` (`code`, `name`, `price`, `content`) VALUES
 ('TH001', '全身放鬆按摩', 2800.00, '60分鐘全身按摩，幫助放鬆肌肉，改善血液循環'),
@@ -177,6 +177,11 @@ INSERT INTO `inventory` (`product_id`, `staff_id`, `date`, `quantity`, `stock_in
 (8, 8, '2023-04-15', 25, 2, 1, 0, 8, 15),
 (9, 9, '2023-05-01', 40, 9, 3, 0, 9, 30),
 (10, 10, '2023-05-15', 15, 1, 0, 0, 10, 5);
+(1, 1, "2024-06-10", 55, 5, 0, 0, 1, 10),
+(2, 2, "2024-06-11", 28, 0, 2, 0, 2, 15),
+(3, 3, "2024-06-12", 42, 2, 0, 0, 3, 20),
+(4, 4, "2024-06-13", 24, 0, 1, 0, 4, 15),
+(5, 5, "2024-06-14", 36, 1, 0, 0, 5, 25);
 
 INSERT INTO `therapy_sell` (`therapy_id`, `member_id`, `store_id`, `staff_id`, `date`, `amount`, `discount`, `payment_method`, `sale_category`, `note`) VALUES
 (1, 1, 1, 1, '2023-01-15', 20, 0, 'Cash', 'Sell', ''),

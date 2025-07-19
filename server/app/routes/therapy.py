@@ -327,14 +327,14 @@ def get_therapy_list():
 
 @therapy_bp.route("/", methods=["POST"])
 @admin_required
-def create_therapy():
-    """新增療程"""
+def create_therapy_route():
+    """新增療程基礎資料"""
     data = request.json
-    if not all(k in data for k in ("code", "name", "price")):
+    if not all(k in data for k in ["code", "name", "price"]):
         return jsonify({"error": "缺少必要欄位"}), 400
     try:
         therapy_id = insert_therapy(data)
-        return jsonify({"message": "療程新增成功", "therapy_id": therapy_id}), 201
+        return jsonify({"message": "新增成功", "therapy_id": therapy_id}), 201
     except Exception as e:
         if "Duplicate entry" in str(e):
             return jsonify({"error": "療程編號已存在"}), 409
