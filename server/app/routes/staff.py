@@ -32,8 +32,7 @@ def get_staff_list():
 
         # 非管理員一律以自身 store_id 為準，避免任意查看其他分店
         target_store = store_id_param if is_admin else user_store_id
-
-        staff_list = get_all_staff(target_store)
+        staff_list = get_all_staff(user_store_level, target_store)
         return jsonify(staff_list)
     except Exception as e:
         print(f"獲取員工列表失敗: {e}")
@@ -64,7 +63,7 @@ def search_staff_route():
         # 分店用戶只准查詢自身分店
         target_store = store_id_param if is_admin else user_store_id
 
-        staff_list = search_staff(keyword, target_store)
+        staff_list = search_staff(keyword, user_store_level, target_store)
         return jsonify(staff_list)
     except Exception as e:
         print(f"搜尋員工失敗: {e}")

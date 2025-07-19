@@ -17,8 +17,8 @@ def connect_to_db():
         print(f"資料庫連接失敗: {e}")
         return None
 
-def get_all_staff(store_id=None):
-    """獲取所有員工列表，可依店鋪篩選"""
+def get_all_staff(store_level=None, store_id=None):
+    """獲取所有員工列表，可依店鋪或權限篩選"""
     connection = connect_to_db()
     try:
         with connection.cursor() as cursor:
@@ -31,7 +31,12 @@ def get_all_staff(store_id=None):
                 LEFT JOIN store st ON s.store_id = st.store_id
             """
             params = []
-            if store_id:
+            # 分店使用者僅能查看自身分店
+            if store_level == '分店':
+                query += " WHERE s.store_id = %s"
+                params.append(store_id)
+            elif store_id:
+                # 總店若提供 store_id 則篩選指定分店
                 query += " WHERE s.store_id = %s"
                 params.append(store_id)
 
@@ -57,8 +62,8 @@ def get_all_staff_for_dropdown():
     finally:
         conn.close()
 
-def search_staff(keyword, store_id=None):
-    """搜尋員工，可依店鋪篩選"""
+def search_staff(keyword, store_level=None, store_id=None):
+    """搜尋員工，可依店鋪或權限篩選"""
     connection = connect_to_db()
     try:
         with connection.cursor() as cursor:
@@ -71,7 +76,10 @@ def search_staff(keyword, store_id=None):
             WHERE (s.name LIKE %s OR s.phone LIKE %s OR s.email LIKE %s)
             """
             params = [f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"]
-            if store_id:
+            if store_level == '分店':
+                query += " AND s.store_id = %s"
+                params.append(store_id)
+            elif store_id:
                 query += " AND s.store_id = %s"
                 params.append(store_id)
 
