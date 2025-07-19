@@ -27,7 +27,9 @@ def get_inventory_list():
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
         store_id_param = request.args.get('store_id')
-        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        # 管理員可選擇 store_id；分店則固定為自身
+        target_store = store_id_param if is_admin else user_store_id
 
         inventory_list = get_all_inventory(target_store)
         return jsonify(inventory_list)
@@ -45,7 +47,8 @@ def search_inventory_items():
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
         store_id_param = request.args.get('store_id')
-        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        target_store = store_id_param if is_admin else user_store_id
 
         inventory_list = search_inventory(keyword, target_store)
         return jsonify(inventory_list)
@@ -62,7 +65,8 @@ def get_low_stock_items():
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
         store_id_param = request.args.get('store_id')
-        target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
+
+        target_store = store_id_param if is_admin else user_store_id
 
         inventory_list = get_low_stock_inventory(target_store)
         return jsonify(inventory_list)
