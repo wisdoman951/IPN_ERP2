@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
+import { createTherapy } from '../../../services/TherapyService';
 
 interface AddTherapyModalProps {
     show: boolean;
@@ -11,9 +12,13 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide }) => {
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onHide();
+        try {
+            await createTherapy({ code, name, price: Number(price) });
+        } finally {
+            onHide();
+        }
     };
 
     return (

@@ -47,4 +47,14 @@ export const getProductById = async (productId: number): Promise<Product> => {
     console.error("獲取產品詳情失敗：", error);
     throw error;
   }
-}; 
+};
+
+export const createProduct = async (data: {
+  code: string;
+  name: string;
+  price: number;
+  unit?: string;
+  category?: string;
+}) => {
+  return axios.post(`${API_URL}/`, data);
+};

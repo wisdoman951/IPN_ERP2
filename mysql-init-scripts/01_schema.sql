@@ -63,6 +63,8 @@ CREATE TABLE product (
   `product_id` INT NOT NULL AUTO_INCREMENT,
   `code` VARCHAR(50) NOT NULL UNIQUE,
   `name` VARCHAR(100) NOT NULL,
+  `unit` VARCHAR(20),
+  `category` VARCHAR(50),
   `price` DECIMAL(10, 2) NOT NULL,
   PRIMARY KEY (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
