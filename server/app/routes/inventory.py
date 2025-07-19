@@ -12,7 +12,9 @@ from app.models.inventory_model import (
     delete_inventory_item,
     get_low_stock_inventory,
     get_product_list,
-    export_inventory_data
+    export_inventory_data,
+    get_inventory_transactions,
+    analyze_inventory
 )
 from app.middleware import auth_required, get_user_from_token
 
@@ -196,4 +198,44 @@ def export_inventory():
         )
     except Exception as e:
         print(e)
-        return jsonify({"error": str(e)}), 500 
+        return jsonify({"error": str(e)}), 500
+
+
+@inventory_bp.route("/transactions", methods=["GET"])
+@auth_required
+def inventory_transactions():
+    """取得庫存進出明細"""
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    try:
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = store_id_param if is_admin else user_store_id
+
+        transactions = get_inventory_transactions(target_store, start_date, end_date)
+        return jsonify(transactions)
+    except Exception as e:
+        print(e)
+        return jsonify({"error": str(e)}), 500
+
+
+@inventory_bp.route("/analysis", methods=["GET"])
+@auth_required
+def inventory_analysis():
+    """庫存分析"""
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    try:
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = store_id_param if is_admin else user_store_id
+
+        analysis = analyze_inventory(target_store, start_date, end_date)
+        return jsonify(analysis)
+    except Exception as e:
+        print(e)
+        return jsonify({"error": str(e)}), 500

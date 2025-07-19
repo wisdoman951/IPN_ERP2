@@ -379,9 +379,11 @@ def get_all_products_with_inventory(store_id=None):
     conn = connect_to_db()
     with conn.cursor() as cursor:
         query = """
-            SELECT 
-                p.product_id, 
-                p.name as product_name, 
+            SELECT
+                p.product_id,
+                p.name as product_name,
+                p.unit as unit,
+                p.category as category,
                 p.price as product_price,
                 COALESCE(SUM(i.quantity), 0) as inventory_quantity,
                 0 as inventory_id
@@ -393,7 +395,7 @@ def get_all_products_with_inventory(store_id=None):
             query += " WHERE i.store_id = %s"
             params.append(store_id)
         
-        query += " GROUP BY p.product_id, p.name, p.price ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.name, p.unit, p.category, p.price ORDER BY p.name"
         
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()
@@ -410,9 +412,11 @@ def search_products_with_inventory(keyword, store_id=None):
         like_keyword = f"%{keyword}%"
         
         query = """
-            SELECT 
-                p.product_id, 
-                p.name as product_name, 
+            SELECT
+                p.product_id,
+                p.name as product_name,
+                p.unit as unit,
+                p.category as category,
                 p.price as product_price,
                 COALESCE(SUM(i.quantity), 0) as inventory_quantity,
                 0 as inventory_id
@@ -434,7 +438,7 @@ def search_products_with_inventory(keyword, store_id=None):
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " GROUP BY p.product_id, p.name, p.price ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.name, p.unit, p.category, p.price ORDER BY p.name"
         
         try:
             cursor.execute(query, tuple(params))
