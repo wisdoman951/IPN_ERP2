@@ -58,17 +58,39 @@ def auth_required(f):
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Get store_id and store_level from the request headers
+        """驗證是否為管理員，可從 JWT 或標頭取得權限資料"""
+
+        token = None
+        auth_header = request.headers.get('Authorization')
+        if auth_header and auth_header.startswith('Bearer '):
+            token = auth_header.split(' ')[1]
+
+        if token:
+            try:
+                payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
+                store_level = payload.get('store_level')
+                permission = payload.get('permission')
+                if store_level != '總店' and permission != 'admin':
+                    return jsonify({"error": "需要管理員權限"}), 403
+
+                request.store_id = payload.get('store_id')
+                request.store_level = store_level
+                request.permission = permission
+                return f(*args, **kwargs)
+            except (jwt.ExpiredSignatureError, jwt.InvalidTokenError):
+                return jsonify({"error": "認證失敗，請重新登入"}), 401
+
+        # fallback to legacy headers
         store_id = request.headers.get('X-Store-ID')
         store_level = request.headers.get('X-Store-Level')
-        
         if not store_id or not store_level:
             return jsonify({"error": "認證失敗，請重新登入"}), 401
-        
-        # Check if user has admin level ("總店" or "admin")
+
         if store_level != "總店" and store_level != "admin":
             return jsonify({"error": "需要管理員權限"}), 403
-        
+
+        request.store_id = store_id
+        request.store_level = store_level
         return f(*args, **kwargs)
     return decorated_function
 
