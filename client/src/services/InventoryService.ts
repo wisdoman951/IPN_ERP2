@@ -4,16 +4,36 @@ import { base_url } from "./BASE_URL";
 const API_URL = `${base_url}/inventory`;
 
 // 獲取所有庫存記錄
-export const getAllInventory = async () => {
-    const response = await axios.get(`${API_URL}/list`);
+export const getAllInventory = async (storeId?: number) => {
+    const level = localStorage.getItem('store_level');
+    const perm = localStorage.getItem('permission');
+    const isAdmin = level === '總店' || perm === 'admin';
+
+    const params: any = {};
+    if (!isAdmin && storeId !== undefined) {
+        params.store_id = storeId;
+    } else if (isAdmin && storeId !== undefined) {
+        params.store_id = storeId; // allow admin specify store
+    }
+
+    const response = await axios.get(`${API_URL}/list`, { params });
     return response.data;
 };
 
 // 搜尋庫存記錄
-export const searchInventory = async (keyword: string) => {
-    const response = await axios.get(`${API_URL}/search`, {
-        params: { keyword }
-    });
+export const searchInventory = async (keyword: string, storeId?: number) => {
+    const level = localStorage.getItem('store_level');
+    const perm = localStorage.getItem('permission');
+    const isAdmin = level === '總店' || perm === 'admin';
+
+    const params: any = { keyword };
+    if (!isAdmin && storeId !== undefined) {
+        params.store_id = storeId;
+    } else if (isAdmin && storeId !== undefined) {
+        params.store_id = storeId;
+    }
+
+    const response = await axios.get(`${API_URL}/search`, { params });
     return response.data;
 };
 
@@ -59,8 +79,19 @@ export const deleteInventoryItem = async (id: number) => {
 };
 
 // 獲取低庫存產品
-export const getLowStockItems = async () => {
-    const response = await axios.get(`${API_URL}/low-stock`);
+export const getLowStockItems = async (storeId?: number) => {
+    const level = localStorage.getItem('store_level');
+    const perm = localStorage.getItem('permission');
+    const isAdmin = level === '總店' || perm === 'admin';
+
+    const params: any = {};
+    if (!isAdmin && storeId !== undefined) {
+        params.store_id = storeId;
+    } else if (isAdmin && storeId !== undefined) {
+        params.store_id = storeId;
+    }
+
+    const response = await axios.get(`${API_URL}/low-stock`, { params });
     return response.data;
 };
 
@@ -71,8 +102,20 @@ export const getAllProducts = async () => {
 };
 
 // 匯出庫存數據
-export const exportInventory = async () => {
+export const exportInventory = async (storeId?: number) => {
+    const level = localStorage.getItem('store_level');
+    const perm = localStorage.getItem('permission');
+    const isAdmin = level === '總店' || perm === 'admin';
+
+    const params: any = {};
+    if (!isAdmin && storeId !== undefined) {
+        params.store_id = storeId;
+    } else if (isAdmin && storeId !== undefined) {
+        params.store_id = storeId;
+    }
+
     const response = await axios.get(`${API_URL}/export`, {
+        params,
         responseType: "blob"
     });
     
