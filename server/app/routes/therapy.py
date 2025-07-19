@@ -16,7 +16,8 @@ from app.models.therapy_model import (
     search_therapy_sells,
     update_therapy_sell,
     delete_therapy_sell,
-    get_all_therapies_for_dropdown 
+    get_all_therapies_for_dropdown,
+    insert_therapy
 )
 from app.middleware import auth_required, admin_required, get_user_from_token
 
@@ -320,5 +321,19 @@ def get_therapy_list():
     try:
         therapy_list = get_all_therapies_for_dropdown()
         return jsonify(therapy_list)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@therapy_bp.route("/", methods=["POST"])
+@admin_required
+def create_therapy_route():
+    """新增療程基礎資料"""
+    data = request.json
+    if not all(k in data for k in ["code", "name", "price"]):
+        return jsonify({"error": "缺少必要欄位"}), 400
+    try:
+        therapy_id = insert_therapy(data)
+        return jsonify({"message": "新增成功", "therapy_id": therapy_id}), 201
     except Exception as e:
         return jsonify({"error": str(e)}), 500

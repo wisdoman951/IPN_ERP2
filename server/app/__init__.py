@@ -67,6 +67,8 @@ def create_app():
     app.register_blueprint(stress_test, url_prefix='/api/stress-test')
     app.register_blueprint(staff_bp, url_prefix='/api/staff')
     app.register_blueprint(product_bundle_bp, url_prefix='/api/product-bundles')
+    from app.routes.product import product_bp
+    app.register_blueprint(product_bp, url_prefix='/api/product')
     app.register_blueprint(store_bp, url_prefix='/api/stores')
 
     # 註冊產品銷售路由

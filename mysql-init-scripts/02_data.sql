@@ -177,6 +177,11 @@ INSERT INTO `inventory` (`product_id`, `staff_id`, `date`, `quantity`, `stock_in
 (8, 8, '2023-04-15', 25, 2, 1, 0, 8, 15),
 (9, 9, '2023-05-01', 40, 9, 3, 0, 9, 30),
 (10, 10, '2023-05-15', 15, 1, 0, 0, 10, 5);
+(1, 1, "2024-06-10", 55, 5, 0, 0, 1, 10),
+(2, 2, "2024-06-11", 28, 0, 2, 0, 2, 15),
+(3, 3, "2024-06-12", 42, 2, 0, 0, 3, 20),
+(4, 4, "2024-06-13", 24, 0, 1, 0, 4, 15),
+(5, 5, "2024-06-14", 36, 1, 0, 0, 5, 25);
 
 INSERT INTO `therapy_sell` (`therapy_id`, `member_id`, `store_id`, `staff_id`, `date`, `amount`, `discount`, `payment_method`, `sale_category`, `note`) VALUES
 (1, 1, 1, 1, '2023-01-15', 20, 0, 'Cash', 'Sell', ''),
