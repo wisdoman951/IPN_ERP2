@@ -17,21 +17,32 @@ def connect_to_db():
         print(f"資料庫連接失敗: {e}")
         return None
 
-def get_all_staff():
-    """獲取所有員工列表 (已修正)"""
+def get_all_staff(store_level=None, store_id=None):
+    """獲取所有員工列表，可依店鋪或權限篩選"""
     connection = connect_to_db()
     try:
         with connection.cursor() as cursor:
             # 使用正確的小寫表格名 `staff` 和小寫欄位名
             query = """
-                SELECT 
+                SELECT
                     s.*, 
                     st.store_name
                 FROM staff s
                 LEFT JOIN store st ON s.store_id = st.store_id
-                ORDER BY s.staff_id DESC;
             """
-            cursor.execute(query)
+            params = []
+            # 分店使用者僅能查看自身分店
+            if store_level == '分店':
+                query += " WHERE s.store_id = %s"
+                params.append(store_id)
+            elif store_id:
+                # 總店若提供 store_id 則篩選指定分店
+                query += " WHERE s.store_id = %s"
+                params.append(store_id)
+
+            query += " ORDER BY s.staff_id DESC"
+
+            cursor.execute(query, params)
             return cursor.fetchall()
     except Exception as e:
         print(f"獲取所有員工錯誤: {e}")
@@ -51,24 +62,30 @@ def get_all_staff_for_dropdown():
     finally:
         conn.close()
 
-def search_staff(keyword):
-    """搜尋員工 (已修正)"""
+def search_staff(keyword, store_level=None, store_id=None):
+    """搜尋員工，可依店鋪或權限篩選"""
     connection = connect_to_db()
     try:
         with connection.cursor() as cursor:
             query = """
-            SELECT 
+            SELECT
                 s.*,
                 st.store_name
             FROM staff s
             LEFT JOIN store st ON s.store_id = st.store_id
-            WHERE s.name LIKE %s
-               OR s.phone LIKE %s
-               OR s.email LIKE %s
-            ORDER BY s.staff_id DESC
+            WHERE (s.name LIKE %s OR s.phone LIKE %s OR s.email LIKE %s)
             """
-            param = f"%{keyword}%"
-            cursor.execute(query, (param, param, param))
+            params = [f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"]
+            if store_level == '分店':
+                query += " AND s.store_id = %s"
+                params.append(store_id)
+            elif store_id:
+                query += " AND s.store_id = %s"
+                params.append(store_id)
+
+            query += " ORDER BY s.staff_id DESC"
+
+            cursor.execute(query, params)
             return cursor.fetchall()
     except Exception as e:
         print(f"搜尋員工錯誤: {e}")

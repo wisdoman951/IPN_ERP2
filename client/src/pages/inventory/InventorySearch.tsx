@@ -48,6 +48,11 @@ const InventorySearch: React.FC = () => {
     };
     
     const userStoreId = getUserStoreId();
+    const isAdmin = (() => {
+        const level = localStorage.getItem('store_level');
+        const perm = localStorage.getItem('permission');
+        return level === '總店' || perm === 'admin';
+    })();
 
     // 載入庫存資料
     useEffect(() => {
@@ -58,15 +63,8 @@ const InventorySearch: React.FC = () => {
     const fetchInventoryData = async () => {
         setLoading(true);
         try {
-            // 獲取全部庫存數據
-            const data = await getAllInventory();
-            
-            // 過濾用戶所屬店鋪的數據
-            const filteredData = userStoreId 
-                ? data.filter((item: InventoryItem) => item.Store_ID === userStoreId)
-                : data;
-                
-            setInventoryItems(filteredData);
+            const data = await getAllInventory(isAdmin ? undefined : userStoreId);
+            setInventoryItems(Array.isArray(data) ? data : []);
             setError(null);
         } catch (err) {
             console.error("獲取庫存資料失敗:", err);
@@ -81,15 +79,8 @@ const InventorySearch: React.FC = () => {
     const handleSearch = async () => {
         setLoading(true);
         try {
-            // 搜尋全部數據
-            const data = await searchInventory(keyword);
-            
-            // 過濾用戶所屬店鋪的數據
-            const filteredData = userStoreId 
-                ? data.filter((item: InventoryItem) => item.Store_ID === userStoreId)
-                : data;
-                
-            setInventoryItems(filteredData);
+            const data = await searchInventory(keyword, isAdmin ? undefined : userStoreId);
+            setInventoryItems(Array.isArray(data) ? data : []);
             setError(null);
         } catch (err) {
             console.error("搜尋庫存資料失敗:", err);
@@ -185,7 +176,7 @@ const InventorySearch: React.FC = () => {
     const handleExport = async () => {
         setLoading(true);
         try {
-            await exportInventory();
+            await exportInventory(isAdmin ? undefined : userStoreId);
             setSuccessMessage("庫存數據匯出成功");
         } catch (err) {
             console.error("匯出庫存數據失敗:", err);

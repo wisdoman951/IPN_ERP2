@@ -24,13 +24,25 @@ const Staff: React.FC = () => {
     const [keyword, setKeyword] = useState("");
     const [selectedStaffIds, setSelectedStaffIds] = useState<number[]>([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+    const getUserStoreId = (): number | undefined => {
+        const id = localStorage.getItem('store_id');
+        return id ? Number(id) : undefined;
+    };
+
+    const userStoreId = getUserStoreId();
+    const isAdmin = (() => {
+        const level = localStorage.getItem('store_level');
+        const perm = localStorage.getItem('permission');
+        return level === '總店' || perm === 'admin';
+    })();
     
     // Fetch real staff data from the API
     const fetchStaffList = useCallback(async () => {
         setLoading(true);
         setError("");
         try {
-            const response = await getAllStaff();
+            const response = await getAllStaff(isAdmin ? undefined : userStoreId);
             if (response.success && Array.isArray(response.data)) {
                 setStaffList(response.data);
             } else {
@@ -42,7 +54,7 @@ const Staff: React.FC = () => {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [isAdmin, userStoreId]);
 
     useEffect(() => {
         fetchStaffList();
@@ -56,7 +68,7 @@ const Staff: React.FC = () => {
                 await fetchStaffList();
                 return;
             }
-            const response = await searchStaff(keyword);
+            const response = await searchStaff(keyword, isAdmin ? undefined : userStoreId);
             if (response.success && Array.isArray(response.data)) {
                 setStaffList(response.data);
             } else {

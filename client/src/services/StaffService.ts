@@ -1,17 +1,15 @@
 // client/src/services/StaffService.ts
 import axios from "axios";
 import { base_url } from "./BASE_URL";
+import { getAuthHeaders } from "./AuthUtils";
 
 const API_URL = `${base_url}/staff`;
 
-// ✅ 統一取得授權 headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    Authorization: `Bearer ${token}`,
-    "X-Store-ID": "1",
-    "X-Store-Level": "admin"
-  };
+// 判斷是否具有總店/管理員權限
+const isAdmin = (): boolean => {
+  const level = localStorage.getItem("store_level");
+  const perm = localStorage.getItem("permission");
+  return level === "總店" || perm === "admin";
 };
 
 // 定義員工接口
@@ -29,9 +27,16 @@ export interface Staff {
 }
 
 // 獲取所有員工
-export const getAllStaff = async () => {
+export const getAllStaff = async (storeId?: number) => {
   try {
-    const response = await axios.get(`${API_URL}/list`, {headers: getAuthHeaders() });
+    const params: any = {};
+    if (!isAdmin() && storeId !== undefined) {
+      params.store_id = storeId;
+    } else if (isAdmin() && storeId !== undefined) {
+      params.store_id = storeId;
+    }
+
+    const response = await axios.get(`${API_URL}/list`, { params, headers: getAuthHeaders() });
     
     return {
       success: true,
@@ -47,10 +52,17 @@ export const getAllStaff = async () => {
 };
 
 // 搜尋員工
-export const searchStaff = async (keyword: string) => {
+export const searchStaff = async (keyword: string, storeId?: number) => {
   try {
+    const params: any = { keyword };
+    if (!isAdmin() && storeId !== undefined) {
+      params.store_id = storeId;
+    } else if (isAdmin() && storeId !== undefined) {
+      params.store_id = storeId;
+    }
+
     const response = await axios.get(`${API_URL}/search`, {
-      params: { keyword },
+      params,
       headers: getAuthHeaders()
     });
     return {
