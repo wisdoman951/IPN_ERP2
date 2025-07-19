@@ -302,10 +302,12 @@ def get_product_list():
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT 
-                    p.product_id AS Product_ID, 
-                    p.name AS ProductName, 
-                    p.code AS ProductCode, 
+                SELECT
+                    p.product_id AS Product_ID,
+                    p.name AS ProductName,
+                    p.code AS ProductCode,
+                    p.unit AS Unit,
+                    p.category AS Category,
                     p.price AS ProductPrice
                 FROM product p
                 ORDER BY p.name
@@ -344,3 +346,106 @@ def export_inventory_data(store_id=None):
     """匯出庫存資料，可依店鋪篩選"""
     # 這個功能會在路由層處理實際的 Excel 產生
     return get_all_inventory(store_id)
+
+
+def get_inventory_transactions(store_id=None, start_date=None, end_date=None):
+    """取得庫存進出明細"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = """
+                SELECT
+                    i.inventory_id AS Inventory_ID,
+                    p.product_id AS Product_ID,
+                    p.name AS ProductName,
+                    p.unit AS Unit,
+                    p.category AS Category,
+                    i.stock_in AS StockIn,
+                    i.stock_out AS StockOut,
+                    i.stock_loan AS StockLoan,
+                    i.quantity AS Quantity,
+                    i.date AS Date,
+                    st.store_name AS StoreName,
+                    s.name AS StaffName
+                FROM inventory i
+                LEFT JOIN product p ON i.product_id = p.product_id
+                LEFT JOIN store st ON i.store_id = st.store_id
+                LEFT JOIN staff s ON i.staff_id = s.staff_id
+            """
+            conditions = []
+            params = []
+            if store_id:
+                conditions.append("i.store_id = %s")
+                params.append(store_id)
+            if start_date:
+                conditions.append("i.date >= %s")
+                params.append(start_date)
+            if end_date:
+                conditions.append("i.date <= %s")
+                params.append(end_date)
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            query += " ORDER BY i.date DESC, i.inventory_id DESC"
+            cursor.execute(query, params)
+            result = cursor.fetchall()
+            return result
+    except Exception as e:
+        print(f"獲取庫存進出明細錯誤: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+def analyze_inventory(store_id=None, start_date=None, end_date=None):
+    """庫存分析：包括預警門檻與銷售數量"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = """
+                SELECT
+                    p.product_id AS Product_ID,
+                    p.name AS ProductName,
+                    p.unit AS Unit,
+                    p.category AS Category,
+                    COALESCE(SUM(i.quantity), 0) AS StockQuantity,
+                    MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
+                    COALESCE(SUM(ps.quantity), 0) AS SaleQuantity
+                FROM product p
+                LEFT JOIN inventory i ON p.product_id = i.product_id
+                    {store_filter_i}
+                LEFT JOIN product_sell ps ON p.product_id = ps.product_id
+                    {store_filter_ps}
+            """
+            store_filter_i = ""
+            store_filter_ps = ""
+            params = []
+            if store_id:
+                store_filter_i = "AND i.store_id = %s"
+                store_filter_ps = "AND ps.store_id = %s"
+                params.extend([store_id, store_id])
+            else:
+                params.extend([])
+
+            conditions = []
+            if start_date:
+                conditions.append("ps.date >= %s")
+                params.append(start_date)
+            if end_date:
+                conditions.append("ps.date <= %s")
+                params.append(end_date)
+
+            query = query.format(store_filter_i=store_filter_i, store_filter_ps=store_filter_ps)
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " GROUP BY p.product_id, p.name, p.unit, p.category ORDER BY p.name"
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+            for item in results:
+                item["Unsold"] = item["SaleQuantity"] == 0
+            return results
+    except Exception as e:
+        print(f"庫存分析錯誤: {e}")
+        return []
+    finally:
+        conn.close()
