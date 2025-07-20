@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Button, Col, Container, Form, Row, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
+import { exportInventory } from "../../services/InventoryService";
 import IconButton from "../../components/IconButton";
 
 interface StockRecord {
@@ -36,6 +37,15 @@ const StockUpdate: React.FC = () => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
+  };
+
+  const handleExport = async () => {
+    try {
+      await exportInventory();
+    } catch (err) {
+      console.error("匯出庫存資料失敗", err);
+      alert("匯出失敗");
+    }
   };
 
   return (
@@ -103,7 +113,7 @@ const StockUpdate: React.FC = () => {
         </Table>
 
         <div className="d-flex justify-content-end gap-3 mt-4">
-          <Button variant="info">報表匯出</Button>
+          <Button variant="info" onClick={handleExport}>報表匯出</Button>
           <Button variant="info">刪除</Button>
           <Button variant="info">修改</Button>
           <Button variant="info">確認</Button>
