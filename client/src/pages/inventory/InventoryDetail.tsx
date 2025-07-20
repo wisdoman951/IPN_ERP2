@@ -1,9 +1,40 @@
-import React from "react";
-import { Container, Row, Col, Form, Button, Table, Alert } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
+import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
+import { getInventoryRecords } from "../../services/InventoryService";
+import { useNavigate } from "react-router-dom";
+
+const formatDate = (d: string) => {
+  const dt = new Date(d);
+  if (Number.isNaN(dt.getTime())) return d;
+  const y = dt.getFullYear();
+  const m = String(dt.getMonth() + 1).padStart(2, "0");
+  const da = String(dt.getDate()).padStart(2, "0");
+  return `${y}/${m}/${da}`;
+};
+
+interface RecordRow {
+  Inventory_ID: number;
+  Name: string;
+  quantity: number;
+  Date: string;
+  StaffName: string;
+  StoreName: string;
+  SaleStaff?: string;
+  Voucher?: string;
+  price?: number;
+}
 
 const InventoryDetail: React.FC = () => {
+  const navigate = useNavigate();
+  const [records, setRecords] = useState<RecordRow[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    getInventoryRecords().then((res) => setRecords(res));
+  }, []);
+
   const content = (
     <Container fluid className="p-4">
       <h5 className="text-danger mb-3">資料連動總部出貨、分店銷售</h5>
@@ -42,11 +73,42 @@ const InventoryDetail: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {/* 資料列可動態渲染 */}
-          <tr>
-            <td><Form.Check type="checkbox" /></td>
-            <td colSpan={13}><em>尚無資料</em></td>
-          </tr>
+          {records.length === 0 ? (
+            <tr>
+              <td colSpan={14} className="text-center">
+                <em>尚無資料</em>
+              </td>
+            </tr>
+          ) : (
+            records.map((r) => (
+              <tr key={r.Inventory_ID}>
+                <td>
+                  <Form.Check
+                    type="checkbox"
+                    checked={selectedId === r.Inventory_ID}
+                    onChange={() =>
+                      setSelectedId(
+                        selectedId === r.Inventory_ID ? null : r.Inventory_ID
+                      )
+                    }
+                  />
+                </td>
+                <td>{r.Inventory_ID}</td>
+                <td>{r.Name}</td>
+                <td></td>
+                <td>{r.price ?? ''}</td>
+                <td>{r.quantity}</td>
+                <td>{r.price ? r.price * r.quantity : ''}</td>
+                <td></td>
+                <td></td>
+                <td>{formatDate(r.Date)}</td>
+                <td></td>
+                <td>{r.StoreName}</td>
+                <td>{r.SaleStaff || r.StaffName}</td>
+                <td>{r.Voucher ?? ''}</td>
+              </tr>
+            ))
+          )}
         </tbody>
       </Table>
 
@@ -59,7 +121,19 @@ const InventoryDetail: React.FC = () => {
           <Button variant="info" className="text-white px-4">刪除</Button>
         </Col>
         <Col xs="auto">
-          <Button variant="info" className="text-white px-4">修改</Button>
+          <Button
+            variant="info"
+            className="text-white px-4"
+            onClick={() => {
+              if (selectedId) {
+                navigate(`/inventory/inventory-update?id=${selectedId}`);
+              } else {
+                alert('請先勾選要修改的資料');
+              }
+            }}
+          >
+            修改
+          </Button>
         </Col>
         <Col xs="auto">
           <Button variant="info" className="text-white px-4">確認</Button>
