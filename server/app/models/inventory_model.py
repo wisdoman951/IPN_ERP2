@@ -184,6 +184,58 @@ def get_low_stock_inventory(store_id=None):
     finally:
         conn.close()
 
+def get_inventory_history(store_id=None, start_date=None, end_date=None):
+    """獲取庫存進出明細，可依店鋪及日期區間篩選"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = """
+                SELECT
+                    i.inventory_id AS Inventory_ID,
+                    p.product_id AS Product_ID,
+                    p.name AS ProductName,
+                    p.code AS ProductCode,
+                    p.price AS Price,
+                    i.quantity,
+                    i.stock_in,
+                    i.stock_out,
+                    i.stock_loan,
+                    i.stock_threshold AS StockThreshold,
+                    i.date AS Date,
+                    st.store_id AS Store_ID,
+                    st.store_name AS StoreName,
+                    s.staff_id AS Staff_ID,
+                    s.name AS StaffName
+                FROM inventory i
+                LEFT JOIN product p ON i.product_id = p.product_id
+                LEFT JOIN staff s ON i.staff_id = s.staff_id
+                LEFT JOIN store st ON i.store_id = st.store_id
+            """
+            params = []
+            conditions = []
+            if store_id:
+                conditions.append("i.store_id = %s")
+                params.append(store_id)
+            if start_date:
+                conditions.append("i.date >= %s")
+                params.append(start_date)
+            if end_date:
+                conditions.append("i.date <= %s")
+                params.append(end_date)
+
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+
+            query += " ORDER BY i.date DESC, i.inventory_id DESC"
+
+            cursor.execute(query, params)
+            return cursor.fetchall()
+    except Exception as e:
+        print(f"獲取庫存進出明細錯誤: {e}")
+        return []
+    finally:
+        conn.close()
+
 def update_inventory_item(inventory_id, data):
     """更新庫存記錄"""
     conn = connect_to_db()

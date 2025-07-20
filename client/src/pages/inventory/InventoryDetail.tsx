@@ -1,9 +1,26 @@
-import React from "react";
-import { Container, Row, Col, Form, Button, Table, Alert } from "react-bootstrap";
+import React, { useEffect, useState } from "react";
+import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
+import { getInventoryRecords } from "../../services/InventoryService";
+
+interface RecordRow {
+  Inventory_ID: number;
+  ProductName: string;
+  quantity: number;
+  Date: string;
+  StaffName: string;
+  StoreName: string;
+  price?: number;
+}
 
 const InventoryDetail: React.FC = () => {
+  const [records, setRecords] = useState<RecordRow[]>([]);
+
+  useEffect(() => {
+    getInventoryRecords().then((res) => setRecords(res));
+  }, []);
+
   const content = (
     <Container fluid className="p-4">
       <h5 className="text-danger mb-3">資料連動總部出貨、分店銷售</h5>
@@ -42,11 +59,34 @@ const InventoryDetail: React.FC = () => {
           </tr>
         </thead>
         <tbody>
-          {/* 資料列可動態渲染 */}
-          <tr>
-            <td><Form.Check type="checkbox" /></td>
-            <td colSpan={13}><em>尚無資料</em></td>
-          </tr>
+          {records.length === 0 ? (
+            <tr>
+              <td colSpan={14} className="text-center">
+                <em>尚無資料</em>
+              </td>
+            </tr>
+          ) : (
+            records.map((r) => (
+              <tr key={r.Inventory_ID}>
+                <td>
+                  <Form.Check type="checkbox" />
+                </td>
+                <td>{r.Inventory_ID}</td>
+                <td>{r.ProductName}</td>
+                <td></td>
+                <td>{r.price ?? ''}</td>
+                <td>{r.quantity}</td>
+                <td>{r.price ? r.price * r.quantity : ''}</td>
+                <td></td>
+                <td></td>
+                <td>{r.Date}</td>
+                <td></td>
+                <td>{r.StoreName}</td>
+                <td>{r.StaffName}</td>
+                <td></td>
+              </tr>
+            ))
+          )}
         </tbody>
       </Table>
 

@@ -34,10 +34,16 @@ const InventoryEntryForm = () => {
 
   const handleSubmit = async () => {
     try {
+      if (!formData.staff_id) {
+        alert("請選擇進貨人");
+        return;
+      }
+
       const payload = {
         productId: Number(formData.product_id),
+        quantity: Number(formData.quantity),
         stockIn: Number(formData.quantity),
-        stockInTime: formData.date,
+        date: formData.date,
         staffId: Number(formData.staff_id),
         note: formData.note
       };
@@ -51,7 +57,7 @@ const InventoryEntryForm = () => {
 
   return (
     <>
-      <Header title="更新庫存資料 (進貨) 1.1.4.3" />
+      <Header />
       <Container
         className="mt-4"
         style={{ marginLeft: "200px", paddingRight: "30px", maxWidth: "calc(100% - 220px)" }}
@@ -115,9 +121,9 @@ const InventoryEntryForm = () => {
                 >
                   <option value="">-- 選擇進貨人 --</option>
                   {Array.isArray(staffs) && staffs.map((s, index) => {
-                    const key = s?.Staff_ID ? `staff-${s.Staff_ID}` : `staff-fallback-${index}`;
-                    const value = s?.Staff_ID ?? "";
-                    const label = s?.Staff_Name ?? `員工 ${index + 1}`;
+                    const key = (s as any)?.staff_id ? `staff-${(s as any).staff_id}` : `staff-fallback-${index}`;
+                    const value = (s as any)?.staff_id ?? "";
+                    const label = (s as any)?.name ?? `員工 ${index + 1}`;
                     return (
                       <option key={key} value={value}>
                         {label}

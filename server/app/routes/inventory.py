@@ -12,7 +12,8 @@ from app.models.inventory_model import (
     delete_inventory_item,
     get_low_stock_inventory,
     get_product_list,
-    export_inventory_data
+    export_inventory_data,
+    get_inventory_history
 )
 from app.middleware import auth_required, get_user_from_token
 
@@ -74,13 +75,41 @@ def get_low_stock_items():
         print(e)
         return jsonify({"error": str(e)}), 500
 
+@inventory_bp.route("/records", methods=["GET"])
+@auth_required
+def get_inventory_records():
+    """取得庫存進出明細"""
+    start_date = request.args.get("start_date")
+    end_date = request.args.get("end_date")
+    try:
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+
+        target_store = store_id_param if is_admin else user_store_id
+
+        records = get_inventory_history(target_store, start_date, end_date)
+        return jsonify(records)
+    except Exception as e:
+        print(e)
+        return jsonify({"error": str(e)}), 500
+
 @inventory_bp.route("/<int:inventory_id>", methods=["GET"])
+@auth_required
 def get_inventory_item(inventory_id):
     """根據ID獲取庫存記錄"""
     try:
         inventory_item = get_inventory_by_id(inventory_id)
         if not inventory_item:
             return jsonify({"error": "找不到該庫存記錄"}), 404
+
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        if not is_admin and inventory_item.get('Store_ID') != user_store_id:
+            return jsonify({"error": "無權查看其他分店的庫存紀錄"}), 403
+
         return jsonify(inventory_item)
     except Exception as e:
         print(e)
@@ -92,6 +121,16 @@ def update_inventory(inventory_id):
     """更新庫存記錄"""
     data = request.json
     try:
+        existing = get_inventory_by_id(inventory_id)
+        if not existing:
+            return jsonify({"error": "找不到該庫存記錄"}), 404
+
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        if not is_admin and existing.get('Store_ID') != user_store_id:
+            return jsonify({"error": "無權修改其他分店的庫存紀錄"}), 403
+
         success = update_inventory_item(inventory_id, data)
         if success:
             return jsonify({"message": "庫存記錄更新成功", "success": True}), 200
@@ -108,8 +147,15 @@ def add_inventory():
     data = request.json
     try:
         user_info = get_user_from_token(request)
-        if user_info.get('store_id') and not data.get('storeId'):
-            data['storeId'] = user_info.get('store_id')
+        user_store_level = user_info.get('store_level')
+        user_store_id = user_info.get('store_id')
+        is_admin = user_store_level == '總店' or user_info.get('permission') == 'admin'
+
+        if not data.get('storeId'):
+            data['storeId'] = user_store_id
+        elif not is_admin and int(data.get('storeId')) != user_store_id:
+            return jsonify({"error": "無權為其他分店新增庫存"}), 403
+
         if user_info.get('staff_id') and not data.get('staffId'):
             data['staffId'] = user_info.get('staff_id')
 
@@ -127,6 +173,16 @@ def add_inventory():
 def delete_inventory(inventory_id):
     """刪除庫存記錄"""
     try:
+        existing = get_inventory_by_id(inventory_id)
+        if not existing:
+            return jsonify({"error": "找不到該庫存記錄"}), 404
+
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        if not is_admin and existing.get('Store_ID') != user_store_id:
+            return jsonify({"error": "無權刪除其他分店的庫存紀錄"}), 403
+
         success = delete_inventory_item(inventory_id)
         if success:
             return jsonify({"message": "庫存記錄刪除成功", "success": True}), 200
