@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../components/Header";
 import DynamicContainer from "../components/DynamicContainer";
 import { Card, Row, Col, Button } from "react-bootstrap";
+import { formatStoreName } from "../utils/authUtils";
 
 interface StoreInfo {
   store_id: number;
@@ -24,8 +25,9 @@ const Home: React.FC = () => {
         console.log("解析到的店鋪資訊:", parsedInfo);
         
         if (parsedInfo.store_name) {
-          setStoreName(parsedInfo.store_name);
-          console.log("設定店鋪名稱為:", parsedInfo.store_name);
+          const displayName = formatStoreName(parsedInfo.store_name, parsedInfo.store_level);
+          setStoreName(displayName);
+          console.log("設定店鋪名稱為:", displayName);
         } else {
           console.warn("店鋪資訊中沒有 store_name 字段");
           setStoreName("店鋪名稱缺失");

@@ -5,6 +5,7 @@ import { Col } from "react-bootstrap";
 import { Icon } from "@iconify/react";
 import './Sidebar.css';
 import { logout } from "../../services/LoginService";
+import { formatStoreName } from "../../utils/authUtils";
 
 interface StoreInfo {
   store_id: number;
@@ -30,7 +31,8 @@ const Sidebar: React.FC = () => {
       try {
         const parsedInfo: StoreInfo = JSON.parse(storeInfo);
         if (parsedInfo.store_name) {
-          setStoreName(parsedInfo.store_name);
+          const displayName = formatStoreName(parsedInfo.store_name, parsedInfo.store_level);
+          setStoreName(displayName);
         }
       } catch (error) {
         console.error('無法解析店鋪資訊', error);
