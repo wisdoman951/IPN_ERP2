@@ -54,8 +54,8 @@ export const pageTitles: PageTitleMap = {
   
   // Finance
   '/finance': { basic: '帳務管理 1.1.5', admin: '帳務管理 1.2.5' },
-  '/finance/sales/add': { basic: '新增銷售單 1.1.5.1', admin: '新增銷售單 1.2.5.1' },
-  '/finance/sales/list': { basic: '銷售單列表 1.1.5.1.1', admin: '銷售單列表 1.2.5.1' },
+  '/finance/sales/add': { basic: '新增銷售單 1.1.5.1.1', admin: '新增銷售單 1.2.5.1.1' },
+  '/finance/sales/list': { basic: '銷售單列表 1.1.5.1', admin: '銷售單列表 1.2.5.1' },
   '/finance/item-selection': { basic: '選擇銷售品項 1.1.5.1.1.1', admin: '選擇銷售品項 1.2.5.1.1.1' },
 
   // Backend
