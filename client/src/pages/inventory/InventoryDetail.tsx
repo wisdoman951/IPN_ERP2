@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-import { getInventoryRecords } from "../../services/InventoryService";
+import { getInventoryRecords, exportInventory } from "../../services/InventoryService";
 import { useNavigate } from "react-router-dom";
 
 const formatDate = (d: string) => {
@@ -30,6 +30,15 @@ const InventoryDetail: React.FC = () => {
   const navigate = useNavigate();
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  const handleExport = async () => {
+    try {
+      await exportInventory();
+    } catch (err) {
+      console.error("匯出庫存資料失敗", err);
+      alert("匯出失敗");
+    }
+  };
 
   useEffect(() => {
     getInventoryRecords().then((res) => setRecords(res));
@@ -115,7 +124,7 @@ const InventoryDetail: React.FC = () => {
       {/* 下方按鈕列 */}
       <Row className="mt-4 justify-content-center g-2">
         <Col xs="auto">
-          <Button variant="info" className="text-white px-4">報表匯出</Button>
+          <Button variant="info" className="text-white px-4" onClick={handleExport}>報表匯出</Button>
         </Col>
         <Col xs="auto">
           <Button variant="info" className="text-white px-4">刪除</Button>

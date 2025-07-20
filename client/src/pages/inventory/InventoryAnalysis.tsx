@@ -1,8 +1,17 @@
 import React from "react";
 import { Button, Container, Row, Col, Form, Table } from "react-bootstrap";
+import { exportInventory } from "../../services/InventoryService";
 import Header from "../../components/Header";
 
 const InventoryAnalysis: React.FC = () => {
+    const handleExport = async () => {
+        try {
+            await exportInventory();
+        } catch (err) {
+            console.error("匯出庫存資料失敗", err);
+            alert("匯出失敗");
+        }
+    };
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
@@ -59,7 +68,7 @@ const InventoryAnalysis: React.FC = () => {
                 {/* 下方按鈕 */}
                 <Row className="justify-content-center my-4 g-3">
                     <Col xs="auto" className="ms-auto">
-                        <Button variant="info" className="text-white px-4">報表匯出</Button>
+                        <Button variant="info" className="text-white px-4" onClick={handleExport}>報表匯出</Button>
                     </Col>
                     <Col xs="auto">
                         <Button variant="info" className="text-white px-4">刪除</Button>

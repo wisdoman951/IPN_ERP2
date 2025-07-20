@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
 import { getAllStaffs, Staff } from "../../services/StaffService";
-import { addInventoryItem, getInventoryById, updateInventoryItem } from "../../services/InventoryService";
+import { addInventoryItem, getInventoryById, updateInventoryItem, exportInventory } from "../../services/InventoryService";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
 
@@ -82,6 +82,15 @@ const InventoryEntryForm = () => {
     } catch (error) {
       alert("送出失敗，請稍後再試。");
       console.error(error);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      await exportInventory();
+    } catch (err) {
+      console.error("匯出庫存資料失敗", err);
+      alert("匯出失敗");
     }
   };
 
@@ -186,7 +195,7 @@ const InventoryEntryForm = () => {
               <Form.Label htmlFor="custom-check" className="mb-0">勾選</Form.Label>
             </Col>
             <Col xs={6} md={2}>
-              <Button variant="info" className="w-100 text-white">報表匯出</Button>
+              <Button variant="info" className="w-100 text-white" onClick={handleExport}>報表匯出</Button>
             </Col>
             <Col xs={6} md={2}>
               <Button variant="info" className="w-100 text-white">刪除</Button>
