@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
-import { getAllProducts, getSaleCategories } from "../../services/ProductSellService";
+import { getAllProducts } from "../../services/ProductSellService";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 
@@ -16,7 +16,6 @@ interface Product {
 const InventoryInsert = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
   const [formData, setFormData] = useState({
     product_id: "",
     category: "",
@@ -28,11 +27,6 @@ const InventoryInsert = () => {
     getAllProducts().then((res) => {
       console.log("產品資料:", res);
       setProducts(res);
-    });
-
-    getSaleCategories().then((res) => {
-      console.log("類別資料:", res);
-      setCategories(res);
     });
   }, []);
 
@@ -86,18 +80,13 @@ const InventoryInsert = () => {
                     <Col xs={12} md={6}>
                       <Form.Group controlId="category">
                         <Form.Label>類別</Form.Label>
-                        <Form.Select
+                        <Form.Control
+                          type="text"
+                          placeholder="可輸入或留空"
                           name="category"
                           value={formData.category}
                           onChange={handleChange}
-                        >
-                          <option value="">-- 選擇類別 --</option>
-                          {categories.map((cat, idx) => (
-                            <option key={`cat-${idx}`} value={cat}>
-                              {cat}
-                            </option>
-                          ))}
-                        </Form.Select>
+                        />
                       </Form.Group>
                     </Col>
                   </Row>
