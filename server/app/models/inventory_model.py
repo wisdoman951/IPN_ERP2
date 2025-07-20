@@ -185,27 +185,31 @@ def get_low_stock_inventory(store_id=None):
         conn.close()
 
 def get_inventory_history(store_id=None, start_date=None, end_date=None):
-    """獲取庫存進出明細，可依店鋪及日期區間篩選"""
+    """獲取庫存進出明細，可依店鋪及日期區間篩選。
+    為了同時呈現銷售(產品與療程)造成的庫存變化，
+    此函式會合併 inventory、product_sell 以及 therapy_sell 的紀錄。"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = """
+            records = []
+
+            # -------- 庫存異動記錄 --------
+            base_q = """
                 SELECT
                     i.inventory_id AS Inventory_ID,
-                    p.product_id AS Product_ID,
-                    p.name AS ProductName,
-                    p.code AS ProductCode,
+                    p.name AS Name,
+                    NULL AS Unit,
                     p.price AS Price,
-                    i.quantity,
+                    i.quantity AS quantity,
                     i.stock_in,
                     i.stock_out,
                     i.stock_loan,
                     i.stock_threshold AS StockThreshold,
                     i.date AS Date,
-                    st.store_id AS Store_ID,
+                    s.name AS StaffName,
                     st.store_name AS StoreName,
-                    s.staff_id AS Staff_ID,
-                    s.name AS StaffName
+                    '' AS SaleStaff,
+                    '' AS Voucher
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN staff s ON i.staff_id = s.staff_id
@@ -222,14 +226,87 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
             if end_date:
                 conditions.append("i.date <= %s")
                 params.append(end_date)
-
             if conditions:
-                query += " WHERE " + " AND ".join(conditions)
+                base_q += " WHERE " + " AND ".join(conditions)
+            cursor.execute(base_q, params)
+            records.extend(cursor.fetchall())
 
-            query += " ORDER BY i.date DESC, i.inventory_id DESC"
-
-            cursor.execute(query, params)
-            return cursor.fetchall()
+            # -------- 產品銷售紀錄 --------
+            prod_q = """
+                SELECT
+                    ps.product_sell_id + 1000000 AS Inventory_ID,
+                    p.name AS Name,
+                    NULL AS Unit,
+                    ps.unit_price AS Price,
+                    -ps.quantity AS quantity,
+                    0 AS stock_in,
+                    ps.quantity AS stock_out,
+                    0 AS stock_loan,
+                    ps.date AS Date,
+                    '' AS StaffName,
+                    st.store_name AS StoreName,
+                    sf.name AS SaleStaff,
+                    ps.product_sell_id AS Voucher
+                FROM product_sell ps
+                LEFT JOIN product p ON ps.product_id = p.product_id
+                LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
+                LEFT JOIN store st ON ps.store_id = st.store_id
+            """
+            params = []
+            conditions = []
+            if store_id:
+                conditions.append("ps.store_id = %s")
+                params.append(store_id)
+            if start_date:
+                conditions.append("ps.date >= %s")
+                params.append(start_date)
+            if end_date:
+                conditions.append("ps.date <= %s")
+                params.append(end_date)
+            if conditions:
+                prod_q += " WHERE " + " AND ".join(conditions)
+            cursor.execute(prod_q, params)
+            records.extend(cursor.fetchall())
+            # -------- 療程銷售紀錄 --------
+            therapy_q = """
+                SELECT
+                    ts.therapy_sell_id + 2000000 AS Inventory_ID,
+                    t.name AS Name,
+                    NULL AS Unit,
+                    t.price AS Price,
+                    -ts.amount AS quantity,
+                    0 AS stock_in,
+                    ts.amount AS stock_out,
+                    0 AS stock_loan,
+                    ts.date AS Date,
+                    '' AS StaffName,
+                    st.store_name AS StoreName,
+                    sf.name AS SaleStaff,
+                    ts.therapy_sell_id AS Voucher
+                FROM therapy_sell ts
+                LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
+                LEFT JOIN staff sf ON ts.staff_id = sf.staff_id
+                LEFT JOIN store st ON ts.store_id = st.store_id
+            """
+            params = []
+            conditions = []
+            if store_id:
+                conditions.append("ts.store_id = %s")
+                params.append(store_id)
+            if start_date:
+                conditions.append("ts.date >= %s")
+                params.append(start_date)
+            if end_date:
+                conditions.append("ts.date <= %s")
+                params.append(end_date)
+            if conditions:
+                therapy_q += " WHERE " + " AND ".join(conditions)
+            cursor.execute(therapy_q, params)
+            records.extend(cursor.fetchall())
+            
+            # 依日期與ID倒序排列
+            records.sort(key=lambda x: (x.get('Date'), x.get('Inventory_ID')), reverse=True)
+            return records
     except Exception as e:
         print(f"獲取庫存進出明細錯誤: {e}")
         return []
