@@ -116,7 +116,7 @@ const EditStressTestPage1: React.FC = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
-            <Header title="編輯iPN壓力源測試 (1/2)" />
+            <Header />
             <DynamicContainer content={content} className="p-0 align-items-start" />
         </div>
     );

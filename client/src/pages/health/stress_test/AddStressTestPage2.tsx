@@ -63,7 +63,7 @@ const AddStressTestPage2: React.FC = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
-            <Header title="新增iPN壓力源測試 (2/2)" />
+            <Header />
             <DynamicContainer content={content} className="p-0 align-items-start" />
         </div>
     );

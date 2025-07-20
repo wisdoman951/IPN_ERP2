@@ -157,7 +157,7 @@ const InventoryEntryForm = () => {
             </Col>
             <Col xs={6} md={2}>
               <Button variant="info" className="w-100 text-white" onClick={() => navigate("/InventoryInsert")}> 
-                確認
+                新增
               </Button>
             </Col>
             <Col xs={6} md={2}>

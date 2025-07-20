@@ -9,6 +9,7 @@ type PageTitleMap = {
 export const pageTitles: PageTitleMap = {
   // General
   '/home': { basic: '全崴國際管理系統-分店首頁 1.1', admin: '全崴國際管理系統-總部首頁 1.2' },
+  '/unauthorized': { basic: '無權限', admin: '無權限' },
 
   // Member
   '/member-management': { basic: '會員健康管理 1.1.1', admin: '會員健康管理 1.2.1' },
@@ -49,13 +50,13 @@ export const pageTitles: PageTitleMap = {
   '/inventory/inventory-search': { basic: '庫存查詢(銷售) 1.1.4.1', admin: '庫存查詢(銷售) 1.2.4.1' },
   '/inventory/inventory-analysis': { basic: '庫存分析 1.1.4.2', admin: '庫存分析 1.2.4.2' },
   '/inventory/inventory-update': { basic: '更新庫存資料 (進貨) 1.1.4.3', admin: '更新庫存資料 (進貨) 1.2.4.3' },
-  '/inventory/inventory-add': { basic: '新增庫存數據 1.1.4.3.1', admin: '新增庫存數據 1.2.4.3.1' },
+  '/inventory/inventoryInsert': { basic: '新增庫存數據 1.1.4.3.1', admin: '新增庫存數據 1.2.4.3.1' },
   '/inventory/inventory-detail': { basic: '進出明細查詢 1.1.4.4', admin: '進出明細查詢 1.2.4.4' },
   
   // Finance
   '/finance': { basic: '帳務管理 1.1.5', admin: '帳務管理 1.2.5' },
-  '/finance/sales/add': { basic: '新增銷售單 1.1.5.1', admin: '新增銷售單 1.2.5.1' },
-  '/finance/sales/list': { basic: '銷售單列表 1.1.5.1.1', admin: '銷售單列表 1.2.5.1' },
+  '/finance/sales/add': { basic: '新增銷售單 1.1.5.1.1', admin: '新增銷售單 1.2.5.1.1' },
+  '/finance/sales/list': { basic: '銷售單列表 1.1.5.1', admin: '銷售單列表 1.2.5.1' },
   '/finance/item-selection': { basic: '選擇銷售品項 1.1.5.1.1.1', admin: '選擇銷售品項 1.2.5.1.1.1' },
 
   // Backend

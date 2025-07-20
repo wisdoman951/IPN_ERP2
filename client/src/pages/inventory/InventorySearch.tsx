@@ -340,7 +340,7 @@ const InventorySearch: React.FC = () => {
 
     return (
         <>
-            <Header title="庫存查詢 1.1.4.1" />
+            <Header />
             <DynamicContainer content={content} />
         </>
     );

@@ -34,7 +34,7 @@ const HealthAnalysis: React.FC = () => {
   return (
     <div className="d-flex flex-column min-vh-100 bg-white">
       {/* 使用統一的 Header 組件 */}
-      <Header title="健康數據分析 1.1.1.4" />
+      <Header />
       
       {/* 使用 DynamicContainer 包裝內容 */}
       <DynamicContainer 

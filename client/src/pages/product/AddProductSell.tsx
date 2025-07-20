@@ -354,7 +354,7 @@ const AddProductSell: React.FC = () => {
 
   return (
     <>
-      <Header title="新增銷售產品 1.1.2.1" />
+      <Header />
       <DynamicContainer content={content} className="p-0" />
     </>
   );

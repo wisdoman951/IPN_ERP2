@@ -90,7 +90,7 @@ const StoreManagement: React.FC = () => {
 
     return (
         <>
-            <Header title="分店管理 1.2.6.4" />
+            <Header />
             <DynamicContainer content={content} />
         </>
     );

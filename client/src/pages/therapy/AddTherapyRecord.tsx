@@ -178,7 +178,7 @@ const AddTherapyRecord: React.FC = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
-            <Header title="新增療程紀錄 1.1.1.3.1" />
+            <Header />
             <DynamicContainer content={content} />
         </div>
     );
