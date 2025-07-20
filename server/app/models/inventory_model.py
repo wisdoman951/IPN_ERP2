@@ -195,6 +195,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                     p.product_id AS Product_ID,
                     p.name AS ProductName,
                     p.code AS ProductCode,
+                    p.price AS Price,
                     i.quantity,
                     i.stock_in,
                     i.stock_out,

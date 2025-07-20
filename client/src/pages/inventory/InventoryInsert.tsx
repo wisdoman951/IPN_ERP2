@@ -3,6 +3,7 @@ import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { getAllProducts } from "../../services/ProductSellService";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
+import { addInventoryItem } from "../../services/InventoryService";
 
 interface Product {
   product_id: number;
@@ -35,15 +36,22 @@ const InventoryInsert = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = () => {
-    const payload = {
-      product_id: formData.product_id,
-      category: formData.category,
-      date: formData.date,
-      note: formData.note
-    };
-    console.log("送出 payload：", payload);
-    alert("模擬送出成功！");
+  const handleSubmit = async () => {
+    try {
+      const payload = {
+        productId: Number(formData.product_id),
+        quantity: 0,
+        stockIn: 0,
+        date: formData.date,
+        note: formData.note,
+        category: formData.category
+      };
+      await addInventoryItem(payload);
+      alert("新增成功");
+    } catch (error) {
+      console.error(error);
+      alert("送出失敗，請稍後再試。");
+    }
   };
 
   return (
