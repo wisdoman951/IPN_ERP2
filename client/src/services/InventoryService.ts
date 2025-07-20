@@ -115,7 +115,7 @@ export const getAllProducts = async () => {
 };
 
 // 匯出庫存數據
-export const exportInventory = async (storeId?: number) => {
+export const exportInventory = async (storeId?: number): Promise<Blob> => {
     const level = localStorage.getItem('store_level');
     const perm = localStorage.getItem('permission');
     const isAdmin = level === '總店' || perm === 'admin';
@@ -131,16 +131,6 @@ export const exportInventory = async (storeId?: number) => {
         params,
         responseType: "blob"
     });
-    
-    // 處理下載
-    const blob = new Blob([response.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    });
-    
-    const link = document.createElement("a");
-    link.href = window.URL.createObjectURL(blob);
-    link.setAttribute("download", `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-}; 
+
+    return response.data;
+};

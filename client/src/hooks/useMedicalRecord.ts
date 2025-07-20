@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { downloadBlob } from '../utils/downloadBlob';
 import { 
     getAllMedicalRecords, 
     searchMedicalRecords, 
@@ -101,7 +102,8 @@ export const useMedicalRecordManagement = () => {
     // 處理匯出報表
     const handleExport = async () => {
         try {
-            await exportMedicalRecords();
+            const blob = await exportMedicalRecords();
+            downloadBlob(blob, "健康檢查紀錄.xlsx");
         } catch (err) {
             console.error("匯出失敗", err);
             alert("匯出報表失敗！");

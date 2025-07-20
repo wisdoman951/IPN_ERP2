@@ -1,5 +1,6 @@
 // .\src\hooks\usePureMedicalRecord.ts
 import { useState, useEffect, useCallback } from 'react';
+import { downloadBlob } from '../utils/downloadBlob';
 import { 
   fetchPureRecords, // <-- 改為 import fetchPureRecords
   deletePureRecord, 
@@ -109,15 +110,7 @@ export const usePureMedicalRecord = (): UsePureMedicalRecordReturn => {
     try {
       setLoading(true);
       const blob = await exportPureRecords();
-      
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = '淨化健康紀錄.xlsx';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      downloadBlob(blob, '淨化健康紀錄.xlsx');
     } catch (err) {
       console.error("Error exporting pure medical records:", err);
       setError("匯出淨化健康紀錄時發生錯誤");

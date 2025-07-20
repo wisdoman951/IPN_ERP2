@@ -5,8 +5,9 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../../components/Header";
 import DynamicContainer from "../../../components/DynamicContainer";
 import MemberColumn from "../../../components/MemberColumn";
-import { addPureRecord } from "../../../services/PureMedicalRecordService";
+import { addPureRecord, exportPureRecords } from "../../../services/PureMedicalRecordService";
 import { getAllStaff } from "../../../services/TherapySellService"; // searchMemberById 已被 MemberColumn 內部處理
+import { downloadBlob } from "../../../utils/downloadBlob";
 import { calculateBMI, getTodayDateString } from "../../../utils/pureMedicalUtils";
 
 // 更新 interface 以匹配新的欄位名稱
@@ -214,11 +215,14 @@ const AddPureMedicalRecord: React.FC = () => {
     }
   };
 
-  // "報表匯出" 按鈕的功能 - 暫時未定義，可根據需求實現
-  const handleExportCurrentData = () => {
-    // 實際功能：可能將當前 formData 轉換為特定格式 (如CSV, PDF) 並下載
-    // 或將其發送到後端進行報表生成
-    alert("報表匯出功能尚待實現。\n當前資料：\n" + JSON.stringify(formData, null, 2));
+  const handleExportCurrentData = async () => {
+    try {
+      const blob = await exportPureRecords();
+      downloadBlob(blob, '淨化健康紀錄.xlsx');
+    } catch (err) {
+      alert('匯出失敗');
+      console.error(err);
+    }
   };
   
   const handleTodayDate = () => {

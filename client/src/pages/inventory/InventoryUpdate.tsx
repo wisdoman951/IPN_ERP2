@@ -3,6 +3,7 @@ import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
 import { getAllStaffs, Staff } from "../../services/StaffService";
 import { addInventoryItem, getInventoryById, updateInventoryItem, exportInventory } from "../../services/InventoryService";
+import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
 
@@ -87,7 +88,8 @@ const InventoryEntryForm = () => {
 
   const handleExport = async () => {
     try {
-      await exportInventory();
+      const blob = await exportInventory();
+      downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
       console.error("匯出庫存資料失敗", err);
       alert("匯出失敗");
