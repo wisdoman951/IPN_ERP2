@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
+import { addProduct } from '../../../services/ProductService';
 
 interface AddProductModalProps {
     show: boolean;
@@ -11,9 +12,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide }) => {
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        onHide();
+        try {
+            await addProduct({ code, name, price: Number(price) });
+            onHide();
+        } catch (err) {
+            alert('新增產品失敗');
+        }
     };
 
     return (
