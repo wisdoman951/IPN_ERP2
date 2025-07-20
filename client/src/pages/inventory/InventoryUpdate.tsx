@@ -2,12 +2,15 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
 import { getAllStaffs, Staff } from "../../services/StaffService";
-import { addInventoryItem } from "../../services/InventoryService";
-import { useNavigate } from "react-router-dom";
+import { addInventoryItem, getInventoryById, updateInventoryItem } from "../../services/InventoryService";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
 
 const InventoryEntryForm = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editingId = searchParams.get('id');
+
   const [products, setProducts] = useState<Product[]>([]);
   const [staffs, setStaffs] = useState<Staff[]>([]);
 
@@ -20,12 +23,23 @@ const InventoryEntryForm = () => {
   });
 
   useEffect(() => {
-    getAllProducts().then((res) => setProducts(res)); // ✅ 改用 getAllProducts
-    getAllStaffs().then((res) => {
-      console.log("員工資料:", res);
-      setStaffs(res);
-    });
-  }, []);
+    getAllProducts().then((res) => setProducts(res));
+    getAllStaffs().then((res) => setStaffs(res));
+
+    if (editingId) {
+      getInventoryById(Number(editingId)).then((data) => {
+        if (data) {
+          setFormData({
+            product_id: String(data.Product_ID ?? ""),
+            quantity: String(data.ItemQuantity ?? ""),
+            date: data.StockInTime ? data.StockInTime.split("T")[0] : "",
+            staff_id: String(data.Staff_ID ?? ""),
+            note: data.note ?? "",
+          });
+        }
+      });
+    }
+  }, [editingId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -47,8 +61,24 @@ const InventoryEntryForm = () => {
         staffId: Number(formData.staff_id),
         note: formData.note
       };
-      await addInventoryItem(payload);
-      alert("新增成功");
+
+      if (editingId) {
+        await updateInventoryItem(Number(editingId), {
+          stockIn: Number(formData.quantity),
+          stockInTime: formData.date,
+          stockOut: 0,
+          stockLoan: 0,
+          borrower: "",
+          stockQuantity: Number(formData.quantity),
+          stockThreshold: 5,
+        });
+        alert("更新成功");
+      } else {
+        await addInventoryItem(payload);
+        alert("新增成功");
+      }
+
+      navigate('/inventory/inventory-search');
     } catch (error) {
       alert("送出失敗，請稍後再試。");
       console.error(error);
@@ -154,11 +184,6 @@ const InventoryEntryForm = () => {
             <Col xs={12} className="mb-2 d-flex align-items-center justify-content-center">
               <Form.Check type="checkbox" id="custom-check" className="me-2" />
               <Form.Label htmlFor="custom-check" className="mb-0">勾選</Form.Label>
-            </Col>
-            <Col xs={6} md={2}>
-              <Button variant="info" className="w-100 text-white" onClick={() => navigate("/InventoryInsert")}> 
-                新增
-              </Button>
             </Col>
             <Col xs={6} md={2}>
               <Button variant="info" className="w-100 text-white">報表匯出</Button>

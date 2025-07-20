@@ -246,7 +246,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                     '' AS StaffName,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
-                    ps.product_sell_id AS Voucher
+                    '' AS Voucher
                 FROM product_sell ps
                 LEFT JOIN product p ON ps.product_id = p.product_id
                 LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
@@ -267,6 +267,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                 prod_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(prod_q, params)
             records.extend(cursor.fetchall())
+            
             # -------- 療程銷售紀錄 --------
             therapy_q = """
                 SELECT
@@ -282,7 +283,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                     '' AS StaffName,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
-                    ts.therapy_sell_id AS Voucher
+                    '' AS Voucher
                 FROM therapy_sell ts
                 LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
                 LEFT JOIN staff sf ON ts.staff_id = sf.staff_id

@@ -50,6 +50,7 @@ export const pageTitles: PageTitleMap = {
   '/inventory/inventory-search': { basic: '庫存查詢(銷售) 1.1.4.1', admin: '庫存查詢(銷售) 1.2.4.1' },
   '/inventory/inventory-analysis': { basic: '庫存分析 1.1.4.2', admin: '庫存分析 1.2.4.2' },
   '/inventory/inventory-update': { basic: '更新庫存資料 (進貨) 1.1.4.3', admin: '更新庫存資料 (進貨) 1.2.4.3' },
+  '/inventory/inventory-add': { basic: '新增庫存數據 1.1.4.3.1', admin: '新增庫存數據 1.2.4.3.1' },
   '/inventory/InventoryInsert': { basic: '新增庫存數據 1.1.4.3.1', admin: '新增庫存數據 1.2.4.3.1' },
   '/inventory/inventory-detail': { basic: '進出明細查詢 1.1.4.4', admin: '進出明細查詢 1.2.4.4' },
   
