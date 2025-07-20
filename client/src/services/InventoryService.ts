@@ -44,17 +44,30 @@ export const getInventoryById = async (id: number) => {
 };
 
 // 新增庫存記錄
-export const addInventoryItem = async (data: {
-    productId: number;
-    stockIn: number;
-    stockInTime: string;
-    stockQuantity: number;
-    stockThreshold: number;
-    stockOut?: number;
-    stockLoan?: number;
-    borrower?: string;
-}) => {
+export const addInventoryItem = async (data: any) => {
     return axios.post(`${API_URL}/add`, data);
+};
+
+export const getInventoryRecords = async (params?: {
+    storeId?: number;
+    start_date?: string;
+    end_date?: string;
+}) => {
+    const level = localStorage.getItem('store_level');
+    const perm = localStorage.getItem('permission');
+    const isAdmin = level === '總店' || perm === 'admin';
+
+    const query: any = {};
+    if (params?.start_date) query.start_date = params.start_date;
+    if (params?.end_date) query.end_date = params.end_date;
+    if (!isAdmin && params?.storeId !== undefined) {
+        query.store_id = params.storeId;
+    } else if (isAdmin && params?.storeId !== undefined) {
+        query.store_id = params.storeId;
+    }
+
+    const response = await axios.get(`${API_URL}/records`, { params: query });
+    return response.data;
 };
 
 // 更新庫存記錄

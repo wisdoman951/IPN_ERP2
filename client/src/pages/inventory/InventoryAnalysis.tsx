@@ -1,21 +1,12 @@
 import React from "react";
 import { Button, Container, Row, Col, Form, Table } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
-import IconButton from "../../components/IconButton";
+import Header from "../../components/Header";
 
 const InventoryAnalysis: React.FC = () => {
-    const navigate = useNavigate();
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
-            {/* Header */}
-            <header className="d-flex justify-content-between align-items-center bg-info px-4 py-3 app-header">
-                <h1 className="text-white fw-bold fs-3 m-0">庫存分析 1.1.4.2</h1>
-                <div className="d-flex gap-3">
-                    <IconButton.HomeButton onClick={() => navigate('/')} />
-                    <IconButton.CloseButton onClick={() => navigate(-1)} />
-                </div>
-            </header>
+            <Header />
 
             <Container className="my-4">
                 <Col xs={9} className="ms-auto">
