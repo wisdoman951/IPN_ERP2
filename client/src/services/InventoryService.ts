@@ -86,6 +86,11 @@ export const updateInventoryItem = async (
     return axios.put(`${API_URL}/update/${id}`, data);
 };
 
+// 更新單一庫存記錄的預警門檻
+export const updateInventoryThreshold = async (id: number, threshold: number) => {
+    return axios.put(`${API_URL}/update/${id}`, { stock_threshold: threshold });
+};
+
 // 刪除庫存記錄
 export const deleteInventoryItem = async (id: number) => {
     return axios.delete(`${API_URL}/delete/${id}`);
