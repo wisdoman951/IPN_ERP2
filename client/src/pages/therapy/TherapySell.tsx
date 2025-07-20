@@ -303,7 +303,7 @@ const TherapySell: React.FC = () => {
 
     return (
         <>
-            <Header title="銷售療程 1.1.3" /> {/* 確認頁面標題 */}
+            <Header /> {/* 確認頁面標題 */}
             <DynamicContainer content={content} />
         </>
     );

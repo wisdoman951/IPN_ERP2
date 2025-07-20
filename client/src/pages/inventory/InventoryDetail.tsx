@@ -144,7 +144,7 @@ const InventoryDetail: React.FC = () => {
 
   return (
     <>
-      <Header title="進出明細查詢 1.1.4.4" />
+      <Header />
       <DynamicContainer content={content} />
     </>
   );

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation, matchPath } from 'react-router-dom';
-import { getUserRole, getStoreName  } from '../utils/authUtils'; // Correct import
+import { getUserRole, getDisplayStoreName  } from '../utils/authUtils';
 import { pageTitles } from '../config/pageTitles';   // Correct import
 import IconButton from './IconButton';        // Assuming this is your icon button component file
 
@@ -17,7 +17,7 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
         const userRole = getUserRole();
         const currentPath = location.pathname;
         if (currentPath === '/home') {
-            const storeName = getStoreName(); // 取得店家名稱，例如 "台北總店"
+            const storeName = getDisplayStoreName(); // 取得店家名稱並格式化
             if (storeName) {
                 // 如果是總部，使用 1.2 編碼
                 if (userRole === 'admin') {

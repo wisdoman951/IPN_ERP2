@@ -189,7 +189,7 @@ const PureMedicalRecord: React.FC = () => {
 
   return (
     <>
-      <Header title="iPN淨化健康紀錄表 1.1.1.4.2" />
+      <Header />
       <DynamicContainer content={content} />
     </>
   );

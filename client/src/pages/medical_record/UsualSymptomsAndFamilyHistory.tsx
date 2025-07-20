@@ -208,7 +208,7 @@ const UsualSymptomsAndFamilyHistory = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
-            <Header title="症狀、病史與健康狀態選擇" /> {/* 更新標題 */}
+            <Header /> {/* 更新標題 */}
             <DynamicContainer content={content} className="p-4 align-items-start" />
         </div>
     );

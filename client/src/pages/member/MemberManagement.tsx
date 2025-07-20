@@ -41,7 +41,7 @@ const MemberManagement: React.FC = () => {
   return (
     <div className="d-flex flex-column min-vh-100 bg-white">
       {/* Header */}
-      <Header title="會員健康管理 1.1.1" />
+      <Header />
 
       {/* 使用 DynamicContainer 並傳入內容 */}
       <DynamicContainer content={content} />

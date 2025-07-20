@@ -208,7 +208,7 @@ const StressTest: React.FC = () => {
 
   return (
     <div className="d-flex flex-column min-vh-100 bg-white">
-      <Header title="iPN壓力源測試 1.1.1.4.1" />
+      <Header />
       <DynamicContainer
         content={content}
         className="p-0 align-items-start"

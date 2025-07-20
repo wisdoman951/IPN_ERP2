@@ -205,7 +205,7 @@ const AddMedicalRecord = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
-            <Header title={pageTitle} className="d-print-none" />
+            <Header className="d-print-none" />
             <DynamicContainer content={content} className="p-4 align-items-start" />
         </div>
     );

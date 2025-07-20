@@ -186,7 +186,6 @@ def get_low_stock_inventory(store_id=None):
 
 def get_inventory_history(store_id=None, start_date=None, end_date=None):
     """獲取庫存進出明細，可依店鋪及日期區間篩選。
-
     為了同時呈現銷售(產品與療程)造成的庫存變化，
     此函式會合併 inventory、product_sell 以及 therapy_sell 的紀錄。"""
     conn = connect_to_db()
@@ -205,6 +204,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                     i.stock_in,
                     i.stock_out,
                     i.stock_loan,
+                    i.stock_threshold AS StockThreshold,
                     i.date AS Date,
                     s.name AS StaffName,
                     st.store_name AS StoreName,
@@ -267,7 +267,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                 prod_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(prod_q, params)
             records.extend(cursor.fetchall())
-
+            
             # -------- 療程銷售紀錄 --------
             therapy_q = """
                 SELECT
@@ -304,7 +304,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                 therapy_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(therapy_q, params)
             records.extend(cursor.fetchall())
-
+            
             # 依日期與ID倒序排列
             records.sort(key=lambda x: (x.get('Date'), x.get('Inventory_ID')), reverse=True)
             return records

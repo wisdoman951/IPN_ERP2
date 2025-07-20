@@ -355,7 +355,7 @@ const AddMember: React.FC = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-light">
-            <Header title="新增會員資料 1.1.1.1.1" />
+            <Header />
             <DynamicContainer content={content} />
         </div>
     );

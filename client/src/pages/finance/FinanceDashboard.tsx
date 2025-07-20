@@ -33,7 +33,7 @@ const FinanceDashboard: React.FC = () => {
 
     return (
         <>
-            <Header title="帳務管理 1.1.5" />
+            <Header />
             <DynamicContainer content={content} />
         </>
     );

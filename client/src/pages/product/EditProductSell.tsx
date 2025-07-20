@@ -470,7 +470,7 @@ const EditProductSell: React.FC = () => {
 
   return (
     <>
-      <Header title={`編輯銷售產品 (ID: ${sellId || ''}) 1.1.2.1`} /> {/* 標題中加入ID */}
+      <Header /> {/* 標題中加入ID */}
       <DynamicContainer content={fetchLoading ? 
         (<Container className="text-center p-5"><Spinner animation="border" variant="info" /> <p>載入資料中...</p></Container>) 
         : content

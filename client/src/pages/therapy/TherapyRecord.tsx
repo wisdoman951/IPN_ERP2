@@ -317,7 +317,7 @@ const TherapyRecord: React.FC = () => {
 
     return (
         <>
-            <Header title="療程紀錄 1.1.1.3" />
+            <Header />
             <DynamicContainer content={content} />
         </>
     );

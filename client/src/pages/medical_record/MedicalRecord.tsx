@@ -144,7 +144,7 @@ const MedicalRecord: React.FC = () => {
     return (
         <div className="d-flex flex-column min-vh-100 bg-white">
             {/* 使用 Header 元件 */}
-            <Header title="健康檢查紀錄 1.1.1.2" />
+            <Header />
             
             {/* 使用 DynamicContainer */}
             <DynamicContainer content={content} className="p-4 align-items-start" />
