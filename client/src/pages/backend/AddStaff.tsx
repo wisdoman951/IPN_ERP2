@@ -238,7 +238,7 @@ const AddStaff: React.FC = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-light">
-            <Header title="分店後台管理 - 新增入職簡歷 1.1.6.1.1" />
+            <Header />
             <DynamicContainer content={content} />
         </div>
     );

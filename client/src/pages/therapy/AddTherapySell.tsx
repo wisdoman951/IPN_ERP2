@@ -226,7 +226,7 @@ const AddTherapySell: React.FC = () => {
 
   return (
     <>
-      <Header title="新增銷售紀錄 1.1.3.1.1" />
+      <Header />
       <DynamicContainer content={content} />
     </>
   );

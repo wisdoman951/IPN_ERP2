@@ -376,7 +376,7 @@ const AddPureMedicalRecord: React.FC = () => {
 
   return (
     <>
-      <Header title="新增 iPN淨化健康紀錄表 1.1.1.4.2.1" />
+      <Header />
       <DynamicContainer
         content={renderContent()}
         className="p-0" // DynamicContainer 的 padding 已由內層 Container 控制

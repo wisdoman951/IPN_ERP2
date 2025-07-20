@@ -56,7 +56,7 @@ const InventoryInsert = () => {
 
   return (
     <>
-      <Header title="新增庫存資料 1.2.4.3.1" />
+      <Header />
       <Container
         className="mt-4"
         style={{ marginLeft: "200px", paddingRight: "30px", maxWidth: "calc(100% - 220px)" }}

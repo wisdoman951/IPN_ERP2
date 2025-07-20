@@ -80,7 +80,7 @@ const Home: React.FC = () => {
   return (
     <div className="d-flex flex-column min-vh-100 bg-white">
       {/* Header */}
-      <Header title={`全崴國際管理系統-${storeName}首頁 1.1`} />
+      <Header />
       
       {/* 使用 DynamicContainer */}
       <DynamicContainer content={content} />

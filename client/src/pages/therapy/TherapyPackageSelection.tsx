@@ -233,7 +233,7 @@ const TherapyPackageSelection: React.FC = () => {
 
     return (
         <>
-            <Header title="購買療程堂數 1.1.3.1.1" />
+            <Header />
             <DynamicContainer content={content} className="p-0" />
         </>
     );

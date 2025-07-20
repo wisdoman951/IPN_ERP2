@@ -33,7 +33,7 @@ const InventoryManagement: React.FC = () => {
 
     return (
         <>
-            <Header title="庫存管理 1.1.4" />
+            <Header />
             <DynamicContainer content={content} />
         </>
     );

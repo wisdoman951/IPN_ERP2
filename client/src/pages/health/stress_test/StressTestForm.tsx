@@ -101,7 +101,7 @@ const StressTestForm: React.FC = () => {
     // 這裡就是你的表單畫面（不用分頁，全部一起）
     return (
       <div className="d-flex flex-column min-vh-100 bg-white">
-        <Header title={isEditMode ? "編輯iPN壓力源測試" : "新增iPN壓力源測試"} />
+        <Header />
         <DynamicContainer
           content={
             <div className="w-100 px-4">

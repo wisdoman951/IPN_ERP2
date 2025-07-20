@@ -9,6 +9,7 @@ type PageTitleMap = {
 export const pageTitles: PageTitleMap = {
   // General
   '/home': { basic: '全崴國際管理系統-分店首頁 1.1', admin: '全崴國際管理系統-總部首頁 1.2' },
+  '/unauthorized': { basic: '無權限', admin: '無權限' },
 
   // Member
   '/member-management': { basic: '會員健康管理 1.1.1', admin: '會員健康管理 1.2.1' },

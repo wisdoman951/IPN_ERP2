@@ -156,7 +156,7 @@ const ProductBundleManagement: React.FC = () => {
 
     return (
         <>
-            <Header title="產品療程管理1.2.6.3" />
+            <Header />
             <DynamicContainer content={content} />
             <BundleCreateModal
                 show={showModal}

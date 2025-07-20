@@ -42,7 +42,7 @@ const HeadquartersBackend: React.FC = () => {
     // 使用標準的 Header + DynamicContainer 結構來渲染頁面
     return (
         <>
-            <Header title="總部後台管理" />
+            <Header />
             <DynamicContainer content={content} />
         </>
     );

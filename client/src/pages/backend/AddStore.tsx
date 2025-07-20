@@ -49,7 +49,7 @@ const AddStore: React.FC = () => {
 
     return (
         <>
-            <Header title="建立新的分店帳號 1.2.6.4.1" />
+            <Header />
             <Container className="d-flex justify-content-center align-items-center" style={{ minHeight: 'calc(100vh - 56px)' }}>
                 <Card style={{ width: '100%', maxWidth: '600px' }}>
                     <Card.Body className="p-4">

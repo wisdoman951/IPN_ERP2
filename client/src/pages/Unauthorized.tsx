@@ -1,6 +1,8 @@
 import React from 'react';
 import { Container, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import Header from '../components/Header';
+import DynamicContainer from '../components/DynamicContainer';
 import { getStoreName, getStoreLevel } from '../services/AuthUtils';
 import { formatStoreName } from '../utils/authUtils';
 
@@ -14,8 +16,8 @@ const Unauthorized: React.FC = () => {
   const storeLevel = getStoreLevel();
   const storeName = rawName ? formatStoreName(rawName, storeLevel || undefined) : null;
 
-  return (
-    <Container 
+  const content = (
+    <Container
       fluid
       className="d-flex flex-column justify-content-center align-items-center min-vh-100 bg-white"
     >
@@ -48,6 +50,13 @@ const Unauthorized: React.FC = () => {
         </Button>
       </div>
     </Container>
+  );
+
+  return (
+    <div className="d-flex flex-column min-vh-100 bg-white">
+      <Header />
+      <DynamicContainer content={content} />
+    </div>
   );
 };
 
