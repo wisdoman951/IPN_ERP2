@@ -136,3 +136,20 @@ export const getAllTherapiesForDropdown = async () => {
     const response = await axios.get(`${API_URL}/for-dropdown`);
     return response.data;
 };
+
+export const addTherapy = async (data: { code: string; name: string; price: number }) => {
+    try {
+        const token = localStorage.getItem("token");
+        const response = await axios.post(`${API_URL}/package`, data, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "X-Store-ID": "1",
+                "X-Store-Level": "admin",
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("新增療程失敗：", error);
+        throw error;
+    }
+};

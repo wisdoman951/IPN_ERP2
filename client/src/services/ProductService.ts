@@ -47,4 +47,21 @@ export const getProductById = async (productId: number): Promise<Product> => {
     console.error("獲取產品詳情失敗：", error);
     throw error;
   }
-}; 
+};
+
+export const addProduct = async (data: { code: string; name: string; price: number }) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.post(`${API_URL}/`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Store-ID": "1",
+        "X-Store-Level": "admin",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("新增產品失敗：", error);
+    throw error;
+  }
+};
