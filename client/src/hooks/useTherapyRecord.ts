@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { downloadBlob } from '../utils/downloadBlob';
 import {
   getAllTherapyRecords,
   searchTherapyRecords,
@@ -114,21 +115,7 @@ export const useTherapyRecord = () => {
     try {
       setLoading(true);
       const blob = await exportTherapyRecords();
-      
-      // 建立下載連結
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.style.display = "none";
-      a.href = url;
-      a.download = "療程紀錄.xlsx";
-      
-      // 觸發下載
-      document.body.appendChild(a);
-      a.click();
-      
-      // 清理
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      downloadBlob(blob, "療程紀錄.xlsx");
     } catch (err) {
       console.error("匯出失敗：", err);
       setError("匯出報表失敗");

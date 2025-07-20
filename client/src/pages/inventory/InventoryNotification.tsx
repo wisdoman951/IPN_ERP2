@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Button, Col, Container, Form, Row, Table } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import { exportInventory } from "../../services/InventoryService";
+import { downloadBlob } from "../../utils/downloadBlob";
 import IconButton from "../../components/IconButton";
 
 interface StockRecord {
@@ -41,7 +42,8 @@ const StockUpdate: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      await exportInventory();
+      const blob = await exportInventory();
+      downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
       console.error("匯出庫存資料失敗", err);
       alert("匯出失敗");

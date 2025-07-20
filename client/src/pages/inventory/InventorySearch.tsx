@@ -5,6 +5,7 @@ import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import ScrollableTable from "../../components/ScrollableTable";
 import { getAllInventory, searchInventory, deleteInventoryItem, exportInventory } from "../../services/InventoryService";
+import { downloadBlob } from "../../utils/downloadBlob";
 
 // 庫存項目接口
 interface InventoryItem {
@@ -176,7 +177,8 @@ const InventorySearch: React.FC = () => {
     const handleExport = async () => {
         setLoading(true);
         try {
-            await exportInventory(isAdmin ? undefined : userStoreId);
+            const blob = await exportInventory(isAdmin ? undefined : userStoreId);
+            downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
             setSuccessMessage("庫存數據匯出成功");
         } catch (err) {
             console.error("匯出庫存數據失敗:", err);

@@ -1,5 +1,6 @@
 // client/src/hooks/useEmployeeRecord.ts
 import { useState, useEffect } from "react";
+import { downloadBlob } from '../utils/downloadBlob';
 import {
   getAllEmployeeRecords,
   searchEmployeeRecords,
@@ -96,13 +97,7 @@ export const useEmployeeRecord = () => {
       setLoading(true);
       setError(null);
       const blob = await exportEmployeeRecords();
-      const url = window.URL.createObjectURL(new Blob([blob]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "員工紀錄.xlsx");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      downloadBlob(blob, "員工紀錄.xlsx");
     } catch (err) {
       console.error("匯出失敗：", err);
       setError("匯出報表失敗");

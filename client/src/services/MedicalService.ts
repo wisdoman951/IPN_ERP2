@@ -26,21 +26,12 @@ export const deleteMedicalRecord = async (recordId: number) => {
 };
 
 // 匯出 Excel
-export const exportMedicalRecords = async () => {
+export const exportMedicalRecords = async (): Promise<Blob> => {
     const res = await axios.get(`${API_URL}/export`, {
         responseType: "blob",
     });
 
-    const blob = new Blob([res.data], {
-        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    });
-
-    const link = document.createElement("a");
-    link.href = window.URL.createObjectURL(blob);
-    link.setAttribute("download", "健康檢查紀錄.xlsx");
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
+    return res.data as Blob;
 };
 
 // 檢查會員是否存在

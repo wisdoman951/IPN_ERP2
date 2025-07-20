@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { downloadBlob } from '../utils/downloadBlob';
 import { 
     Member, 
     getAllMembers, 
@@ -75,13 +76,7 @@ export const useMemberManagement = () => {
     const handleExport = async () => {
         try {
             const blob = await exportMembers();
-            const url = window.URL.createObjectURL(new Blob([blob]));
-            const link = document.createElement("a");
-            link.href = url;
-            link.setAttribute("download", "會員資料.xlsx");
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
+            downloadBlob(blob, "會員資料.xlsx");
         } catch (err) {
             console.error("匯出失敗：", err);
             alert("匯出報表失敗！");

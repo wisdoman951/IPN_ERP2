@@ -56,12 +56,5 @@ export const calculateTotalPrice = (price: number, quantity: number, discount: n
  * @param blob Blob 資料
  * @param filename 檔案名稱
  */
-export const downloadBlob = (blob: Blob, filename: string): void => {
-  const url = window.URL.createObjectURL(new Blob([blob]));
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", filename);
-  document.body.appendChild(link);
-  link.click();
-  link.remove();
-}; 
+import { downloadBlob } from './downloadBlob';
+export { downloadBlob };

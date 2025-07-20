@@ -3,6 +3,7 @@ import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import { getInventoryRecords, exportInventory } from "../../services/InventoryService";
+import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate } from "react-router-dom";
 
 const formatDate = (d: string) => {
@@ -33,7 +34,8 @@ const InventoryDetail: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      await exportInventory();
+      const blob = await exportInventory();
+      downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
       console.error("匯出庫存資料失敗", err);
       alert("匯出失敗");

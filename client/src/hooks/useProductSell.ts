@@ -7,7 +7,7 @@ import {
   exportProductSells, 
   ProductSell 
 } from '../services/ProductSellService';
-import { downloadBlob } from '../utils/productSellUtils';
+import { downloadBlob } from '../utils/downloadBlob';
 
 interface UseProductSellReturn {
   sales: ProductSell[];
