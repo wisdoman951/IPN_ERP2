@@ -52,3 +52,28 @@ export const logout = (): void => {
 export const getStoreName = (): string | null => {
     return localStorage.getItem('store_name');
 };
+
+/**
+ * 依據商店等級格式化商店名稱
+ * 若為總店則移除名稱中的「台北」字樣
+ * @param name 原始商店名稱
+ * @param level 商店等級
+ * @returns 格式化後的商店名稱
+ */
+export const formatStoreName = (name: string, level?: string | null): string => {
+    if (level === '總店') {
+        return name.replace(/台北/g, '') || '總店';
+    }
+    return name;
+};
+
+/**
+ * 從 localStorage 取得並格式化商店名稱
+ * @returns 格式化後的商店名稱或 null
+ */
+export const getDisplayStoreName = (): string | null => {
+    const name = localStorage.getItem('store_name');
+    if (!name) return null;
+    const level = localStorage.getItem('store_level');
+    return formatStoreName(name, level);
+};

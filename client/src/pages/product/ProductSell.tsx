@@ -183,7 +183,7 @@ const ProductSell: React.FC = () => {
     return (
         <>
             {/* 修改頁面標題 */}
-            <Header title="銷售產品 1.1.2" />
+            <Header />
             <DynamicContainer content={content} />
         </>
     );

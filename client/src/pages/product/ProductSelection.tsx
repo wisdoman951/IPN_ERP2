@@ -257,7 +257,7 @@ const ProductSelection: React.FC = () => {
 
   return (
     <>
-      <Header title="購買品項 1.1.2.1.1" />
+      <Header />
       <DynamicContainer content={content} />
     </>
   );

@@ -182,7 +182,7 @@ const AddSalesOrder: React.FC = () => {
 
     return (
         <div className="d-flex flex-column min-vh-100 bg-light">
-            <Header title="新增銷售單 1.1.5.1.1" />
+            <Header />
             <DynamicContainer content={content} />
         </div>
     );

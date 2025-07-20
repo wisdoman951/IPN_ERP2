@@ -172,7 +172,7 @@ const EditMember: React.FC = () => {
     return (
         <div className="d-flex flex-column min-vh-100 bg-light">
             {/* ***** 關鍵修改：使用 form.name ***** */}
-            <Header title={`編輯會員資料 (${form.name || '載入中...'})`} />
+            <Header />
             {/* ***** 結束修改 ***** */}
             <DynamicContainer content={content} />
         </div>

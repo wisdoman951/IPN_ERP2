@@ -51,7 +51,7 @@ const InventoryEntryForm = () => {
 
   return (
     <>
-      <Header title="更新庫存資料 (進貨) 1.1.4.3" />
+      <Header />
       <Container
         className="mt-4"
         style={{ marginLeft: "200px", paddingRight: "30px", maxWidth: "calc(100% - 220px)" }}
