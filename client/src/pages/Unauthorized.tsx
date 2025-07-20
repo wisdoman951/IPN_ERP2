@@ -2,6 +2,7 @@ import React from 'react';
 import { Container, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { getStoreName, getStoreLevel } from '../services/AuthUtils';
+import { formatStoreName } from '../utils/authUtils';
 
 /**
  * 無權限頁面
@@ -9,8 +10,9 @@ import { getStoreName, getStoreLevel } from '../services/AuthUtils';
  */
 const Unauthorized: React.FC = () => {
   const navigate = useNavigate();
-  const storeName = getStoreName();
+  const rawName = getStoreName();
   const storeLevel = getStoreLevel();
+  const storeName = rawName ? formatStoreName(rawName, storeLevel || undefined) : null;
 
   return (
     <Container 
