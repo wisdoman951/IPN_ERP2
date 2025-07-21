@@ -269,7 +269,7 @@ const TherapyPackageSelection: React.FC = () => {
                                 <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
                                     取消
                                 </Button>
-                                <Button variant="primary" type="button" onClick={handleConfirmSelection} disabled={selectedPackagesMap.size === 0}>
+                                <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedPackagesMap.size === 0}>
                                     確認選取 ({selectedPackagesMap.size} 項)
                                 </Button>
                             </div>
