@@ -48,7 +48,6 @@ const AddTherapySell: React.FC = () => {
   };
   const paymentMethodOptions = Object.keys(paymentMethodDisplayMap);
   const saleCategoryOptions = ["銷售", "贈品", "折扣", "預購", "暫借"];
-
   const [memberName, setMemberName] = useState<string>("");
   const [staffList, setStaffList] = useState<DropdownItem[]>([]);
   const [therapyList, setTherapyList] = useState<DropdownItem[]>([]);
@@ -223,6 +222,50 @@ const AddTherapySell: React.FC = () => {
                         <option key={opt} value={opt}>{opt}</option>
                       ))}
                     </Form.Select>
+                  </Form.Group>
+                </Row>
+
+                {formData.paymentMethod === '信用卡' && (
+                  <Form.Group className="mb-3" controlId="cardNumber">
+                    <Form.Label>卡號後五碼</Form.Label>
+                    <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\d*" value={formData.cardNumber}
+                      onChange={handleChange} placeholder="請輸入信用卡號後五碼" />
+                  </Form.Group>
+                )}
+                {formData.paymentMethod === '轉帳' && (
+                  <Form.Group className="mb-3" controlId="transferCode">
+                    <Form.Label>轉帳帳號末五碼</Form.Label>
+                    <Form.Control type="text" name="transferCode" maxLength={5} pattern="\d*" value={formData.transferCode}
+                      onChange={handleChange} placeholder="請輸入轉帳帳號末五碼" />
+                  </Form.Group>
+                )}
+
+                <Row className="mb-3">
+                  <Form.Group as={Col} controlId="saleCategory">
+                    <Form.Label>銷售類別</Form.Label>
+                    <Form.Select name="saleCategory" value={formData.saleCategory} onChange={handleChange} required>
+                      {saleCategoryOptions.map(opt => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
+                    </Form.Select>
+                  </Form.Group>
+                  <Form.Group as={Col} controlId="discountAmount">
+                    <Form.Label>折價</Form.Label>
+                    <InputGroup>
+                      <InputGroup.Text>NT$</InputGroup.Text>
+                      <Form.Control type="number" name="discountAmount" min="0" step="any" value={formData.discountAmount} onChange={handleChange} placeholder="輸入折價金額" />
+                    </InputGroup>
+                  </Form.Group>
+                </Row>
+
+                <Row className="mb-3">
+                  <Form.Group as={Col}>
+                    <Form.Label>總價</Form.Label>
+                    <Form.Control type="text" value={`NT$ ${totalPrice.toLocaleString()}`} readOnly disabled className="bg-light text-end" />
+                  </Form.Group>
+                  <Form.Group as={Col}>
+                    <Form.Label>應收</Form.Label>
+                    <Form.Control type="text" value={`NT$ ${finalPayableAmount.toLocaleString()}`} readOnly disabled className="bg-light text-end" />
                   </Form.Group>
                 </Row>
 
