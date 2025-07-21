@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Button, Container, Row, Col, Form, InputGroup, Alert } from "react-bootstrap";
+import { Button, Container, Row, Col, Form, InputGroup, Alert, Card } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
@@ -223,7 +223,16 @@ const AddProductSell: React.FC = () => {
   
   const content = (
     <Container className="my-4">
-      {error && <Alert variant="danger" dismissible onClose={() => setError(null)}>{error}</Alert>}
+      {error && (
+        <Alert variant="danger" dismissible onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+      <Row className="justify-content-center">
+        <Col md={10}>
+          <Card className="shadow-sm">
+            <Card.Header className="bg-info text-white">新增產品銷售</Card.Header>
+            <Card.Body>
       <Form onSubmit={handleSubmit} noValidate>
         <Row className="g-3">
           {/* --- Left Column --- */}
@@ -340,7 +349,7 @@ const AddProductSell: React.FC = () => {
             <Button variant="info" className="text-white" type="submit" disabled={loading}>
               {loading ? "處理中..." : "確認"}
             </Button>
-            <Button variant="info" className="text-white" onClick={() => {handleCancel}} disabled={loading}>
+            <Button variant="info" className="text-white" onClick={handleCancel} disabled={loading}>
               取消
             </Button>
             <Button variant="info" className="text-white" onClick={handlePrint} disabled={loading}>
@@ -349,6 +358,10 @@ const AddProductSell: React.FC = () => {
           </Col>
         </Row>
       </Form>
+            </Card.Body>
+          </Card>
+        </Col>
+      </Row>
     </Container>
   );
 
