@@ -192,15 +192,6 @@ const Login: React.FC = () => {
               "總部登入"
             )}
           </Button>
-          <Button 
-            variant="info" 
-            size="sm" 
-            className="text-white"
-            onClick={handleForgotPassword}
-            disabled={isLoading}
-          >
-            忘記密碼（總部使用）
-          </Button>
           <Button
             variant="info"
             size="lg"
@@ -209,6 +200,15 @@ const Login: React.FC = () => {
             disabled={isLoading}
           >
             療癒師登入
+          </Button>
+          <Button
+            variant="info"
+            size="sm"
+            className="text-white"
+            onClick={handleForgotPassword}
+            disabled={isLoading}
+          >
+            忘記密碼（總部使用）
           </Button>
         </div>
       </Form>

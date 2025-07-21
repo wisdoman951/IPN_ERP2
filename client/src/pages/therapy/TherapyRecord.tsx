@@ -293,21 +293,21 @@ const TherapyRecord: React.FC = () => {
                     </Col>
                     */}
                     <Col xs="auto">
-                        <Button 
-                            variant="info" 
-                            className="text-white px-4"
-                            onClick={() => navigate(-1)}
-                        >
-                            確認
-                        </Button>
-                    </Col>
-                    <Col xs="auto">
-                        <Button 
-                            variant="info" 
+                        <Button
+                            variant="info"
                             className="text-white px-4"
                             onClick={() => {}}
                         >
                             修改
+                        </Button>
+                    </Col>
+                    <Col xs="auto">
+                        <Button
+                            variant="info"
+                            className="text-white px-4"
+                            onClick={() => navigate(-1)}
+                        >
+                            確認
                         </Button>
                     </Col>
                 </Row>
