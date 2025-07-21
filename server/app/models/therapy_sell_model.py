@@ -452,3 +452,47 @@ def get_remaining_sessions(member_id, therapy_id):
     finally:
         if conn:
             conn.close()
+
+# ---- New helper to fetch remaining sessions for multiple therapy packages ----
+def get_remaining_sessions_bulk(member_id, therapy_ids):
+    """Return a mapping of therapy_id -> remaining sessions for the given member."""
+    if not therapy_ids:
+        return {}
+
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            placeholders = ','.join(['%s'] * len(therapy_ids))
+            # Total purchased per therapy
+            cursor.execute(
+                f"""
+                SELECT therapy_id, COALESCE(SUM(amount),0) AS total_purchased
+                FROM therapy_sell
+                WHERE member_id = %s AND therapy_id IN ({placeholders})
+                GROUP BY therapy_id
+                """,
+                [member_id, *therapy_ids]
+            )
+            purchased_rows = cursor.fetchall()
+            purchased = {row['therapy_id']: int(float(row['total_purchased'])) for row in purchased_rows}
+
+            # Total used per therapy
+            cursor.execute(
+                f"""
+                SELECT therapy_id, COUNT(*) AS total_used
+                FROM therapy_record
+                WHERE member_id = %s AND therapy_id IN ({placeholders})
+                GROUP BY therapy_id
+                """,
+                [member_id, *therapy_ids]
+            )
+            used_rows = cursor.fetchall()
+            used = {row['therapy_id']: int(row['total_used']) for row in used_rows}
+
+            result = {}
+            for tid in therapy_ids:
+                result[tid] = purchased.get(tid, 0) - used.get(tid, 0)
+            return result
+    finally:
+        if conn:
+            conn.close()
