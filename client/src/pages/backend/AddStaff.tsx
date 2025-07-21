@@ -229,7 +229,7 @@ const AddStaff: React.FC = () => {
                                     上一頁
                                 </Button>
                                 {currentStep < 3 && <Button variant="info" className="text-white" onClick={nextStep}>下一頁</Button>}
-                                {currentStep === 3 && <Button variant="success" onClick={handleSave}>儲存</Button>}
+                                {currentStep === 3 && <Button variant="info" className="text-white" onClick={handleSave}>儲存</Button>}
                             </Card.Footer>
                         </Form>
                     </Card>

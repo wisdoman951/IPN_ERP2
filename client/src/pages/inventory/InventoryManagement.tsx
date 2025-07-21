@@ -19,9 +19,6 @@ const InventoryManagement: React.FC = () => {
                         <Button onClick={() => navigate("/inventory/inventory-analysis")} variant="info" size="lg" className="text-white px-4 py-2">庫存分析</Button>
                     </Col>
                     <Col xs={12} sm={6} md={4} className="d-grid">
-                        <Button onClick={() => navigate("/inventory/inventory-insert")} variant="info" size="lg" className="text-white px-4 py-2">新增庫存數據</Button>
-                    </Col>
-                    <Col xs={12} sm={6} md={4} className="d-grid">
                         <Button onClick={() => navigate("/inventory/inventory-update")} variant="info" size="lg" className="text-white px-4 py-2">更新庫存數據</Button>
                     </Col>
                     <Col xs={12} sm={6} md={4} className="d-grid">
