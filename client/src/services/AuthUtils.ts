@@ -56,9 +56,19 @@ export const hasPermission = (requiredLevel: 'admin' | 'basic'): boolean => {
  * 獲取授權標頭
  * @returns 授權標頭物件
  */
-export const getAuthHeaders = (): { Authorization: string } | {} => {
+export const getAuthHeaders = (): Record<string, string> => {
+  const headers: Record<string, string> = {};
   const token = localStorage.getItem('token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const storeId = localStorage.getItem('store_id');
+  const storeLevel = localStorage.getItem('store_level');
+  const permission = localStorage.getItem('permission');
+
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  if (storeId) headers['X-Store-ID'] = storeId;
+  if (storeLevel) headers['X-Store-Level'] = storeLevel;
+  if (permission) headers['X-Permission'] = permission;
+
+  return headers;
 };
 
 /**
