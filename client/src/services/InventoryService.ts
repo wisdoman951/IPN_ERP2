@@ -71,17 +71,20 @@ export const getInventoryRecords = async (params?: {
 };
 
 // 更新庫存記錄
+export interface UpdateInventoryPayload {
+    quantity?: number;
+    stock_in?: number;
+    stock_out?: number;
+    stock_loan?: number;
+    stock_threshold?: number;
+    store_id?: number;
+    staff_id?: number;
+    date?: string;
+}
+
 export const updateInventoryItem = async (
     id: number,
-    data: {
-        stockIn: number;
-        stockInTime: string;
-        stockOut: number;
-        stockLoan: number;
-        borrower: string;
-        stockQuantity: number;
-        stockThreshold: number;
-    }
+    data: UpdateInventoryPayload
 ) => {
     return axios.put(`${API_URL}/update/${id}`, data);
 };
