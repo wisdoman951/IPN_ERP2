@@ -34,7 +34,6 @@ const AddTherapySell: React.FC = () => {
     discountAmount: 0,
     note: "",
   });
-
   const paymentMethodDisplayMap: { [key: string]: string } = {
     "現金": "Cash",
     "信用卡": "CreditCard",
@@ -45,12 +44,10 @@ const AddTherapySell: React.FC = () => {
   };
   const paymentMethodOptions = Object.keys(paymentMethodDisplayMap);
   const saleCategoryOptions = ["銷售", "贈品", "折扣", "預購", "暫借"];
-
   const [memberName, setMemberName] = useState<string>("");
   const [staffList, setStaffList] = useState<DropdownItem[]>([]);
   const [therapyPackages, setTherapyPackages] = useState<SelectedTherapyPackageUIData[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const [packagesOriginalTotal, setPackagesOriginalTotal] = useState<number>(0);
   const [finalPayableAmount, setFinalPayableAmount] = useState<number>(0);
 
@@ -75,8 +72,16 @@ const AddTherapySell: React.FC = () => {
       if (formStateData) {
         try {
           const formState = JSON.parse(formStateData);
-          setFormData(prev => ({ ...prev, ...formState }));
+          if (formState.memberId) setFormData(prev => ({ ...prev, memberId: formState.memberId }));
           if (formState.memberName) setMemberName(formState.memberName);
+          if (formState.staffId) setFormData(prev => ({ ...prev, staffId: formState.staffId }));
+          if (formState.date) setFormData(prev => ({ ...prev, date: formState.date }));
+          if (formState.paymentMethod) setFormData(prev => ({ ...prev, paymentMethod: formState.paymentMethod }));
+          if (formState.saleCategory) setFormData(prev => ({ ...prev, saleCategory: formState.saleCategory }));
+          if (formState.transferCode) setFormData(prev => ({ ...prev, transferCode: formState.transferCode }));
+          if (formState.cardNumber) setFormData(prev => ({ ...prev, cardNumber: formState.cardNumber }));
+          if (typeof formState.discountAmount === 'number') setFormData(prev => ({ ...prev, discountAmount: formState.discountAmount }));
+          if (formState.note) setFormData(prev => ({ ...prev, note: formState.note }));
           if (Array.isArray(formState.selectedTherapyPackages)) {
             setTherapyPackages(formState.selectedTherapyPackages);
           }
@@ -132,6 +137,30 @@ const AddTherapySell: React.FC = () => {
     navigate(-1);
   };
 
+  const openPackageSelection = () => {
+    const formState = {
+      memberId: formData.memberId,
+      memberName,
+      staffId: formData.staffId,
+      date: formData.date,
+      paymentMethod: formData.paymentMethod,
+      saleCategory: formData.saleCategory,
+      transferCode: formData.transferCode,
+      cardNumber: formData.cardNumber,
+      discountAmount: formData.discountAmount,
+      note: formData.note,
+      selectedTherapyPackages: therapyPackages,
+    };
+    localStorage.setItem('addTherapySellFormState', JSON.stringify(formState));
+    navigate('/therapy-package-selection', { state: { fromSellPage: true } });
+  };
+
+  const handleCancel = () => {
+    localStorage.removeItem('addTherapySellFormState');
+    localStorage.removeItem('selectedTherapyPackages');
+    navigate(-1);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -142,15 +171,17 @@ const AddTherapySell: React.FC = () => {
         setLoading(false);
         return;
       }
-
       const storeId = localStorage.getItem('store_id');
       const paymentMethod = paymentMethodDisplayMap[formData.paymentMethod] || formData.paymentMethod;
+
       const saleCategoryMap: { [key: string]: string } = {
         '銷售': 'Sell',
         '贈品': 'Gift',
+        '贈送': 'Gift',
         '折扣': 'Discount',
         '預購': 'Ticket',
         '暫借': 'Ticket',
+        '票卷': 'Ticket',
       };
 
       const payloads = therapyPackages.map(pkg => {
@@ -160,7 +191,6 @@ const AddTherapySell: React.FC = () => {
           const proportion = itemTotal / packagesOriginalTotal;
           itemDiscount = parseFloat((formData.discountAmount * proportion).toFixed(2));
         }
-
         return {
           memberId: Number(formData.memberId),
           therapy_id: pkg.therapy_id,
@@ -170,8 +200,8 @@ const AddTherapySell: React.FC = () => {
           storeId: storeId ? Number(storeId) : undefined,
           paymentMethod,
           saleCategory: saleCategoryMap[formData.saleCategory] || formData.saleCategory,
-          transferCode: paymentMethod === 'Transfer' ? formData.transferCode : undefined,
-          cardNumber: paymentMethod === 'CreditCard' ? formData.cardNumber : undefined,
+          transferCode: formData.paymentMethod === '轉帳' ? formData.transferCode : undefined,
+          cardNumber: formData.paymentMethod === '信用卡' ? formData.cardNumber : undefined,
           discount: itemDiscount,
           note: formData.note,
         };
@@ -199,6 +229,7 @@ const AddTherapySell: React.FC = () => {
             <Card.Body>
               {error && <Alert variant="danger">{error}</Alert>}
               <Form onSubmit={handleSubmit}>
+
                 <Row className="mb-3">
                   <Col>
                     <MemberColumn
@@ -209,7 +240,7 @@ const AddTherapySell: React.FC = () => {
                         setFormData(prev => ({ ...prev, memberId: id }));
                         setMemberName(name);
                       }}
-                      onError={setError}
+                      onError={(msg) => setError(msg)}
                     />
                   </Col>
                 </Row>
@@ -226,7 +257,8 @@ const AddTherapySell: React.FC = () => {
                           <span className="text-muted">點擊「選取」按鈕選擇療程</span>
                         )}
                       </div>
-                      <Button variant="info" className="text-white" onClick={openPackageSelection}>選取</Button>
+                      <Button variant="info" type="button" className="text-white align-self-start px-3" onClick={openPackageSelection}>選取</Button>
+
                     </div>
                     <Form.Text muted>可複選，跳出新視窗選取。</Form.Text>
                   </Form.Group>
@@ -236,8 +268,10 @@ const AddTherapySell: React.FC = () => {
                     <Form.Label>服務人員</Form.Label>
                     <Form.Select name="staffId" value={formData.staffId} onChange={handleChange} required>
                       <option value="">請選擇服務人員</option>
-                      {staffList.map(staff => (
-                        <option key={staff.id} value={staff.id}>{staff.name}</option>
+                      {staffList.map((staff) => (
+                        <option key={staff.id} value={staff.id}>
+                          {staff.name}
+                        </option>
                       ))}
                     </Form.Select>
                   </Form.Group>
@@ -250,16 +284,18 @@ const AddTherapySell: React.FC = () => {
                     </Form.Select>
                   </Form.Group>
                 </Row>
-                {formData.paymentMethod === '轉帳' && (
-                  <Form.Group className="mb-3" controlId="transferCode">
-                    <Form.Label>轉帳末五碼</Form.Label>
-                    <Form.Control type="text" name="transferCode" value={formData.transferCode} onChange={handleChange} />
-                  </Form.Group>
-                )}
                 {formData.paymentMethod === '信用卡' && (
                   <Form.Group className="mb-3" controlId="cardNumber">
-                    <Form.Label>卡號末四碼</Form.Label>
-                    <Form.Control type="text" name="cardNumber" value={formData.cardNumber} onChange={handleChange} />
+                    <Form.Label>卡號後五碼</Form.Label>
+                    <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\d*" value={formData.cardNumber}
+                      onChange={handleChange} placeholder="請輸入信用卡號後五碼" />
+                  </Form.Group>
+                )}
+                {formData.paymentMethod === '轉帳' && (
+                  <Form.Group className="mb-3" controlId="transferCode">
+                    <Form.Label>轉帳帳號末五碼</Form.Label>
+                    <Form.Control type="text" name="transferCode" maxLength={5} pattern="\d*" value={formData.transferCode}
+                      onChange={handleChange} placeholder="請輸入轉帳帳號末五碼" />
                   </Form.Group>
                 )}
                 <Row className="mb-3">
@@ -275,18 +311,19 @@ const AddTherapySell: React.FC = () => {
                     <Form.Label>折價</Form.Label>
                     <InputGroup>
                       <InputGroup.Text>NT$</InputGroup.Text>
-                      <Form.Control type="number" name="discountAmount" min="0" step="any" value={formData.discountAmount} onChange={handleChange} />
+                      <Form.Control type="number" name="discountAmount" min="0" step="any" value={formData.discountAmount} onChange={handleChange} placeholder="輸入折價金額" />
                     </InputGroup>
                   </Form.Group>
                 </Row>
+
                 <Row className="mb-3">
                   <Form.Group as={Col}>
                     <Form.Label>總價</Form.Label>
-                    <Form.Control type="text" value={`NT$ ${packagesOriginalTotal.toLocaleString()}`} readOnly className="bg-light text-end" />
+                    <Form.Control type="text" value={`NT$ ${packagesOriginalTotal.toLocaleString()}`} readOnly disabled className="bg-light text-end" />
                   </Form.Group>
                   <Form.Group as={Col}>
                     <Form.Label>應收</Form.Label>
-                    <Form.Control type="text" value={`NT$ ${finalPayableAmount.toLocaleString()}`} readOnly className="bg-light text-end" />
+                    <Form.Control type="text" value={`NT$ ${finalPayableAmount.toLocaleString()}`} readOnly disabled className="bg-light text-end" />
                   </Form.Group>
                 </Row>
                 <Form.Group className="mb-3" controlId="date">
@@ -301,8 +338,12 @@ const AddTherapySell: React.FC = () => {
                   <Button variant="info" type="submit" className="text-white" disabled={loading}>
                     {loading ? "儲存中..." : "確認"}
                   </Button>
-                  <Button variant="info" className="text-white" onClick={handleCancel}>取消</Button>
-                  <Button variant="info" className="text-white" onClick={() => window.print()}>列印</Button>
+                  <Button variant="info" type="button" className="text-white" onClick={handleCancel}>
+                    取消
+                  </Button>
+                  <Button variant="info" type="button" className="text-white" onClick={() => window.print()}>
+                    列印
+                  </Button>
                 </div>
               </Form>
             </Card.Body>

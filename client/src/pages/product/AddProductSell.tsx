@@ -256,7 +256,7 @@ const AddProductSell: React.FC = () => {
                   {selectedProducts.length > 0 ? ( selectedProducts.map((p, i) => ( <div key={i}>{p.name} (單價: NT${p.price.toLocaleString()}) x {p.quantity}</div>))
                   ) : ( <span className="text-muted">點擊「選取」按鈕選擇產品</span> )}
                 </div>
-                <Button variant="info" className="text-white align-self-start px-3" onClick={openProductSelection}>選取</Button>
+                <Button variant="info" type="button" className="text-white align-self-start px-3" onClick={openProductSelection}>選取</Button>
               </div>
               <Form.Text muted>可複選，跳出新視窗選取。</Form.Text>
               {formSubmitted && selectedProducts.length === 0 && <div className="text-danger d-block small mt-1">請選擇購買品項</div>}
@@ -349,10 +349,10 @@ const AddProductSell: React.FC = () => {
             <Button variant="info" className="text-white" type="submit" disabled={loading}>
               {loading ? "處理中..." : "確認"}
             </Button>
-            <Button variant="info" className="text-white" onClick={handleCancel} disabled={loading}>
+            <Button variant="info" type="button" className="text-white" onClick={handleCancel} disabled={loading}>
               取消
             </Button>
-            <Button variant="info" className="text-white" onClick={handlePrint} disabled={loading}>
+            <Button variant="info" type="button" className="text-white" onClick={handlePrint} disabled={loading}>
               列印
             </Button>
           </Col>
