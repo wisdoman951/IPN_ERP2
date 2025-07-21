@@ -65,7 +65,18 @@ export const getAuthHeaders = (): Record<string, string> => {
 
   if (token) headers['Authorization'] = `Bearer ${token}`;
   if (storeId) headers['X-Store-ID'] = storeId;
-  if (storeLevel) headers['X-Store-Level'] = storeLevel;
+
+  if (storeLevel) {
+    // Avoid non-ASCII characters in request headers
+    const asciiLevel =
+      storeLevel === '總店'
+        ? 'admin'
+        : storeLevel === '分店'
+          ? 'branch'
+          : storeLevel;
+    headers['X-Store-Level'] = asciiLevel;
+  }
+
   if (permission) headers['X-Permission'] = permission;
 
   return headers;
