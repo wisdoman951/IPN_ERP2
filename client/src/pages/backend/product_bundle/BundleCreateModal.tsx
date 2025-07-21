@@ -148,7 +148,7 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     return (
         <Modal show={show} onHide={onHide} size="lg" onExited={resetStates}>
             <Modal.Header closeButton>
-                <Modal.Title>產品療程管理</Modal.Title>
+                <Modal.Title>產品療程管理 1.2.6.3</Modal.Title>
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>
@@ -233,8 +233,8 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                     </Form.Group>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={onHide}>取消</Button>
-                    <Button variant="primary" type="submit" disabled={loading}>
+                    <Button variant="info" className="text-white" onClick={onHide}>取消</Button>
+                    <Button variant="info" className="text-white" type="submit" disabled={loading}>
                         {loading ? '處理中...' : '確認儲存'}
                     </Button>
                 </Modal.Footer>
