@@ -8,7 +8,6 @@ import {
   Col,
   Alert,
   Card,
-  Spinner,
   InputGroup,
 } from "react-bootstrap";
 import MemberColumn from "../../components/MemberColumn";
@@ -16,7 +15,6 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../../services/TherapySellService";
-
 
 interface DropdownItem {
   id: number;
@@ -47,26 +45,21 @@ const AddTherapySell: React.FC = () => {
   };
   const paymentMethodOptions = Object.keys(paymentMethodDisplayMap);
   const saleCategoryOptions = ["銷售", "贈品", "折扣", "預購", "暫借"];
+
   const [memberName, setMemberName] = useState<string>("");
   const [staffList, setStaffList] = useState<DropdownItem[]>([]);
   const [therapyPackages, setTherapyPackages] = useState<SelectedTherapyPackageUIData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
   const [packagesOriginalTotal, setPackagesOriginalTotal] = useState<number>(0);
   const [finalPayableAmount, setFinalPayableAmount] = useState<number>(0);
-  
+
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
         const staffRes = await getStaffMembers();
-        if (staffRes.success && staffRes.data) {
-          setStaffList(staffRes.data.map(s => ({ id: s.staff_id, name: s.name })));
-        }
-        const [staffRes, therapyRes] = await Promise.all([
-          getStaffMembers(),
-          getAllTherapyPackages(),
-        ]);
         if (staffRes.success && staffRes.data) {
           setStaffList(staffRes.data.map(s => ({ id: s.staff_id, name: s.name })));
         }
@@ -77,6 +70,7 @@ const AddTherapySell: React.FC = () => {
         setLoading(false);
       }
     };
+
 
     const restoreState = () => {
       const formStateData = localStorage.getItem('addTherapySellFormState');
@@ -104,6 +98,7 @@ const AddTherapySell: React.FC = () => {
       const newSelected = localStorage.getItem('newlySelectedTherapyPackagesWithSessions');
       if (newSelected) {
         try {
+          
           const pkgs = JSON.parse(newSelected);
           if (Array.isArray(pkgs)) {
             setTherapyPackages(pkgs);
@@ -111,6 +106,7 @@ const AddTherapySell: React.FC = () => {
         } catch (e) {
           console.error('解析 newlySelectedTherapyPackagesWithSessions 失敗', e);
         }
+      } 
         localStorage.removeItem('newlySelectedTherapyPackagesWithSessions');
       }
     };
@@ -175,6 +171,7 @@ const AddTherapySell: React.FC = () => {
         return;
       }
       const storeId = localStorage.getItem('store_id');
+
       const paymentMethod = paymentMethodDisplayMap[formData.paymentMethod] || formData.paymentMethod;
 
       const saleCategoryMap: { [key: string]: string } = {
@@ -185,6 +182,7 @@ const AddTherapySell: React.FC = () => {
         '預購': 'Ticket',
         '暫借': 'Ticket',
         '票卷': 'Ticket',
+      };
 
       const payloads = therapyPackages.map(pkg => {
         const itemTotal = (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0);
@@ -221,7 +219,6 @@ const AddTherapySell: React.FC = () => {
       setLoading(false);
     }
   };
-
   const content = (
     <Container className="my-4">
       <Row>
