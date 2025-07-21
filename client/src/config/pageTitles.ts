@@ -52,6 +52,7 @@ export const pageTitles: PageTitleMap = {
   '/inventory/inventory-update': { basic: '更新庫存資料 (進貨) 1.1.4.3', admin: '更新庫存資料 (進貨) 1.2.4.3' },
   '/inventory/inventory-add': { basic: '新增庫存數據 1.1.4.3.1', admin: '新增庫存數據 1.2.4.3.1' },
   '/inventory/InventoryInsert': { basic: '新增庫存數據 1.1.4.3.1', admin: '新增庫存數據 1.2.4.3.1' },
+  '/inventory/inventory-insert': { basic: '新增庫存數據 1.1.4.3.1', admin: '新增庫存數據 1.2.4.3.1' },
   '/inventory/inventory-detail': { basic: '進出明細查詢 1.1.4.4', admin: '進出明細查詢 1.2.4.4' },
   
   // Finance
