@@ -125,12 +125,6 @@ const AddTherapySell: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const openPackageSelection = () => {
-    const formState = { ...formData, memberName, selectedTherapyPackages: therapyPackages };
-    localStorage.setItem('addTherapySellFormState', JSON.stringify(formState));
-    navigate('/therapy-package-selection', { state: { fromSellPage: true } });
-  };
-
   const handleCancel = () => {
     localStorage.removeItem('addTherapySellFormState');
     localStorage.removeItem('selectedTherapyPackages');
