@@ -170,7 +170,7 @@ const InventorySearch: React.FC = () => {
             return;
         }
         
-        navigate(`/inventory/update/${selectedItems[0]}`);
+        navigate(`/inventory/inventory-update?id=${selectedItems[0]}`);
     };
     
     // 處理匯出功能
