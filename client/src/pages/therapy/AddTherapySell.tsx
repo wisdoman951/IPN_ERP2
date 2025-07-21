@@ -1,3 +1,4 @@
+/* client/src/pages/therapy/AddTherapySell.tsx */
 import React, { useState, useEffect } from "react";
 import {
   Form,
@@ -13,7 +14,7 @@ import MemberColumn from "../../components/MemberColumn";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../../services/TherapySellService";
+import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../services/TherapySellService";
 
 interface DropdownItem {
   id: number;
@@ -44,10 +45,13 @@ const AddTherapySell: React.FC = () => {
   };
   const paymentMethodOptions = Object.keys(paymentMethodDisplayMap);
   const saleCategoryOptions = ["銷售", "贈品", "折扣", "預購", "暫借"];
+
   const [memberName, setMemberName] = useState<string>("");
   const [staffList, setStaffList] = useState<DropdownItem[]>([]);
   const [therapyPackages, setTherapyPackages] = useState<SelectedTherapyPackageUIData[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
   const [packagesOriginalTotal, setPackagesOriginalTotal] = useState<number>(0);
   const [finalPayableAmount, setFinalPayableAmount] = useState<number>(0);
 
@@ -108,6 +112,7 @@ const AddTherapySell: React.FC = () => {
     restoreState();
   }, []);
 
+  // 重新計算金額
   useEffect(() => {
     let total = 0;
     therapyPackages.forEach(pkg => {
@@ -122,7 +127,10 @@ const AddTherapySell: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const openPackageSelection = () => {
@@ -213,7 +221,9 @@ const AddTherapySell: React.FC = () => {
       <Row>
         <Col md={{ span: 8, offset: 2 }}>
           <Card className="shadow-sm">
-            <Card.Header as="h5" className="bg-info text-white">新增療程銷售</Card.Header>
+            <Card.Header as="h5" className="bg-info text-white">
+              新增療程銷售
+            </Card.Header>
             <Card.Body>
               {error && <Alert variant="danger">{error}</Alert>}
               <Form onSubmit={handleSubmit}>
@@ -246,11 +256,11 @@ const AddTherapySell: React.FC = () => {
                         )}
                       </div>
                       <Button variant="info" type="button" className="text-white align-self-start px-3" onClick={openPackageSelection}>選取</Button>
-
                     </div>
                     <Form.Text muted>可複選，跳出新視窗選取。</Form.Text>
                   </Form.Group>
                 </Row>
+
                 <Row className="mb-3">
                   <Form.Group as={Col} controlId="staffId">
                     <Form.Label>服務人員</Form.Label>
@@ -272,20 +282,22 @@ const AddTherapySell: React.FC = () => {
                     </Form.Select>
                   </Form.Group>
                 </Row>
+
                 {formData.paymentMethod === '信用卡' && (
                   <Form.Group className="mb-3" controlId="cardNumber">
                     <Form.Label>卡號後五碼</Form.Label>
-                    <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\d*" value={formData.cardNumber}
+                    <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\\d*" value={formData.cardNumber}
                       onChange={handleChange} placeholder="請輸入信用卡號後五碼" />
                   </Form.Group>
                 )}
                 {formData.paymentMethod === '轉帳' && (
                   <Form.Group className="mb-3" controlId="transferCode">
                     <Form.Label>轉帳帳號末五碼</Form.Label>
-                    <Form.Control type="text" name="transferCode" maxLength={5} pattern="\d*" value={formData.transferCode}
+                    <Form.Control type="text" name="transferCode" maxLength={5} pattern="\\d*" value={formData.transferCode}
                       onChange={handleChange} placeholder="請輸入轉帳帳號末五碼" />
                   </Form.Group>
                 )}
+
                 <Row className="mb-3">
                   <Form.Group as={Col} controlId="saleCategory">
                     <Form.Label>銷售類別</Form.Label>
@@ -314,14 +326,17 @@ const AddTherapySell: React.FC = () => {
                     <Form.Control type="text" value={`NT$ ${finalPayableAmount.toLocaleString()}`} readOnly disabled className="bg-light text-end" />
                   </Form.Group>
                 </Row>
+
                 <Form.Group className="mb-3" controlId="date">
                   <Form.Label>購買日期</Form.Label>
                   <Form.Control type="date" name="date" value={formData.date} onChange={handleChange} required />
                 </Form.Group>
+
                 <Form.Group className="mb-3" controlId="note">
                   <Form.Label>備註</Form.Label>
                   <Form.Control as="textarea" rows={3} name="note" value={formData.note} onChange={handleChange} />
                 </Form.Group>
+
                 <div className="d-flex justify-content-end gap-2">
                   <Button variant="info" type="submit" className="text-white" disabled={loading}>
                     {loading ? "儲存中..." : "確認"}
