@@ -25,7 +25,7 @@ export interface TherapySellRow { // 更改 interface 名稱以避免與組件�
     Price?: number;         // 價錢 (總金額) - API 需返回此欄位
     PaymentMethod: string;  // 付款方式
     StaffName: string;      // 銷售人員
-    SaleCategory: string;   // 銷售類別
+    SaleCategory?: string;  // 銷售類別 (有些 API 可能返回 sale_category)
     Note?: string;          // 備註 - API 需返回此欄位
 }
 
@@ -217,7 +217,10 @@ const TherapySell: React.FC = () => {
                 </td>
                 <td className="align-middle">{sale.StaffName || "-"}</td>
                 <td className="align-middle">
-                    {therapySaleCategoryValueToDisplayMap[sale.SaleCategory] || sale.SaleCategory}
+                    {(() => {
+                        const cat = (sale as any).SaleCategory ?? (sale as any).sale_category;
+                        return therapySaleCategoryValueToDisplayMap[cat] || cat || "-";
+                    })()}
                 </td>
                 <td className="align-middle" style={{ maxWidth: '150px', whiteSpace: 'normal' }}>{sale.Note || "-"}</td>
             </tr>
