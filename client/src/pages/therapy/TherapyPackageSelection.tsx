@@ -1,14 +1,15 @@
 // src/pages/therapy/TherapyPackageSelection.tsx
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, ListGroup, Spinner, Alert, Row, Col, Card, InputGroup } from 'react-bootstrap';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
 import {
     getAllTherapyPackages as fetchAllTherapyPackagesService,
     searchTherapyPackages, // 假設您有此服務函數用於後端搜尋
     TherapyPackage as TherapyPackageBaseType,
-    fetchRemainingSessions
+    fetchRemainingSessions,
+    fetchRemainingSessionsBulk
 } from '../../services/TherapySellService';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
@@ -18,7 +19,6 @@ export interface PackageInSelection extends TherapyPackageBaseType {
 
 const TherapyPackageSelection: React.FC = () => {
     const navigate = useNavigate();
-    const location = useLocation();
     const [allPackages, setAllPackages] = useState<TherapyPackageBaseType[]>([]);
     const [displayedPackages, setDisplayedPackages] = useState<TherapyPackageBaseType[]>([]);
     const [selectedPackagesMap, setSelectedPackagesMap] = useState<Map<number, PackageInSelection>>(new Map());
@@ -38,12 +38,26 @@ const TherapyPackageSelection: React.FC = () => {
                 if (formState.memberId) {
                     setMemberId(formState.memberId);
                 }
-                // formState.selectedTherapyPackages 存的是 AddTherapySell.tsx 中的 SelectedTherapyPackageUIData[]
-                // 我們只需要其中的基礎套餐資訊和 userSessions
+            } catch (e) {
+                console.error('解析 addTherapySellFormState 失敗', e);
+            }
+        }
+
+        const storedPkgs = localStorage.getItem('selectedTherapyPackagesWithSessions');
+        if (storedPkgs) {
+            try {
+                const pkgs: PackageInSelection[] = JSON.parse(storedPkgs);
+                const map = new Map<number, PackageInSelection>();
+                pkgs.forEach(p => map.set(p.therapy_id, p));
+                setSelectedPackagesMap(map);
+            } catch (e) {
+                console.error('解析 selectedTherapyPackagesWithSessions 失敗', e);
+            }
+        } else if (formStateData) {
+            try {
+                const formState = JSON.parse(formStateData);
                 if (Array.isArray(formState.selectedTherapyPackages)) {
                     const initialMap = new Map<number, PackageInSelection>();
-                    // formState.selectedTherapyPackages 中的每個 pkg 結構比 PackageInSelection 多一些計算欄位
-                    // 但它肯定包含 PackageInSelection 需要的所有欄位
                     formState.selectedTherapyPackages.forEach((pkgFromState: any) => {
                         if (pkgFromState && pkgFromState.therapy_id !== undefined) {
                             initialMap.set(pkgFromState.therapy_id, {
@@ -90,16 +104,16 @@ const TherapyPackageSelection: React.FC = () => {
                 return;
             }
             try {
-                const results = await Promise.all(
-                    allPackages.map(pkg => fetchRemainingSessions(memberId, pkg.therapy_id.toString())
-                        .then(res => ({ id: pkg.therapy_id, remaining: res.remaining_sessions }))
-                        .catch(() => ({ id: pkg.therapy_id, remaining: undefined }))
-                    )
-                );
+                const therapyIds = allPackages.map(pkg => pkg.therapy_id);
+                const res = await fetchRemainingSessionsBulk(memberId, therapyIds);
                 const map = new Map<number, number>();
-                results.forEach(r => {
-                    if (r.remaining !== undefined) map.set(r.id, r.remaining);
-                });
+                if (res && res.data) {
+                    Object.entries(res.data).forEach(([id, remaining]) => {
+                        if (remaining !== undefined) {
+                            map.set(Number(id), Number(remaining as any));
+                        }
+                    });
+                }
                 setRemainingMap(map);
             } catch (e) {
                 console.error('獲取剩餘堂數失敗', e);
@@ -159,7 +173,7 @@ const TherapyPackageSelection: React.FC = () => {
             return;
         }
         // 儲存的是 PackageInSelection[]，它已經包含了 userSessions
-        localStorage.setItem('newlySelectedTherapyPackagesWithSessions', JSON.stringify(selectedArray));
+        localStorage.setItem('selectedTherapyPackagesWithSessions', JSON.stringify(selectedArray));
         // 與產品選單一致，直接返回上一頁
         navigate(-1);
     };
