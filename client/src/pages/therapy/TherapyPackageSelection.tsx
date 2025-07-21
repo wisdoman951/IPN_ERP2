@@ -129,7 +129,7 @@ const TherapyPackageSelection: React.FC = () => {
         }
         // 儲存的是 PackageInSelection[]，它已經包含了 userSessions
         localStorage.setItem('newlySelectedTherapyPackagesWithSessions', JSON.stringify(selectedArray));
-        navigate('/therapy-sell/add', { state: { therapyPackagesUpdated: true } }); // <--- 加上 state 標記
+        navigate(-1); // 返回新增頁面
     };
 
     const calculatePageTotal = () => {
@@ -217,10 +217,10 @@ const TherapyPackageSelection: React.FC = () => {
                          <div className="d-flex justify-content-between align-items-center">
                             <div>總計金額: <strong className="h5 mb-0" style={{color: '#00b1c8'}}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
                             <div>
-                                <Button variant="outline-secondary" onClick={() => navigate('/therapy-sell/add')} className="me-2">
+                                <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
                                     取消
                                 </Button>
-                                <Button variant="primary" onClick={handleConfirmSelection} disabled={selectedPackagesMap.size === 0}>
+                                <Button variant="primary" type="button" onClick={handleConfirmSelection} disabled={selectedPackagesMap.size === 0}>
                                     確認選取 ({selectedPackagesMap.size} 項)
                                 </Button>
                             </div>
