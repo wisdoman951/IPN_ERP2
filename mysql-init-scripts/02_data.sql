@@ -259,3 +259,21 @@ VALUES
 (LAST_INSERT_ID(), 6, NULL, '膠原蛋白粉', 'Product', '盒', 1500.00, 2, 3000.00, '保健食品', '客戶要求分兩次取貨');
 
 
+-- 壓力源測試樣本資料
+INSERT INTO `ipn_stress` (`member_id`, `a_score`, `b_score`, `c_score`, `d_score`, `test_date`, `store_id`) VALUES
+(1, 3, 4, 5, 2, '2024-06-30', 1);
+SET @stress_id1 := LAST_INSERT_ID();
+INSERT INTO `ipn_stress_answer` (`ipn_stress_id`, `question_no`, `answer`) VALUES
+(@stress_id1, 'a1', 'A'), (@stress_id1, 'a2', 'B'), (@stress_id1, 'a3', 'A'), (@stress_id1, 'a4', 'B'), (@stress_id1, 'a5', 'A'),
+(@stress_id1, 'b1', 'A'), (@stress_id1, 'b2', 'B'), (@stress_id1, 'b3', 'A'), (@stress_id1, 'b4', 'B'), (@stress_id1, 'b5', 'A'),
+(@stress_id1, 'c1', 'B'), (@stress_id1, 'c2', 'A'), (@stress_id1, 'c3', 'B'), (@stress_id1, 'c4', 'A'), (@stress_id1, 'c5', 'B'),
+(@stress_id1, 'd1', 'A'), (@stress_id1, 'd2', 'B'), (@stress_id1, 'd3', 'A'), (@stress_id1, 'd4', 'B'), (@stress_id1, 'd5', 'A');
+
+INSERT INTO `ipn_stress` (`member_id`, `a_score`, `b_score`, `c_score`, `d_score`, `test_date`, `store_id`) VALUES
+(2, 4, 5, 3, 4, '2024-07-01', 2);
+SET @stress_id2 := LAST_INSERT_ID();
+INSERT INTO `ipn_stress_answer` (`ipn_stress_id`, `question_no`, `answer`) VALUES
+(@stress_id2, 'a1', 'B'), (@stress_id2, 'a2', 'A'), (@stress_id2, 'a3', 'B'), (@stress_id2, 'a4', 'A'), (@stress_id2, 'a5', 'B'),
+(@stress_id2, 'b1', 'B'), (@stress_id2, 'b2', 'A'), (@stress_id2, 'b3', 'B'), (@stress_id2, 'b4', 'A'), (@stress_id2, 'b5', 'B'),
+(@stress_id2, 'c1', 'A'), (@stress_id2, 'c2', 'B'), (@stress_id2, 'c3', 'A'), (@stress_id2, 'c4', 'B'), (@stress_id2, 'c5', 'A'),
+(@stress_id2, 'd1', 'B'), (@stress_id2, 'd2', 'A'), (@stress_id2, 'd3', 'B'), (@stress_id2, 'd4', 'A'), (@stress_id2, 'd5', 'B');

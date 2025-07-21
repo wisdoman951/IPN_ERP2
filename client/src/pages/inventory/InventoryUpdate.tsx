@@ -65,13 +65,13 @@ const InventoryEntryForm = () => {
 
       if (editingId) {
         await updateInventoryItem(Number(editingId), {
-          stockIn: Number(formData.quantity),
-          stockInTime: formData.date,
-          stockOut: 0,
-          stockLoan: 0,
-          borrower: "",
-          stockQuantity: Number(formData.quantity),
-          stockThreshold: 5,
+          quantity: Number(formData.quantity),
+          stock_in: Number(formData.quantity),
+          stock_out: 0,
+          stock_loan: 0,
+          stock_threshold: 5,
+          staff_id: Number(formData.staff_id),
+          date: formData.date,
         });
         alert("更新成功");
       } else {
