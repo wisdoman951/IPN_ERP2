@@ -9,13 +9,12 @@ const AddStaff: React.FC = () => {
     const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(1);
 
-    // 狀態管理，與 Figma 欄位對應
-    const [formData, setFormData] = useState({
+    const initialFormData = {
         // 步驟 1: 基本資料
-        fillDate: "", 
+        fillDate: "",
         onboardDate: "",
-        name: "", 
-        gender: "", 
+        name: "",
+        gender: "",
         birthday: "",
         nationality: "", 
         education: "", 
@@ -58,7 +57,10 @@ const AddStaff: React.FC = () => {
         
         licenseApprovedDate: "", // 批准日期
         licenseNotApprovedDate: "", // 不適用日期
-    });
+    };
+
+    // 狀態管理，與 Figma 欄位對應
+    const [formData, setFormData] = useState(initialFormData);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -220,13 +222,13 @@ const AddStaff: React.FC = () => {
                             {currentStep === 3 && renderStep3()}
                             
                             <Card.Footer className="text-end">
-                                <Button variant="outline-danger" className="me-2" onClick={() => { if(window.confirm("確定要清除所有已填寫的資料嗎？")) setFormData(initialFormData); }}>
+                                <Button variant="info" className="me-2 text-white" onClick={() => { if(window.confirm("確定要清除所有已填寫的資料嗎？")) setFormData(initialFormData); }}>
                                     清除
                                 </Button>
-                                <Button variant="outline-secondary" className="me-auto" onClick={prevStep} disabled={currentStep === 1}>
+                                <Button variant="info" className="me-auto text-white" onClick={prevStep} disabled={currentStep === 1}>
                                     上一頁
                                 </Button>
-                                {currentStep < 3 && <Button variant="primary" onClick={nextStep}>下一頁</Button>}
+                                {currentStep < 3 && <Button variant="info" className="text-white" onClick={nextStep}>下一頁</Button>}
                                 {currentStep === 3 && <Button variant="success" onClick={handleSave}>儲存</Button>}
                             </Card.Footer>
                         </Form>

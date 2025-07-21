@@ -125,7 +125,7 @@ const AddEditUserAccount: React.FC = () => {
                         </Form.Group>
 
                         <div className="d-flex justify-content-end gap-2 mt-4">
-                            <Button variant="secondary" onClick={() => navigate(-1)} disabled={loading}>取消</Button>
+                            <Button variant="info" className="text-white" onClick={() => navigate(-1)} disabled={loading}>取消</Button>
                             <Button variant="info" type="submit" className="text-white" disabled={!selectedStaff || loading}>
                                 {loading ? <Spinner as="span" size="sm" /> : '確認開通'}
                             </Button>

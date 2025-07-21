@@ -197,6 +197,15 @@ const InventoryEntryForm = () => {
               <Form.Label htmlFor="custom-check" className="mb-0">勾選</Form.Label>
             </Col>
             <Col xs={6} md={2}>
+              <Button
+                variant="info"
+                className="w-100 text-white"
+                onClick={() => navigate('/inventory/inventory-insert')}
+              >
+                新增
+              </Button>
+            </Col>
+            <Col xs={6} md={2}>
               <Button variant="info" className="w-100 text-white" onClick={handleExport}>報表匯出</Button>
             </Col>
             <Col xs={6} md={2}>
