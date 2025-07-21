@@ -14,7 +14,7 @@ import MemberColumn from "../../components/MemberColumn";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../services/TherapySellService";
+import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../src/services/TherapySellService.ts";
 
 interface DropdownItem {
   id: number;
