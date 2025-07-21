@@ -94,17 +94,16 @@ const AddTherapySell: React.FC = () => {
         }
       }
 
-      const newSelected = localStorage.getItem('newlySelectedTherapyPackagesWithSessions');
-      if (newSelected) {
+      const storedPkgs = localStorage.getItem('selectedTherapyPackagesWithSessions');
+      if (storedPkgs) {
         try {
-          const pkgs = JSON.parse(newSelected);
+          const pkgs = JSON.parse(storedPkgs);
           if (Array.isArray(pkgs)) {
             setTherapyPackages(pkgs);
           }
         } catch (e) {
-          console.error('解析 newlySelectedTherapyPackagesWithSessions 失敗', e);
+          console.error('解析 selectedTherapyPackagesWithSessions 失敗', e);
         }
-        localStorage.removeItem('newlySelectedTherapyPackagesWithSessions');
       }
     };
 
@@ -148,12 +147,14 @@ const AddTherapySell: React.FC = () => {
       selectedTherapyPackages: therapyPackages,
     };
     localStorage.setItem('addTherapySellFormState', JSON.stringify(formState));
+    localStorage.setItem('selectedTherapyPackagesWithSessions', JSON.stringify(therapyPackages));
     navigate('/therapy-package-selection', { state: { fromSellPage: true } });
   };
 
   const handleCancel = () => {
     localStorage.removeItem('addTherapySellFormState');
     localStorage.removeItem('selectedTherapyPackages');
+    localStorage.removeItem('selectedTherapyPackagesWithSessions');
     navigate(-1);
   };
 
@@ -206,6 +207,7 @@ const AddTherapySell: React.FC = () => {
       await addTherapySell(payloads);
       localStorage.removeItem('addTherapySellFormState');
       localStorage.removeItem('selectedTherapyPackages');
+      localStorage.removeItem('selectedTherapyPackagesWithSessions');
       alert('銷售紀錄新增成功！');
       navigate('/therapy-sell');
     } catch (err) {
