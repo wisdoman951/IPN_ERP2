@@ -8,6 +8,7 @@ import {
   Col,
   Alert,
   Card,
+  Spinner,
   InputGroup,
 } from "react-bootstrap";
 import MemberColumn from "../../components/MemberColumn";
@@ -15,6 +16,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../../services/TherapySellService";
+
 
 interface DropdownItem {
   id: number;
@@ -45,21 +47,26 @@ const AddTherapySell: React.FC = () => {
   };
   const paymentMethodOptions = Object.keys(paymentMethodDisplayMap);
   const saleCategoryOptions = ["銷售", "贈品", "折扣", "預購", "暫借"];
-
   const [memberName, setMemberName] = useState<string>("");
   const [staffList, setStaffList] = useState<DropdownItem[]>([]);
   const [therapyPackages, setTherapyPackages] = useState<SelectedTherapyPackageUIData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
   const [packagesOriginalTotal, setPackagesOriginalTotal] = useState<number>(0);
   const [finalPayableAmount, setFinalPayableAmount] = useState<number>(0);
-
+  
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
         const staffRes = await getStaffMembers();
+        if (staffRes.success && staffRes.data) {
+          setStaffList(staffRes.data.map(s => ({ id: s.staff_id, name: s.name })));
+        }
+        const [staffRes, therapyRes] = await Promise.all([
+          getStaffMembers(),
+          getAllTherapyPackages(),
+        ]);
         if (staffRes.success && staffRes.data) {
           setStaffList(staffRes.data.map(s => ({ id: s.staff_id, name: s.name })));
         }
@@ -178,7 +185,6 @@ const AddTherapySell: React.FC = () => {
         '預購': 'Ticket',
         '暫借': 'Ticket',
         '票卷': 'Ticket',
-      };
 
       const payloads = therapyPackages.map(pkg => {
         const itemTotal = (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0);
@@ -242,7 +248,6 @@ const AddTherapySell: React.FC = () => {
                     />
                   </Col>
                 </Row>
-                <Row className="mb-3">
                   <Form.Group as={Col} controlId="therapyPackages">
                     <Form.Label>療程品項</Form.Label>
                     <div className="d-flex gap-2">
@@ -283,17 +288,7 @@ const AddTherapySell: React.FC = () => {
                   </Form.Group>
                 </Row>
 
-                {formData.paymentMethod === '信用卡' && (
-                  <Form.Group className="mb-3" controlId="cardNumber">
-                    <Form.Label>卡號後五碼</Form.Label>
-                    <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\d*" value={formData.cardNumber}
-                      onChange={handleChange} placeholder="請輸入信用卡號後五碼" />
-                  </Form.Group>
-                )}
-                {formData.paymentMethod === '轉帳' && (
-                  <Form.Group className="mb-3" controlId="transferCode">
-                    <Form.Label>轉帳帳號末五碼</Form.Label>
-                    <Form.Control type="text" name="transferCode" maxLength={5} pattern="\d*" value={formData.transferCode}
+@@ -240,71 +297,71 @@ const AddTherapySell: React.FC = () => {
                       onChange={handleChange} placeholder="請輸入轉帳帳號末五碼" />
                   </Form.Group>
                 )}
