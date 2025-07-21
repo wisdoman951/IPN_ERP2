@@ -3,7 +3,8 @@ from app.models.therapy_sell_model import (
     get_all_therapy_sells, search_therapy_sells,
     insert_many_therapy_sells , update_therapy_sell, delete_therapy_sell,
     get_all_therapy_packages, search_therapy_packages,
-    get_all_members, get_all_staff, get_all_stores, get_remaining_sessions
+    get_all_members, get_all_staff, get_all_stores,
+    get_remaining_sessions, get_remaining_sessions_bulk
 )
 from app.middleware import auth_required, get_user_from_token
 import pandas as pd
@@ -306,3 +307,23 @@ def remaining_sessions_route():
         import traceback
         traceback.print_exc()
         return jsonify({"error": f"查詢剩餘堂數時發生錯誤: {str(e)}"}), 500
+
+
+@therapy_sell.route("/remaining-sessions/bulk", methods=["POST"])
+@auth_required
+def remaining_sessions_bulk_route():
+    """Fetch remaining sessions for multiple therapy packages in one request."""
+    data = request.get_json() or {}
+    member_id = data.get("member_id")
+    therapy_ids = data.get("therapy_ids")
+
+    if not member_id or not isinstance(therapy_ids, list):
+        return jsonify({"error": "member_id 與 therapy_ids 皆為必填"}), 400
+
+    try:
+        result = get_remaining_sessions_bulk(member_id, therapy_ids)
+        return jsonify({"data": result})
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"批次查詢剩餘堂數時發生錯誤: {str(e)}"}), 500

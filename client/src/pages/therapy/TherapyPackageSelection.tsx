@@ -8,7 +8,8 @@ import {
     getAllTherapyPackages as fetchAllTherapyPackagesService,
     searchTherapyPackages, // 假設您有此服務函數用於後端搜尋
     TherapyPackage as TherapyPackageBaseType,
-    fetchRemainingSessions
+    fetchRemainingSessions,
+    fetchRemainingSessionsBulk
 } from '../../services/TherapySellService';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
@@ -90,16 +91,16 @@ const TherapyPackageSelection: React.FC = () => {
                 return;
             }
             try {
-                const results = await Promise.all(
-                    allPackages.map(pkg => fetchRemainingSessions(memberId, pkg.therapy_id.toString())
-                        .then(res => ({ id: pkg.therapy_id, remaining: res.remaining_sessions }))
-                        .catch(() => ({ id: pkg.therapy_id, remaining: undefined }))
-                    )
-                );
+                const therapyIds = allPackages.map(pkg => pkg.therapy_id);
+                const res = await fetchRemainingSessionsBulk(memberId, therapyIds);
                 const map = new Map<number, number>();
-                results.forEach(r => {
-                    if (r.remaining !== undefined) map.set(r.id, r.remaining);
-                });
+                if (res && res.data) {
+                    Object.entries(res.data).forEach(([id, remaining]) => {
+                        if (remaining !== undefined) {
+                            map.set(Number(id), Number(remaining as any));
+                        }
+                    });
+                }
                 setRemainingMap(map);
             } catch (e) {
                 console.error('獲取剩餘堂數失敗', e);
