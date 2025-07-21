@@ -34,6 +34,7 @@ export const pageTitles: PageTitleMap = {
   '/health-data-analysis/stress-test/': { basic: 'iPN壓力源測試 1.1.1.4.1', admin: 'iPN壓力源測試 1.2.1.4.1' },
   '/health-data-analysis/stress-test/add/page1': { basic: '新增iPN壓力源測試 1.1.1.4.1.1', admin: '新增iPN壓力源測試 1.2.1.4.1.1' },
   '/health-data-analysis/stress-test/add/page2': { basic: '新增iPN壓力源測試 1.1.1.4.1.1.1', admin: '新增iPN壓力源測試 1.1.1.4.1.1.1' },
+  '/health-data-analysis/stress-test/edit/:id': { basic: '編輯iPN壓力源測試 1.1.4.1.1.1', admin: '編輯iPN壓力源測試 1.2.4.1.1.1' },
   '/health-data-analysis/pure-medical-record': { basic: 'iPN淨化健康紀錄表 1.1.1.4.2', admin: 'iPN淨化健康紀錄表 1.2.1.4.2' },
   '/health-data-analysis/add-pure-medical-record': { basic: '新增iPN淨化健康紀錄表 1.1.1.4.2.1', admin: '新增iPN淨化健康紀錄表 1.2.1.4.2.1' },
   
