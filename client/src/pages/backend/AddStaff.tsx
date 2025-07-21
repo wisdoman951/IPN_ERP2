@@ -9,13 +9,12 @@ const AddStaff: React.FC = () => {
     const navigate = useNavigate();
     const [currentStep, setCurrentStep] = useState(1);
 
-    // 狀態管理，與 Figma 欄位對應
-    const [formData, setFormData] = useState({
+    const initialFormData = {
         // 步驟 1: 基本資料
-        fillDate: "", 
+        fillDate: "",
         onboardDate: "",
-        name: "", 
-        gender: "", 
+        name: "",
+        gender: "",
         birthday: "",
         nationality: "", 
         education: "", 
@@ -58,7 +57,10 @@ const AddStaff: React.FC = () => {
         
         licenseApprovedDate: "", // 批准日期
         licenseNotApprovedDate: "", // 不適用日期
-    });
+    };
+
+    // 狀態管理，與 Figma 欄位對應
+    const [formData, setFormData] = useState(initialFormData);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
