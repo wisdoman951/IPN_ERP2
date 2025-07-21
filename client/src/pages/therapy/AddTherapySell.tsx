@@ -14,7 +14,7 @@ import MemberColumn from "../../components/MemberColumn";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../src/services/TherapySellService.ts";
+import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../../services/TherapySellService";
 
 interface DropdownItem {
   id: number;
@@ -286,14 +286,14 @@ const AddTherapySell: React.FC = () => {
                 {formData.paymentMethod === '信用卡' && (
                   <Form.Group className="mb-3" controlId="cardNumber">
                     <Form.Label>卡號後五碼</Form.Label>
-                    <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\\d*" value={formData.cardNumber}
+                    <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\d*" value={formData.cardNumber}
                       onChange={handleChange} placeholder="請輸入信用卡號後五碼" />
                   </Form.Group>
                 )}
                 {formData.paymentMethod === '轉帳' && (
                   <Form.Group className="mb-3" controlId="transferCode">
                     <Form.Label>轉帳帳號末五碼</Form.Label>
-                    <Form.Control type="text" name="transferCode" maxLength={5} pattern="\\d*" value={formData.transferCode}
+                    <Form.Control type="text" name="transferCode" maxLength={5} pattern="\d*" value={formData.transferCode}
                       onChange={handleChange} placeholder="請輸入轉帳帳號末五碼" />
                   </Form.Group>
                 )}
