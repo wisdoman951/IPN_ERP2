@@ -160,11 +160,8 @@ const TherapyPackageSelection: React.FC = () => {
         }
         // 儲存的是 PackageInSelection[]，它已經包含了 userSessions
         localStorage.setItem('newlySelectedTherapyPackagesWithSessions', JSON.stringify(selectedArray));
-        if ((location.state as any)?.fromSellPage) {
-            navigate('/therapy-sell/add');
-        } else {
-            navigate(-1); // 返回新增頁面
-        }
+        // 與產品選單一致，直接返回上一頁
+        navigate(-1);
     };
 
     const calculatePageTotal = () => {
