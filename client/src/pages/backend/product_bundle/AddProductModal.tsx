@@ -25,7 +25,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide }) => {
     return (
         <Modal show={show} onHide={onHide}>
             <Modal.Header closeButton>
-                <Modal.Title>建立產品 1.2.6.3.1.1</Modal.Title>
+                <Modal.Title>建立產品 1.2.6.3.1.1.1</Modal.Title>
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>
@@ -43,8 +43,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide }) => {
                     </Form.Group>
                 </Modal.Body>
                 <Modal.Footer>
-                    <Button variant="secondary" onClick={onHide}>取消</Button>
-                    <Button variant="primary" type="submit">確認</Button>
+                    <Button variant="info" className="text-white" onClick={onHide}>取消</Button>
+                    <Button variant="info" className="text-white" type="submit">確認儲存</Button>
                 </Modal.Footer>
             </Form>
         </Modal>

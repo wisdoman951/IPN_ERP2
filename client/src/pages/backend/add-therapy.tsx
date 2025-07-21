@@ -12,7 +12,7 @@ const AddTherapy: React.FC = () => {
     <div style={{ minHeight: '100vh', background: '#fff', fontFamily: 'Noto Sans TC, sans-serif' }}>
       {/* Header */}
       <header className="d-flex justify-content-between align-items-center bg-info px-4 py-3 app-header">
-        <h1 className="text-white fw-bold fs-2 m-0">建立療程 1.2.6.3.1.1.1</h1>
+        <h1 className="text-white fw-bold fs-2 m-0">建立療程 1.2.6.3.1.1</h1>
         <div className="d-flex gap-2">
           <IconButton.HomeButton onClick={() => navigate('/home')} />
           <IconButton.CloseButton onClick={() => navigate(-1)} />
@@ -64,13 +64,13 @@ const AddTherapy: React.FC = () => {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 16, marginTop: 32 }}>
           <button
             type="button"
-            style={{ background: '#17a2b8', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 32px', fontWeight: 500, fontSize: 16, letterSpacing: 1, cursor: 'pointer' }}
+            className="btn btn-info text-white"
             onClick={() => navigate(-1)}
           >取消</button>
           <button
             type="submit"
-            style={{ background: '#17a2b8', color: '#fff', border: 'none', borderRadius: 6, padding: '10px 32px', fontWeight: 500, fontSize: 16, letterSpacing: 1, cursor: 'pointer' }}
-          >確認</button>
+            className="btn btn-info text-white"
+          >確認儲存</button>
         </div>
       </form>
     </div>
