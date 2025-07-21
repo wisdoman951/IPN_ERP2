@@ -154,7 +154,7 @@ const MemberInfo: React.FC = () => {
                     </Col>
                     <Col xs="auto">
                         {/* ***** 主要修改點 ***** */}
-                        <Button 
+                        <Button
                             variant="info" // 修改按鈕樣式以示區別
                             className="text-white"
                             onClick={handleEdit} // <--- 綁定事件處理函數
@@ -163,6 +163,11 @@ const MemberInfo: React.FC = () => {
                             修改
                         </Button>
                         {/* ***** 結束修改 ***** */}
+                    </Col>
+                    <Col xs="auto">
+                        <Button variant="info" className="text-white" onClick={() => navigate(-1)}>
+                            確認
+                        </Button>
                     </Col>
                 </Row>
             </Container>

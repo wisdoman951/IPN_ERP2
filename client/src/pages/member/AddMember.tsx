@@ -344,7 +344,7 @@ const AddMember: React.FC = () => {
                 
                 <div className="d-flex justify-content-end gap-2 mt-4">
                     <Button variant="info" className="text-white" onClick={() => navigate(-1)} disabled={loading}>取消</Button>
-                    <Button variant="info" className="text-white" onClick={() => {}} disabled={loading}>確認</Button>
+                    <Button variant="info" className="text-white" onClick={() => navigate(-1)} disabled={loading}>確認</Button>
                     <Button variant="info" className="text-white" type="submit" disabled={loading}>
                         {loading ? <Spinner as="span" size="sm" /> : "儲存"}
                     </Button>
