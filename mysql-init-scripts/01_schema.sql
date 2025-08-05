@@ -412,3 +412,11 @@ CREATE TABLE ipn_stress_answer (
   answer CHAR(1) NOT NULL,      
   FOREIGN KEY (ipn_stress_id) REFERENCES ipn_stress(ipn_stress_id)
 );
+
+CREATE TABLE `erp`.`store_account` (
+  `idstore_account` INT NOT NULL,
+  `account` VARCHAR(45) NULL,
+  `store_id` INT NULL,
+  `permission` VARCHAR(45) NULL,
+  PRIMARY KEY (`idstore_account`));
+
