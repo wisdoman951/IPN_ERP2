@@ -9,16 +9,21 @@ def connect_to_db():
 
 
 def find_store_by_account(account):
-    """根據帳號查找店鋪信息"""
+    """根據登入帳號查找分店與帳號資訊"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            # 使用 account 欄位查詢
-            cursor.execute("SELECT * FROM store WHERE account = %s", (account,))
-            result = cursor.fetchone()
-            
-            # 直接返回原始數據結構
-            return result
+            cursor.execute(
+                """
+                SELECT s.store_id, s.store_name, s.store_location,
+                       sa.account, sa.password, sa.permission
+                FROM store_account AS sa
+                JOIN store AS s ON sa.store_id = s.store_id
+                WHERE sa.account = %s
+                """,
+                (account,)
+            )
+            return cursor.fetchone()
     finally:
         conn.close()
 
@@ -27,9 +32,8 @@ def update_store_password(account, new_password):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            # 更新密碼，使用 account 欄位
             cursor.execute(
-                "UPDATE store SET password = %s WHERE account = %s", 
+                "UPDATE store_account SET password = %s WHERE account = %s",
                 (new_password, account)
             )
         conn.commit()
@@ -40,25 +44,38 @@ def update_store_password(account, new_password):
         conn.close()
 
 def get_store_info(store_id):
-    """根據 ID 獲取商店資訊"""
+    """根據 store_id 獲取分店與其帳號"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM store WHERE store_id = %s", (store_id,))
-            result = cursor.fetchone()
-            
-            # 直接返回原始數據結構
-            return result
+            cursor.execute(
+                """
+                SELECT s.store_id, s.store_name, s.store_location,
+                       sa.account, sa.permission
+                FROM store AS s
+                LEFT JOIN store_account AS sa ON sa.store_id = s.store_id
+                WHERE s.store_id = %s
+                """,
+                (store_id,)
+            )
+            return cursor.fetchall()
     finally:
         conn.close()
 
 def get_all_stores():
-    """獲取所有商店信息"""
+    """獲取所有分店與其帳號資訊"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT * FROM store")
-            results = cursor.fetchall()
-            return results
+            cursor.execute(
+                """
+                SELECT s.store_id, s.store_name, s.store_location,
+                       sa.account, sa.permission
+                FROM store AS s
+                LEFT JOIN store_account AS sa ON sa.store_id = s.store_id
+                ORDER BY s.store_id ASC
+                """
+            )
+            return cursor.fetchall()
     finally:
         conn.close()
