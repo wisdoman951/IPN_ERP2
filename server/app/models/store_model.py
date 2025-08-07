@@ -8,30 +8,32 @@ def connect_to_db():
     return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
 
 def create_store(store_data: dict):
-    """
-    新增一筆分店資料到 store 資料表。
-    """
+    """新增一筆分店與其登入帳號"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            # 使用 bcrypt 對密碼進行加密
+            # 先新增分店資訊
+            cursor.execute(
+                "INSERT INTO store (store_name, store_location) VALUES (%s, %s)",
+                (store_data['store_name'], store_data.get('store_location'))
+            )
+            store_id = conn.insert_id()
+
+            # 建立登入帳號
             password = store_data['password'].encode('utf-8')
             hashed_password = bcrypt.hashpw(password, bcrypt.gensalt())
-
-            query = """
-                INSERT INTO store (account, store_name, store_location, password, permission)
-                VALUES (%s, %s, %s, %s, %s)
-            """
-            # permission 硬編碼為 'basic'，因為我們正在新增的是「分店」
-            values = (
-                store_data['account'],
-                store_data['store_name'],
-                store_data.get('store_location', None), # store_location 是可選的
-                hashed_password,
-                'basic'
+            cursor.execute(
+                """
+                INSERT INTO store_account (account, password, permission, store_id)
+                VALUES (%s, %s, %s, %s)
+                """,
+                (
+                    store_data['account'],
+                    hashed_password,
+                    store_data.get('permission', 'basic'),
+                    store_id,
+                ),
             )
-            cursor.execute(query, values)
-            store_id = conn.insert_id()
         conn.commit()
         return store_id
     except Exception as e:
@@ -49,9 +51,11 @@ def get_all_stores():
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT store_id, account, store_name, store_location, permission 
-                FROM store 
-                ORDER BY store_id ASC
+                SELECT s.store_id, s.store_name, s.store_location,
+                       sa.account, sa.permission
+                FROM store AS s
+                LEFT JOIN store_account AS sa ON sa.store_id = s.store_id
+                ORDER BY s.store_id ASC
             """
             cursor.execute(query)
             return cursor.fetchall()
