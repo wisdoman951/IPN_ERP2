@@ -378,23 +378,29 @@ def get_all_products_with_inventory(store_id=None):
     """
     conn = connect_to_db()
     with conn.cursor() as cursor:
-        query = """
-            SELECT 
-                p.product_id, 
-                p.name as product_name, 
-                p.price as product_price,
-                COALESCE(SUM(i.quantity), 0) as inventory_quantity,
-                0 as inventory_id
+        # 基礎查詢：左連接 inventory 以取得庫存數量
+        base_query = """
+            SELECT
+                p.product_id,
+                p.name AS product_name,
+                p.price AS product_price,
+                COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
+                0 AS inventory_id
             FROM product p
-            LEFT JOIN inventory i ON p.product_id = i.product_id
+            LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
+            GROUP BY p.product_id, p.name, p.price
+            ORDER BY p.name
         """
+
         params = []
+        store_join = ""
+        # 若指定 store_id，僅統計該店家的庫存，且保留沒有庫存紀錄的產品
         if store_id is not None:
-            query += " WHERE i.store_id = %s"
+            store_join = "AND i.store_id = %s"
             params.append(store_id)
-        
-        query += " GROUP BY p.product_id, p.name, p.price ORDER BY p.name"
-        
+
+        query = base_query.format(store_join=store_join)
+
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()
     conn.close()
@@ -409,33 +415,36 @@ def search_products_with_inventory(keyword, store_id=None):
     with conn.cursor() as cursor:
         like_keyword = f"%{keyword}%"
         
-        query = """
-            SELECT 
-                p.product_id, 
-                p.name as product_name, 
-                p.price as product_price,
-                COALESCE(SUM(i.quantity), 0) as inventory_quantity,
-                0 as inventory_id
+        base_query = """
+            SELECT
+                p.product_id,
+                p.name AS product_name,
+                p.price AS product_price,
+                COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
+                0 AS inventory_id
             FROM product p
-            LEFT JOIN inventory i ON p.product_id = i.product_id
+            LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
         """
-        
-        conditions = []
+
         params = []
+        conditions = []
+        store_join = ""
+
+        if store_id is not None:
+            store_join = "AND i.store_id = %s"
+            params.append(store_id)
 
         if keyword:
             conditions.append("(p.name LIKE %s OR p.code LIKE %s)")
             params.extend([like_keyword, like_keyword])
-        
-        if store_id is not None:
-            conditions.append("i.store_id = %s")
-            params.append(store_id)
+
+        query = base_query.format(store_join=store_join)
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
         query += " GROUP BY p.product_id, p.name, p.price ORDER BY p.name"
-        
+
         try:
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
