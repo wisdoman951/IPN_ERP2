@@ -23,6 +23,7 @@ interface RecordRow {
   StaffName: string;
   StoreName: string;
   SaleStaff?: string;
+  Buyer?: string;
   Voucher?: string;
   price?: number;
 }
@@ -31,6 +32,19 @@ const InventoryDetail: React.FC = () => {
   const navigate = useNavigate();
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [saleStaff, setSaleStaff] = useState("");
+  const [buyer, setBuyer] = useState("");
+
+  const handleSearch = () => {
+    getInventoryRecords({
+      start_date: startDate || undefined,
+      end_date: endDate || undefined,
+      sale_staff: saleStaff || undefined,
+      buyer: buyer || undefined,
+    }).then((res) => setRecords(res));
+  };
 
   const handleExport = async () => {
     try {
@@ -43,7 +57,7 @@ const InventoryDetail: React.FC = () => {
   };
 
   useEffect(() => {
-    getInventoryRecords().then((res) => setRecords(res));
+    handleSearch();
   }, []);
 
   const content = (
@@ -51,15 +65,33 @@ const InventoryDetail: React.FC = () => {
       <h5 className="text-danger mb-3">資料連動總部出貨、分店銷售</h5>
 
       {/* 搜尋列 */}
-      <Row className="align-items-center mb-3">
+      <Row className="align-items-center mb-3 g-2">
         <Col xs="auto">
-          <Form.Label className="fw-bold">產品名稱</Form.Label>
+          <Form.Label className="fw-bold">起始日期</Form.Label>
         </Col>
         <Col xs="auto">
-          <Form.Control size="sm" type="text" placeholder="輸入產品名稱" />
+          <Form.Control size="sm" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
         </Col>
         <Col xs="auto">
-          <Button variant="info" className="text-white px-4 py-1">搜尋</Button>
+          <Form.Label className="fw-bold">結束日期</Form.Label>
+        </Col>
+        <Col xs="auto">
+          <Form.Control size="sm" type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+        </Col>
+        <Col xs="auto">
+          <Form.Label className="fw-bold">銷售人</Form.Label>
+        </Col>
+        <Col xs="auto">
+          <Form.Control size="sm" type="text" placeholder="輸入銷售人" value={saleStaff} onChange={(e) => setSaleStaff(e.target.value)} />
+        </Col>
+        <Col xs="auto">
+          <Form.Label className="fw-bold">購買人</Form.Label>
+        </Col>
+        <Col xs="auto">
+          <Form.Control size="sm" type="text" placeholder="輸入購買人" value={buyer} onChange={(e) => setBuyer(e.target.value)} />
+        </Col>
+        <Col xs="auto">
+          <Button variant="info" className="text-white px-4 py-1" onClick={handleSearch}>搜尋</Button>
         </Col>
       </Row>
 
@@ -80,13 +112,14 @@ const InventoryDetail: React.FC = () => {
             <th>供貨人</th>
             <th>出貨單位</th>
             <th>銷售人</th>
+            <th>購買人</th>
             <th>憑證單號</th>
           </tr>
         </thead>
         <tbody>
           {records.length === 0 ? (
             <tr>
-              <td colSpan={14} className="text-center">
+              <td colSpan={15} className="text-center">
                 <em>尚無資料</em>
               </td>
             </tr>
@@ -116,6 +149,7 @@ const InventoryDetail: React.FC = () => {
                 <td></td>
                 <td>{r.StoreName}</td>
                 <td>{r.SaleStaff || r.StaffName}</td>
+                <td>{r.Buyer ?? ''}</td>
                 <td>{r.Voucher ?? ''}</td>
               </tr>
             ))

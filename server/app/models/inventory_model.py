@@ -184,8 +184,8 @@ def get_low_stock_inventory(store_id=None):
     finally:
         conn.close()
 
-def get_inventory_history(store_id=None, start_date=None, end_date=None):
-    """獲取庫存進出明細，可依店鋪及日期區間篩選。
+def get_inventory_history(store_id=None, start_date=None, end_date=None, sale_staff=None, buyer=None):
+    """獲取庫存進出明細，可依店鋪、日期區間、銷售人與購買人篩選。
     為了同時呈現銷售(產品與療程)造成的庫存變化，
     此函式會合併 inventory、product_sell 以及 therapy_sell 的紀錄。"""
     conn = connect_to_db()
@@ -209,6 +209,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                     s.name AS StaffName,
                     st.store_name AS StoreName,
                     '' AS SaleStaff,
+                    '' AS Buyer,
                     '' AS Voucher
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
@@ -246,11 +247,13 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                     '' AS StaffName,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
+                    mb.name AS Buyer,
                     '' AS Voucher
                 FROM product_sell ps
                 LEFT JOIN product p ON ps.product_id = p.product_id
                 LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
                 LEFT JOIN store st ON ps.store_id = st.store_id
+                LEFT JOIN member mb ON ps.member_id = mb.member_id
             """
             params = []
             conditions = []
@@ -263,6 +266,12 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
             if end_date:
                 conditions.append("ps.date <= %s")
                 params.append(end_date)
+            if sale_staff:
+                conditions.append("sf.name LIKE %s")
+                params.append(f"%{sale_staff}%")
+            if buyer:
+                conditions.append("mb.name LIKE %s")
+                params.append(f"%{buyer}%")
             if conditions:
                 prod_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(prod_q, params)
@@ -283,11 +292,13 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
                     '' AS StaffName,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
+                    mb.name AS Buyer,
                     '' AS Voucher
                 FROM therapy_sell ts
                 LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
                 LEFT JOIN staff sf ON ts.staff_id = sf.staff_id
                 LEFT JOIN store st ON ts.store_id = st.store_id
+                LEFT JOIN member mb ON ts.member_id = mb.member_id
             """
             params = []
             conditions = []
@@ -300,11 +311,22 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None):
             if end_date:
                 conditions.append("ts.date <= %s")
                 params.append(end_date)
+            if sale_staff:
+                conditions.append("sf.name LIKE %s")
+                params.append(f"%{sale_staff}%")
+            if buyer:
+                conditions.append("mb.name LIKE %s")
+                params.append(f"%{buyer}%")
             if conditions:
                 therapy_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(therapy_q, params)
             records.extend(cursor.fetchall())
-            
+
+            if sale_staff:
+                records = [r for r in records if r.get('SaleStaff') and sale_staff.lower() in r.get('SaleStaff', '').lower()]
+            if buyer:
+                records = [r for r in records if r.get('Buyer') and buyer.lower() in r.get('Buyer', '').lower()]
+
             # 依日期與ID倒序排列
             records.sort(key=lambda x: (x.get('Date'), x.get('Inventory_ID')), reverse=True)
             return records
