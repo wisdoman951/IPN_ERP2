@@ -86,13 +86,15 @@ const AddTherapySell: React.FC = () => {
           note: editSale.Note || "",
         }));
         setMemberName(editSale.MemberName || "");
-        setTherapyPackages(editSale.therapy_id ? [{
-          therapy_id: editSale.therapy_id,
-          TherapyName: editSale.PackageName,
-          TherapyContent: editSale.PackageName,
-          TherapyPrice: editSale.Price || 0,
-          userSessions: editSale.Sessions?.toString() || "1",
-        }] : []);
+        setTherapyPackages([
+          {
+            therapy_id: editSale.therapy_id,
+            TherapyName: editSale.PackageName,
+            TherapyContent: editSale.PackageName,
+            TherapyPrice: editSale.Price || 0,
+            userSessions: editSale.Sessions?.toString() || "1",
+          },
+        ]);
         return;
       }
 
