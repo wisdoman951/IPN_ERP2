@@ -127,20 +127,33 @@ export const getAllProducts = async () => {
 };
 
 // 匯出庫存數據
-export const exportInventory = async (storeId?: number): Promise<Blob> => {
+export const exportInventory = async (params?: {
+    storeId?: number;
+    start_date?: string;
+    end_date?: string;
+    sale_staff?: string;
+    buyer?: string;
+    detail?: boolean;
+}): Promise<Blob> => {
     const level = localStorage.getItem('store_level');
     const perm = localStorage.getItem('permission');
     const isAdmin = level === '總店' || perm === 'admin';
 
-    const params: any = {};
-    if (!isAdmin && storeId !== undefined) {
-        params.store_id = storeId;
-    } else if (isAdmin && storeId !== undefined) {
-        params.store_id = storeId;
+    const query: any = {};
+    if (params?.start_date) query.start_date = params.start_date;
+    if (params?.end_date) query.end_date = params.end_date;
+    if (params?.sale_staff) query.sale_staff = params.sale_staff;
+    if (params?.buyer) query.buyer = params.buyer;
+    if (params?.detail) query.detail = params.detail;
+
+    if (!isAdmin && params?.storeId !== undefined) {
+        query.store_id = params.storeId;
+    } else if (isAdmin && params?.storeId !== undefined) {
+        query.store_id = params.storeId;
     }
 
     const response = await axios.get(`${API_URL}/export`, {
-        params,
+        params: query,
         responseType: "blob"
     });
 
