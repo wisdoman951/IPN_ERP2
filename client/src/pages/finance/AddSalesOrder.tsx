@@ -121,7 +121,7 @@ const AddSalesOrder: React.FC = () => {
             <Card>
                 <Card.Header className="text-center">
                     <h4>全崴國際無限充能館</h4>
-                    <h3>銷售單(需求待確認)</h3>
+                    <h3>銷售單</h3>
                 </Card.Header>
                 <Card.Body>
                     <Row className="mb-3">

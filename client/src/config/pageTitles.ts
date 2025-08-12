@@ -63,11 +63,13 @@ export const pageTitles: PageTitleMap = {
   '/finance/item-selection': { basic: '選擇銷售品項 1.1.5.1.1.1', admin: '選擇銷售品項 1.2.5.1.1.1' },
 
   // Backend
-  '/backend': { basic: '分店後台管理 1.1.6', admin: '總店後台管理 1.2.6' },
-  '/backend/staff': { basic: '分店後台管理-員工資料 1.1.6.1', admin: '總店後台管理-員工資料 1.2.6.1' },
-  '/backend/add-staff': { basic: '分店後台管理-新增入職簡歷 1.1.6.1.1', admin: '總店後台管理-新增入職簡歷 1.2.6.1.1' },
+  '/backend': { basic: '分店後台管理 1.1.6', admin: '總部後台管理 1.2.6' },
+  '/backend/staff': { basic: '分店後台管理-員工資料 1.1.6.1', admin: '總部後台管理-員工資料 1.2.6.1' },
+  '/backend/add-staff': { basic: '分店後台管理-新增入職簡歷 1.1.6.1.1', admin: '總部後台管理-新增入職簡歷 1.2.6.1.1' },
   '/backend/user-accounts': { basic: '無權限', admin: '使用者帳號管理 1.2.6.2' },
   '/backend/user-accounts/add': { basic: '無權限', admin: '新增/修改使用者帳號 1.2.6.2.1' },
   '/backend/product-bundles': { basic: '無權限', admin: '產品組合管理 1.2.6.3' },
+  '/backend/stores': { basic: '無權限', admin: '分店管理 1.2.6.4' },
+  '/backend/add-store': { basic: '無權限', admin: '建立新的分店帳號 1.2.6.4.1' },
 
 };

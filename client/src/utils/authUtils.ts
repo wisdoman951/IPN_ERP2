@@ -55,14 +55,14 @@ export const getStoreName = (): string | null => {
 
 /**
  * 依據商店等級格式化商店名稱
- * 若為總店則移除名稱中的「台北」字樣
+ * 若為總店則顯示為「總部」
  * @param name 原始商店名稱
  * @param level 商店等級
  * @returns 格式化後的商店名稱
  */
 export const formatStoreName = (name: string, level?: string | null): string => {
     if (level === '總店') {
-        return name.replace(/台北/g, '') || '總店';
+        return '總部';
     }
     return name;
 };
