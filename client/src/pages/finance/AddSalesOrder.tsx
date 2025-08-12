@@ -109,6 +109,11 @@ const AddSalesOrder: React.FC = () => {
             setLoading(false);
         }
     };
+
+    // 報表匯出功能尚未實作，點擊僅顯示提示
+    const handleExport = () => {
+        alert('報表匯出功能待實現');
+    };
     
     // --- JSX 部分 ---
     const content = (
@@ -169,7 +174,7 @@ const AddSalesOrder: React.FC = () => {
                     </Row>
                 </Card.Body>
                 <Card.Footer className="text-center">
-                    <Button variant="info" className="mx-1 text-white" onClick={() => alert("報表匯出功能待實現")}>報表匯出</Button>
+                    <Button variant="info" className="mx-1 text-white" onClick={handleExport}>報表匯出</Button>
                     <Button variant="info" className="mx-1 text-white" onClick={() => setItems([{}])}>刪除</Button>
                     <Button variant="info" className="mx-1 text-white">修改</Button>
                     <Button variant="info" className="mx-1 text-white" onClick={handleSubmit} disabled={loading}>

@@ -390,12 +390,15 @@ def delete_staff(staff_id):
     
     try:
         with connection.cursor() as cursor:
+            # 0. 刪除對應的登入帳號資料 (若存在)
+            cursor.execute("DELETE FROM store_account WHERE account = %s", (str(staff_id),))
+
             # 1. 刪除家庭成員
             cursor.execute("DELETE FROM Staff_Family WHERE Staff_ID = %s", (staff_id,))
-            
+
             # 2. 刪除工作經驗
             cursor.execute("DELETE FROM Staff_WorkExperience WHERE Staff_ID = %s", (staff_id,))
-            
+
             # 3. 刪除基本資料
             cursor.execute("DELETE FROM Staff WHERE Staff_ID = %s", (staff_id,))
             
