@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Form, Button, Container, Row, Col, Alert, Spinner } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
 import { getAllStaffForDropdown } from '../../services/StaffService';
@@ -19,13 +19,16 @@ interface DropdownItem {
 
 const AddTherapyRecord: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
+    const presetMemberId = (location.state as { memberId?: string } | undefined)?.memberId || '';
     const [formData, setFormData] = useState({
-        member_id: '',
+        member_id: presetMemberId,
         staff_id: '',
         therapy_id: '',
         date: new Date().toISOString().split('T')[0],
         note: '',
     });
+    const [memberLocked] = useState(Boolean(presetMemberId));
 
     const [members, setMembers] = useState<Member[]>([]);
     const [staffList, setStaffList] = useState<DropdownItem[]>([]);
@@ -111,12 +114,18 @@ const AddTherapyRecord: React.FC = () => {
                 <Row className="mb-3">
                     <Form.Group as={Col} controlId="formMember">
                         <Form.Label>會員姓名</Form.Label>
-                        <Form.Select name="member_id" value={formData.member_id} onChange={handleChange} required disabled={loading}>
+                        <Form.Select name="member_id" value={formData.member_id} onChange={handleChange} required disabled={loading || memberLocked}>
                             <option value="" disabled>{loading ? '載入中...' : '請選擇會員'}</option>
                             {members.map((member) => (
                                 <option key={member.Member_ID} value={member.Member_ID}>{member.Name}</option>
                             ))}
                         </Form.Select>
+                    </Form.Group>
+                </Row>
+                <Row className="mb-3">
+                    <Form.Group as={Col} controlId="formMemberId">
+                        <Form.Label>會員編號</Form.Label>
+                        <Form.Control type="text" value={formData.member_id} disabled readOnly />
                     </Form.Group>
                 </Row>
                 <Row className="mb-3">

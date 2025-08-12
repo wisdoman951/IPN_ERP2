@@ -11,10 +11,10 @@ import {
   InputGroup,
 } from "react-bootstrap";
 import MemberColumn from "../../components/MemberColumn";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData } from "../../services/TherapySellService";
+import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData, TherapySellRow, updateTherapySell } from "../../services/TherapySellService";
 
 interface DropdownItem {
   id: number;
@@ -24,6 +24,9 @@ interface DropdownItem {
 
 const AddTherapySell: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const editSale = (location.state as { editSale?: TherapySellRow } | undefined)?.editSale;
+  const isEditMode = Boolean(editSale);
   const [formData, setFormData] = useState({
     memberId: "",
     staffId: "",
@@ -72,6 +75,29 @@ const AddTherapySell: React.FC = () => {
     };
 
     const restoreState = () => {
+      if (isEditMode && editSale) {
+        setFormData(prev => ({
+          ...prev,
+          memberId: editSale.Member_ID?.toString() || "",
+          staffId: editSale.Staff_ID?.toString() || "",
+          date: editSale.PurchaseDate?.split("T")[0] || prev.date,
+          paymentMethod: editSale.PaymentMethod || prev.paymentMethod,
+          saleCategory: editSale.SaleCategory || prev.saleCategory,
+          note: editSale.Note || "",
+        }));
+        setMemberName(editSale.MemberName || "");
+        setTherapyPackages([
+          {
+            therapy_id: editSale.therapy_id,
+            TherapyName: editSale.PackageName,
+            TherapyContent: editSale.PackageName,
+            TherapyPrice: editSale.Price || 0,
+            userSessions: editSale.Sessions?.toString() || "1",
+          },
+        ]);
+        return;
+      }
+
       const formStateData = localStorage.getItem('addTherapySellFormState');
       if (formStateData) {
         try {
@@ -180,15 +206,14 @@ const AddTherapySell: React.FC = () => {
         '暫借': 'Ticket',
         '票卷': 'Ticket',
       };
-
-      const payloads = therapyPackages.map(pkg => {
+      if (isEditMode && editSale) {
+        const pkg = therapyPackages[0];
         const itemTotal = (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0);
         let itemDiscount = 0;
         if (packagesOriginalTotal > 0 && formData.discountAmount > 0) {
-          const proportion = itemTotal / packagesOriginalTotal;
-          itemDiscount = parseFloat((formData.discountAmount * proportion).toFixed(2));
+          itemDiscount = parseFloat((formData.discountAmount).toFixed(2));
         }
-        return {
+        const payload = {
           memberId: Number(formData.memberId),
           therapy_id: pkg.therapy_id,
           staffId: Number(formData.staffId),
@@ -202,16 +227,40 @@ const AddTherapySell: React.FC = () => {
           discount: itemDiscount,
           note: formData.note,
         };
-      });
-
-      await addTherapySell(payloads);
+        await updateTherapySell(editSale.Order_ID, payload);
+        alert('銷售紀錄修改成功！');
+      } else {
+        const payloads = therapyPackages.map(pkg => {
+          const itemTotal = (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0);
+          let itemDiscount = 0;
+          if (packagesOriginalTotal > 0 && formData.discountAmount > 0) {
+            const proportion = itemTotal / packagesOriginalTotal;
+            itemDiscount = parseFloat((formData.discountAmount * proportion).toFixed(2));
+          }
+          return {
+            memberId: Number(formData.memberId),
+            therapy_id: pkg.therapy_id,
+            staffId: Number(formData.staffId),
+            purchaseDate: formData.date,
+            amount: Number(pkg.userSessions),
+            storeId: storeId ? Number(storeId) : undefined,
+            paymentMethod,
+            saleCategory: saleCategoryMap[formData.saleCategory] || formData.saleCategory,
+            transferCode: formData.paymentMethod === '轉帳' ? formData.transferCode : undefined,
+            cardNumber: formData.paymentMethod === '信用卡' ? formData.cardNumber : undefined,
+            discount: itemDiscount,
+            note: formData.note,
+          };
+        });
+        await addTherapySell(payloads);
+        alert('銷售紀錄新增成功！');
+      }
       localStorage.removeItem('addTherapySellFormState');
       localStorage.removeItem('selectedTherapyPackages');
       localStorage.removeItem('selectedTherapyPackagesWithSessions');
-      alert('銷售紀錄新增成功！');
       navigate('/therapy-sell');
     } catch (err) {
-      setError('新增失敗，請檢查所有欄位。');
+      setError(isEditMode ? '修改失敗，請檢查所有欄位。' : '新增失敗，請檢查所有欄位。');
       console.error(err);
     } finally {
       setLoading(false);
@@ -224,7 +273,7 @@ const AddTherapySell: React.FC = () => {
         <Col md={{ span: 8, offset: 2 }}>
           <Card className="shadow-sm">
             <Card.Header as="h5" className="bg-info text-white">
-              新增療程銷售
+              {isEditMode ? '修改療程銷售' : '新增療程銷售'}
             </Card.Header>
             <Card.Body>
               {error && <Alert variant="danger">{error}</Alert>}
