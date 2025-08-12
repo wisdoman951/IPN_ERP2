@@ -81,6 +81,8 @@ def get_inventory_records():
     """取得庫存進出明細"""
     start_date = request.args.get("start_date")
     end_date = request.args.get("end_date")
+    sale_staff = request.args.get("sale_staff")
+    buyer = request.args.get("buyer")
     try:
         user_store_level = request.store_level
         user_store_id = request.store_id
@@ -89,7 +91,7 @@ def get_inventory_records():
 
         target_store = store_id_param if is_admin else user_store_id
 
-        records = get_inventory_history(target_store, start_date, end_date)
+        records = get_inventory_history(target_store, start_date, end_date, sale_staff, buyer)
         return jsonify(records)
     except Exception as e:
         print(e)
