@@ -63,14 +63,15 @@ def get_all_therapy_sells(store_id=None):
                        t.name as PackageName, 
                        t.code as TherapyCode, 
                        ts.amount as Sessions,
-                       ts.payment_method as PaymentMethod, 
-                       s.name as StaffName, 
+                       ts.payment_method as PaymentMethod,
+                       s.name as StaffName,
                        ts.sale_category as SaleCategory,
                        t.price as Price,
                        ts.note as Note,
                        ts.staff_id as Staff_ID,
                        st.store_name as store_name,
                        ts.store_id as store_id,
+                       ts.therapy_id as therapy_id,
                        ts.note
                 FROM therapy_sell ts
                 LEFT JOIN member m ON ts.member_id = m.member_id
@@ -108,24 +109,27 @@ def search_therapy_sells(keyword, store_id=None):
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT ts.therapy_sell_id as Order_ID, 
-                       m.member_id as Member_ID, 
-                       m.name as MemberName, 
+                SELECT ts.therapy_sell_id as Order_ID,
+                       m.member_id as Member_ID,
+                       m.name as MemberName,
                        ts.date as PurchaseDate,
-                       'Default Package' as PackageName, 
-                       'TP001' as TherapyCode, 
+                       t.name as PackageName,
+                       t.code as TherapyCode,
                        ts.amount as Sessions,
-                       'Cash' as PaymentMethod, 
-                       s.name as StaffName, 
-                       'Regular' as SaleCategory,
+                       ts.payment_method as PaymentMethod,
+                       s.name as StaffName,
+                       ts.sale_category as SaleCategory,
+                       t.price as Price,
                        ts.staff_id as Staff_ID,
                        st.store_name as store_name,
                        ts.store_id as store_id,
+                       ts.therapy_id as therapy_id,
                        ts.note
                 FROM therapy_sell ts
                 LEFT JOIN member m ON ts.member_id = m.member_id
                 LEFT JOIN staff s ON ts.staff_id = s.staff_id
                 LEFT JOIN store st ON ts.store_id = st.store_id
+                LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
                 WHERE (m.name LIKE %s OR m.member_id LIKE %s OR s.name LIKE %s)
             """
             
