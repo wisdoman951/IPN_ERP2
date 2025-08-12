@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Form, Button, Table, Spinner, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { getStaffAccounts, deleteStaff, StaffAccount } from '../../services/StaffService'; // 假設 deleteStaff 可以批量刪除
+import { getStaffAccounts, deleteMultipleStaff, StaffAccount } from '../../services/StaffService';
 import Header from '../../components/Header'; // 1. 引入 Header
 import DynamicContainer from '../../components/DynamicContainer'; // 2. 引入 DynamicContainer
 
@@ -48,12 +48,18 @@ const UserAccountManagement: React.FC = () => {
 
     const handleDelete = async () => {
         if (selectedIds.length === 0) return;
-        if (window.confirm(`確定要刪除選中的 ${selectedIds.length} 個帳號嗎？`)) {
-            // 假設您有一個可以批量刪除的 API，如果沒有，需要逐一呼叫 deleteStaff
-            // await deleteMultipleStaff(selectedIds);
-            alert('刪除功能尚未實作');
-            // fetchAccounts(keyword); 
-            // setSelectedIds([]);
+        if (!window.confirm(`確定要刪除選中的 ${selectedIds.length} 個帳號嗎？`)) return;
+        try {
+            setLoading(true);
+            const result = await deleteMultipleStaff(selectedIds);
+            alert(result.success ? '刪除成功！' : result.message || '刪除失敗');
+            setSelectedIds([]);
+            fetchAccounts(keyword);
+        } catch (err) {
+            console.error('刪除帳號失敗：', err);
+            alert('刪除帳號失敗');
+        } finally {
+            setLoading(false);
         }
     };
     
