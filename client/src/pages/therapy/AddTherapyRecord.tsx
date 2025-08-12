@@ -13,7 +13,7 @@ import {
     updateTherapyRecord,
 } from '../../services/TherapyService';
 import { getAllMembers, Member } from '../../services/MemberService';
-import { fetchRemainingSessions } from '../../services/TherapySellService';
+import { fetchRemainingSessions, fetchRemainingSessionsBulk } from '../../services/TherapySellService';
 
 interface DropdownItem {
   staff_id?: number;
@@ -38,6 +38,7 @@ const AddTherapyRecord: React.FC = () => {
 
     const [members, setMembers] = useState<Member[]>([]);
     const [staffList, setStaffList] = useState<DropdownItem[]>([]);
+    const [allTherapyList, setAllTherapyList] = useState<DropdownItem[]>([]);
     const [therapyList, setTherapyList] = useState<DropdownItem[]>([]);
     const [remainingSessions, setRemainingSessions] = useState<number | null>(null);
     const [isFetchingSessions, setIsFetchingSessions] = useState(false);
@@ -56,7 +57,7 @@ const AddTherapyRecord: React.FC = () => {
 
                 setMembers(Array.isArray(membersData) ? membersData : []);
                 setStaffList(Array.isArray(staffData) ? staffData : []);
-                setTherapyList(Array.isArray(therapyData) ? therapyData : []);
+                setAllTherapyList(Array.isArray(therapyData) ? therapyData : []);
 
                 if (recordId) {
                     const record = await getTherapyRecordById(recordId);
@@ -77,6 +78,50 @@ const AddTherapyRecord: React.FC = () => {
         };
         fetchData();
     }, [recordId]);
+
+    useEffect(() => {
+        const filterTherapiesForMember = async () => {
+            if (!formData.member_id) {
+                setTherapyList([]);
+                if (formData.therapy_id) {
+                    setFormData((prev) => ({ ...prev, therapy_id: '' }));
+                }
+                return;
+            }
+
+            const therapyIds = allTherapyList
+                .map((t) => t.therapy_id)
+                .filter((id): id is number => typeof id === 'number');
+            if (therapyIds.length === 0) {
+                setTherapyList([]);
+                return;
+            }
+
+            try {
+                const res = await fetchRemainingSessionsBulk(formData.member_id, therapyIds);
+                const remainingMap = res.data || {};
+                const filtered = allTherapyList.filter(
+                    (t) => (remainingMap[t.therapy_id ?? 0] || 0) > 0
+                );
+                setTherapyList(filtered);
+                if (
+                    formData.therapy_id &&
+                    !filtered.some(
+                        (t) => t.therapy_id?.toString() === formData.therapy_id
+                    )
+                ) {
+                    setFormData((prev) => ({ ...prev, therapy_id: '' }));
+                }
+            } catch (err) {
+                console.error(err);
+                setTherapyList([]);
+                if (formData.therapy_id) {
+                    setFormData((prev) => ({ ...prev, therapy_id: '' }));
+                }
+            }
+        };
+        filterTherapiesForMember();
+    }, [formData.member_id, allTherapyList]);
 
     useEffect(() => {
         const getSessions = async () => {
