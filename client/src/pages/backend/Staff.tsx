@@ -1,11 +1,12 @@
 // File: client/src/pages/backend/Staff.tsx (動態標題與真實數據修正版)
 
-import React, { useState, useEffect, useCallback  } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button, Container, Row, Col, Form, Table, Spinner, Modal, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { getAllStaff, searchStaff, deleteMultipleStaff, Staff as StaffType } from "../../services/StaffService";
+import { getAllStaff, searchStaff, exportStaffToExcel } from "../../services/StaffService";
 import Header from "../../components/Header"; // 1. 引入標準 Header
 import DynamicContainer from "../../components/DynamicContainer"; // 2. 引入標準容器
+import { downloadBlob } from "../../utils/downloadBlob";
 
 interface StaffData {
     staff_id: number;
@@ -50,6 +51,7 @@ const Staff: React.FC = () => {
                 setStaffList([]);
             }
         } catch (err) {
+            console.error(err);
             setError("載入員工資料時發生錯誤");
         } finally {
             setLoading(false);
@@ -75,6 +77,7 @@ const Staff: React.FC = () => {
                 setStaffList([]);
             }
         } catch (err) {
+            console.error(err);
             setError("搜尋員工時發生錯誤");
         } finally {
             setLoading(false);
@@ -102,7 +105,7 @@ const Staff: React.FC = () => {
         if (selectedStaffIds.length === 0) return;
         setShowDeleteModal(true);
     };
-    
+
     const confirmDelete = async () => {
         setLoading(true);
         try {
@@ -113,6 +116,7 @@ const Staff: React.FC = () => {
             setSelectedStaffIds([]);
             await fetchStaffList();
         } catch (err) {
+            console.error(err);
             setError("刪除員工時發生錯誤");
         } finally {
             setLoading(false);
@@ -126,6 +130,20 @@ const Staff: React.FC = () => {
             return;
         }
         navigate(`/backend/edit-staff/${selectedStaffIds[0]}`);
+    };
+
+    const handleExport = async () => {
+        try {
+            const result = await exportStaffToExcel();
+            if (result.success) {
+                downloadBlob(result.data, `員工資料_${new Date().toISOString().split('T')[0]}.xlsx`);
+            } else {
+                alert(result.message || '匯出失敗');
+            }
+        } catch (err) {
+            console.error('匯出員工資料失敗', err);
+            alert('匯出失敗');
+        }
     };
 
     const content = (
@@ -181,6 +199,7 @@ const Staff: React.FC = () => {
             </Table>
 
             <div className="d-flex justify-content-end gap-2 mt-4">
+                <Button variant="info" className="text-white" onClick={handleExport} disabled={loading || staffList.length === 0}>報表匯出</Button>
                 <Button variant="info" className="text-white" onClick={handleDelete} disabled={selectedStaffIds.length === 0}>刪除</Button>
                 <Button variant="info" className="text-white" onClick={handleEdit} disabled={selectedStaffIds.length !== 1}>修改</Button>
                 <Button variant="info" className="text-white" onClick={() => navigate('/backend')}>確認</Button>
