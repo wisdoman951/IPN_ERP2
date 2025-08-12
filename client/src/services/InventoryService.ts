@@ -52,6 +52,8 @@ export const getInventoryRecords = async (params?: {
     storeId?: number;
     start_date?: string;
     end_date?: string;
+    sale_staff?: string;
+    buyer?: string;
 }) => {
     const level = localStorage.getItem('store_level');
     const perm = localStorage.getItem('permission');
@@ -60,6 +62,8 @@ export const getInventoryRecords = async (params?: {
     const query: any = {};
     if (params?.start_date) query.start_date = params.start_date;
     if (params?.end_date) query.end_date = params.end_date;
+    if (params?.sale_staff) query.sale_staff = params.sale_staff;
+    if (params?.buyer) query.buyer = params.buyer;
     if (!isAdmin && params?.storeId !== undefined) {
         query.store_id = params.storeId;
     } else if (isAdmin && params?.storeId !== undefined) {

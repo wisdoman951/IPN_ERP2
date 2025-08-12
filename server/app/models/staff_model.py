@@ -394,7 +394,12 @@ def delete_staff(staff_id):
             cursor.execute("DELETE FROM store_account WHERE account = %s", (str(staff_id),))
 
             # 1. 刪除家庭成員
-            cursor.execute("DELETE FROM Staff_Family WHERE Staff_ID = %s", (staff_id,))
+            try:
+                cursor.execute("DELETE FROM Staff_Family WHERE Staff_ID = %s", (staff_id,))
+            except pymysql.err.ProgrammingError as e:
+                # 資料表不存在時略過
+                if e.args[0] != 1146:
+                    raise
 
             # 2. 刪除工作經驗
             cursor.execute("DELETE FROM Staff_WorkExperience WHERE Staff_ID = %s", (staff_id,))
