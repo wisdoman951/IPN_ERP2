@@ -1,4 +1,6 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
+import pandas as pd
+import io
 from app.models.staff_model import (
     get_all_staff,
     search_staff,
@@ -94,6 +96,55 @@ def get_staff_details_route(staff_id):
     except Exception as e:
         print(f"獲取員工詳細資料失敗: {e}")
         return jsonify({"error": str(e)}), 500
+
+@staff_bp.route("/export", methods=["GET"])
+@auth_required
+def export_staff_route():
+    """匯出員工資料為 Excel 檔案"""
+    try:
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        is_admin = user_store_level == '總店' or request.permission == 'admin'
+        store_id_param = request.args.get('store_id')
+        target_store = store_id_param if is_admin and store_id_param else user_store_id
+
+        staff_list = get_all_staff(user_store_level, target_store)
+        if not staff_list:
+            return jsonify({"message": "沒有可匯出的員工資料。"}), 404
+
+        df = pd.DataFrame(staff_list)
+        column_mapping = {
+            'staff_id': '員工編號',
+            'name': '姓名',
+            'national_id': '身分證字號',
+            'phone': '手機號碼',
+            'gender': '性別',
+            'store_name': '分店'
+        }
+        df = df.rename(columns=column_mapping)
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='員工資料')
+            workbook = writer.book
+            worksheet = writer.sheets['員工資料']
+            header_format = workbook.add_format({'bold': True, 'bg_color': '#D9EAD3', 'border': 1})
+            for col_num, value in enumerate(df.columns.values):
+                worksheet.write(0, col_num, value, header_format)
+            for i, col in enumerate(df.columns):
+                column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
+                worksheet.set_column(i, i, column_width)
+        output.seek(0)
+
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='員工資料.xlsx'
+        )
+    except Exception as e:
+        print(f"匯出員工資料失敗: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @staff_bp.route("/add", methods=["POST"])
 @auth_required
