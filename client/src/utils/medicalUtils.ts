@@ -9,11 +9,18 @@
  */
 export const formatMedicalHistory = (jsonString: string): string => {
     if (!jsonString) return "-";
-    
+
+    const trimmed = jsonString.trim();
+
+    // 如果字串不是 JSON 物件或陣列，直接回傳原始內容
+    if (!trimmed.startsWith("{") && !trimmed.startsWith("[")) {
+        return trimmed;
+    }
+
     try {
-        const historyObj = JSON.parse(jsonString);
+        const historyObj = JSON.parse(trimmed);
         const formattedItems: string[] = [];
-        
+
         // 遍歷每個鍵值對
         for (const [key, values] of Object.entries(historyObj)) {
             if (Array.isArray(values) && values.length > 0) {
@@ -24,13 +31,13 @@ export const formatMedicalHistory = (jsonString: string): string => {
                 }
             }
         }
-        
+
         // 如果沒有有效內容，返回短橫線
         return formattedItems.length > 0 ? formattedItems.join("; ") : "-";
-        
-    } catch (error) {
-        console.error("解析病史 JSON 失敗:", error);
-        return jsonString; // 如果解析失敗，返回原始字符串
+
+    } catch {
+        // 如果解析失敗，返回原始字串，避免在 console 中大量錯誤訊息
+        return trimmed;
     }
 };
 
