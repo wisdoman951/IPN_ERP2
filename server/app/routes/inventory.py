@@ -38,6 +38,7 @@ def get_inventory_list():
         print(e)
         return jsonify({"error": str(e)}), 500
 
+
 @inventory_bp.route("/search", methods=["GET"])
 @auth_required
 def search_inventory_items():
@@ -213,9 +214,18 @@ def export_inventory():
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
         store_id_param = request.args.get('store_id')
+        start_date = request.args.get('start_date')
+        end_date = request.args.get('end_date')
+        sale_staff = request.args.get('sale_staff')
+        buyer = request.args.get('buyer')
+        detail = request.args.get('detail')
+
         target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
 
-        inventory_data = export_inventory_data(target_store)
+        if detail:
+            inventory_data = get_inventory_history(target_store, start_date, end_date, sale_staff, buyer)
+        else:
+            inventory_data = export_inventory_data(target_store)
         
         # 使用pandas創建DataFrame
         df = pd.DataFrame(inventory_data)

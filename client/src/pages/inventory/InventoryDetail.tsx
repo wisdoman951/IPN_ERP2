@@ -48,7 +48,13 @@ const InventoryDetail: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const blob = await exportInventory();
+      const blob = await exportInventory({
+        start_date: startDate || undefined,
+        end_date: endDate || undefined,
+        sale_staff: saleStaff || undefined,
+        buyer: buyer || undefined,
+        detail: true,
+      });
       downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
       console.error("匯出庫存資料失敗", err);

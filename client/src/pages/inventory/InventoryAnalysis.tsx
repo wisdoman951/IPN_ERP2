@@ -100,7 +100,9 @@ const InventoryAnalysis: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const blob = await exportInventory(isAdmin ? undefined : userStoreId);
+      const blob = await exportInventory({
+        storeId: isAdmin ? undefined : userStoreId,
+      });
       downloadBlob(blob, `庫存報表_${new Date().toISOString().split("T")[0]}.xlsx`);
     } catch (err) {
       console.error("匯出庫存資料失敗", err);

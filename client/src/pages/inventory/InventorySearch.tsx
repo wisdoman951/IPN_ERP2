@@ -177,7 +177,9 @@ const InventorySearch: React.FC = () => {
     const handleExport = async () => {
         setLoading(true);
         try {
-            const blob = await exportInventory(isAdmin ? undefined : userStoreId);
+            const blob = await exportInventory({
+                storeId: isAdmin ? undefined : userStoreId,
+            });
             downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
             setSuccessMessage("庫存數據匯出成功");
         } catch (err) {
