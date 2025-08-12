@@ -270,33 +270,16 @@ const TherapyRecord: React.FC = () => {
                             報表匯出
                         </Button>
                     </Col>
-                    {/*
-                    <Col xs="auto">
-                        <Button 
-                            variant="info" 
-                            className="text-white px-4"
-                            onClick={handleDelete}
-                            disabled={loading || selectedIds.length === 0}
-                        >
-                            刪除
-                        </Button>
-                    </Col>
-                    <Col xs="auto">
-                        <Button 
-                            variant="info" 
-                            className="text-white px-4"
-                            onClick={() => navigate(`/therapy-record/edit/${selectedIds[0]}`)}
-                            disabled={loading || selectedIds.length !== 1}
-                        >
-                            修改
-                        </Button>
-                    </Col>
-                    */}
                     <Col xs="auto">
                         <Button
                             variant="info"
                             className="text-white px-4"
-                            onClick={() => {}}
+                            onClick={() =>
+                                navigate('/therapy-record/add-therapy-record', {
+                                    state: { recordId: selectedIds[0] },
+                                })
+                            }
+                            disabled={loading || selectedIds.length !== 1}
                         >
                             修改
                         </Button>

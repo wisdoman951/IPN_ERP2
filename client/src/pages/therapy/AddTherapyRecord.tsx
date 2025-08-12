@@ -6,10 +6,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
 import { getAllStaffForDropdown } from '../../services/StaffService';
-import { getAllTherapiesForDropdown } from '../../services/TherapyService';
+import {
+    getAllTherapiesForDropdown,
+    getTherapyRecordById,
+    addTherapyRecord,
+    updateTherapyRecord,
+} from '../../services/TherapyService';
 import { getAllMembers, Member } from '../../services/MemberService';
 import { fetchRemainingSessions } from '../../services/TherapySellService';
-import { addTherapyRecord } from '../../services/TherapyService';
 
 interface DropdownItem {
   staff_id?: number;
@@ -20,7 +24,9 @@ interface DropdownItem {
 const AddTherapyRecord: React.FC = () => {
     const navigate = useNavigate();
     const location = useLocation();
-    const presetMemberId = (location.state as { memberId?: string } | undefined)?.memberId || '';
+    const locationState = location.state as { memberId?: string; recordId?: number } | undefined;
+    const presetMemberId = locationState?.memberId || '';
+    const recordId = locationState?.recordId;
     const [formData, setFormData] = useState({
         member_id: presetMemberId,
         staff_id: '',
@@ -28,7 +34,7 @@ const AddTherapyRecord: React.FC = () => {
         date: new Date().toISOString().split('T')[0],
         note: '',
     });
-    const [memberLocked] = useState(Boolean(presetMemberId));
+    const [memberLocked] = useState(Boolean(presetMemberId || recordId));
 
     const [members, setMembers] = useState<Member[]>([]);
     const [staffList, setStaffList] = useState<DropdownItem[]>([]);
@@ -51,6 +57,17 @@ const AddTherapyRecord: React.FC = () => {
                 setMembers(Array.isArray(membersData) ? membersData : []);
                 setStaffList(Array.isArray(staffData) ? staffData : []);
                 setTherapyList(Array.isArray(therapyData) ? therapyData : []);
+
+                if (recordId) {
+                    const record = await getTherapyRecordById(recordId);
+                    setFormData({
+                        member_id: record.member_id.toString(),
+                        staff_id: record.staff_id?.toString() || '',
+                        therapy_id: record.therapy_id?.toString() || '',
+                        date: record.date.split('T')[0],
+                        note: record.note || '',
+                    });
+                }
             } catch (err) {
                 setError('載入初始資料失敗');
                 console.error(err);
@@ -59,7 +76,7 @@ const AddTherapyRecord: React.FC = () => {
             }
         };
         fetchData();
-    }, []);
+    }, [recordId]);
 
     useEffect(() => {
         const getSessions = async () => {
@@ -78,29 +95,32 @@ const AddTherapyRecord: React.FC = () => {
         };
         getSessions();
     }, [formData.member_id, formData.therapy_id]);
-    useEffect(() => {
-        console.log('staffList:', staffList);
-    }, [staffList]);
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-        // --- 修正這個函式 ---
+    const handleChange = (
+        e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
         const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
+        setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (remainingSessions !== null && remainingSessions <= 0) {
+        if (!recordId && remainingSessions !== null && remainingSessions <= 0) {
             setError('剩餘堂數不足，無法新增紀錄。');
             return;
         }
         setLoading(true);
         setError('');
         try {
-            await addTherapyRecord(formData);
-            alert('療程紀錄新增成功！');
+            if (recordId) {
+                await updateTherapyRecord(recordId, formData);
+                alert('療程紀錄更新成功！');
+            } else {
+                await addTherapyRecord(formData);
+                alert('療程紀錄新增成功！');
+            }
             navigate('/therapy-record');
         } catch (err) {
-            setError('新增失敗，請檢查所有欄位。');
+            setError(recordId ? '更新失敗，請檢查所有欄位。' : '新增失敗，請檢查所有欄位。');
             console.error(err);
         } finally {
             setLoading(false);
@@ -177,9 +197,30 @@ const AddTherapyRecord: React.FC = () => {
                     </Form.Group>
                 </Row>
                 <div className="d-flex gap-2 mt-3">
-                    <Button variant="info" className="text-white" onClick={() => {}} disabled={loading || isFetchingSessions}>取消</Button>
-                    <Button variant="info" className="text-white" onClick={() => {}} disabled={loading || isFetchingSessions}>列印</Button>
-                    <Button variant="info" className="text-white" type="submit" disabled={loading || isFetchingSessions}>儲存</Button>
+                    <Button
+                        variant="info"
+                        className="text-white"
+                        onClick={() => navigate(-1)}
+                        disabled={loading || isFetchingSessions}
+                    >
+                        取消
+                    </Button>
+                    <Button
+                        variant="info"
+                        className="text-white"
+                        onClick={() => {}}
+                        disabled={loading || isFetchingSessions}
+                    >
+                        列印
+                    </Button>
+                    <Button
+                        variant="info"
+                        className="text-white"
+                        type="submit"
+                        disabled={loading || isFetchingSessions}
+                    >
+                        儲存
+                    </Button>
                 </div>
             </Form>
         </Container>
