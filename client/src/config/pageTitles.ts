@@ -63,7 +63,7 @@ export const pageTitles: PageTitleMap = {
   '/finance/item-selection': { basic: '選擇銷售品項 1.1.5.1.1.1', admin: '選擇銷售品項 1.2.5.1.1.1' },
 
   // Backend
-  '/backend': { basic: '分店後台管理 1.1.6', admin: '總部後台管理 1.2.6' },
+  '/backend': { basic: '分店後台管理 1.1.6', admin: '總部後台管理' },
   '/backend/staff': { basic: '分店後台管理-員工資料 1.1.6.1', admin: '總部後台管理-員工資料 1.2.6.1' },
   '/backend/add-staff': { basic: '分店後台管理-新增入職簡歷 1.1.6.1.1', admin: '總部後台管理-新增入職簡歷 1.2.6.1.1' },
   '/backend/user-accounts': { basic: '無權限', admin: '使用者帳號管理 1.2.6.2' },
