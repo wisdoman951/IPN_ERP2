@@ -247,7 +247,7 @@ const AddProductSell: React.FC = () => {
             <Form.Group className="mb-3">
               <Form.Label>購買人姓名</Form.Label>
               <MemberColumn memberId={memberId} name={memberName} onMemberChange={handleMemberChange} onError={handleError} triggerSearchOnMount={false} />
-              {formSubmitted && !memberName && <div className="text-danger d-block small mt-1">請選擇購買會員</div>}
+              {formSubmitted && (!memberId || !memberName) && <div className="text-danger d-block small mt-1">請選擇購買會員</div>}
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>購買品項</Form.Label>
@@ -297,12 +297,6 @@ const AddProductSell: React.FC = () => {
 
           {/* --- Right Column --- */}
           <Col md={6}>
-            <Form.Group className="mb-3">
-              <Form.Label>會員編號</Form.Label>
-              <Form.Control type="text" value={memberId} readOnly disabled className="bg-light"/>
-              {formSubmitted && !memberId && <div className="text-danger d-block small mt-1">請選擇會員</div>}
-            </Form.Group>
-            
             <Form.Group className="mb-3">
               <Form.Label>購買日期</Form.Label>
               <Form.Control type="date" value={purchaseDate} max={new Date().toISOString().split("T")[0]} onChange={(e) => setPurchaseDate(e.target.value)} required />
