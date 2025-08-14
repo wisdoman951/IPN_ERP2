@@ -198,6 +198,21 @@ def check_member_exists(member_id: int):
     finally:
         conn.close()
 
+
+def check_member_code_exists(member_code: str):
+    """Check if the given member_code already exists in the database."""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT COUNT(*) as count FROM member WHERE member_code = %s",
+                (member_code,),
+            )
+            result = cursor.fetchone()
+        return result["count"] > 0
+    finally:
+        conn.close()
+
 def get_next_member_code():
     conn = connect_to_db()
     try:

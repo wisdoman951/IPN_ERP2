@@ -259,6 +259,19 @@ export const checkMemberExists = async (memberId: string): Promise<boolean> => {
 };
 
 /**
+ * Check if a member code already exists
+ */
+export const checkMemberCodeExists = async (memberCode: string): Promise<boolean> => {
+  try {
+    const response = await authAxios.get(`/check-code/${memberCode}`);
+    return response.data.exists;
+  } catch (error) {
+    console.error(`Failed to check if member code ${memberCode} exists:`, error);
+    return false;
+  }
+};
+
+/**
  * next member inedex
  */
 export const getNextMemberCode = async (): Promise<ApiResponse<string>> => {
