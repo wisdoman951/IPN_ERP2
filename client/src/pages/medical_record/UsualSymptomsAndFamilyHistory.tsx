@@ -195,7 +195,7 @@ const UsualSymptomsAndFamilyHistory = () => {
                 </Form.Group>
                 
                 <div className="d-flex gap-3 mt-4">
-                    <Button onClick={onSave} variant="primary" className="text-white">
+                    <Button onClick={onSave} variant="info" className="text-white">
                         儲存並返回
                     </Button>
                     <Button onClick={() => navigate("/medical-record/add")} variant="secondary" className="text-white">
