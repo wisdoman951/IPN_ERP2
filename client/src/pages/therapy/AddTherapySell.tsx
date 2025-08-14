@@ -290,13 +290,13 @@ const AddTherapySell: React.FC = () => {
                       memberCode={formData.memberCode}
                       name={memberName}
                       isEditMode={false}
-                      onMemberChange={(code, name, data) => {
-                        setFormData(prev => ({ ...prev, memberCode: code, memberId: data?.member_id?.toString() || "" }));
-                        setMemberName(name);
-                        if (memberData) {
-                          setError(null);
-                        }
-                      }}
+                        onMemberChange={(code, name, data) => {
+                          setFormData(prev => ({ ...prev, memberCode: code, memberId: data?.member_id?.toString() || "" }));
+                          setMemberName(name);
+                          if (data) {
+                            setError(null);
+                          }
+                        }}
                       onError={(msg) => setError(msg)}
                     />
                   </Col>
