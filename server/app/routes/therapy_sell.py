@@ -269,10 +269,12 @@ def get_members():
         return jsonify({"error": str(e)}), 500
 
 @therapy_sell.route('/staff', methods=['GET'])
+@auth_required
 def get_staff():
-    """獲取所有員工"""
+    """依據分店取得員工"""
     try:
-        result = get_all_staff()
+        store_id = request.args.get('store_id')
+        result = get_all_staff(store_id)
         return jsonify(result)
     except Exception as e:
         print(f"獲取員工列表失敗: {e}")

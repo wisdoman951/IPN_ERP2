@@ -1,6 +1,7 @@
 // client\src\services\ＭedicalService.ts
 import axios from "axios";
 import { base_url } from "./BASE_URL";
+import { getAuthHeaders } from "./AuthUtils";
 
 const API_URL = `${base_url}/medical-record`;
 
@@ -58,7 +59,9 @@ export const getMemberById = async (memberId: string) => {
 
 export const getMemberByCode = async (memberCode: string) => {
   try {
-    const res = await axios.get(`${base_url}/member/code/${memberCode}`);
+    const res = await axios.get(`${base_url}/member/code/${memberCode}` , {
+      headers: getAuthHeaders(),
+    });
     return res.data;
   } catch (error) {
     console.error("透過代碼獲取會員資料失敗", error);

@@ -48,8 +48,8 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
         // 設置新的計時器，延遲 500ms 後才去 call API
         debounceTimeoutRef.current = setTimeout(async () => {
             try {
-                const member = await getMemberByCode(memberCode);
-                if (member) {
+                const member: any = await getMemberByCode(memberCode);
+                if (member && !member.error) {
                     // 找到會員，呼叫 onMemberChange 更新父元件的表單
                     onMemberChange(memberCode, member.name, member);
                 } else {
@@ -70,7 +70,7 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
             }
         };
     // 依賴項現在更簡潔
-    }, [memberCode, isEditMode, onMemberChange, onError]);
+    }, [memberCode, isEditMode]);
 
     return (
         <Row>

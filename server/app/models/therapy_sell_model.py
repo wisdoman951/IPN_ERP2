@@ -397,13 +397,17 @@ def get_all_members():
     finally:
         conn.close()
 
-def get_all_staff():
-    """獲取所有員工"""
+def get_all_staff(store_id=None):
+    """獲取所有員工，若提供分店則僅回傳該店員工"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = "SELECT staff_id, name FROM staff ORDER BY name"
-            cursor.execute(query)
+            if store_id:
+                query = "SELECT staff_id, name FROM staff WHERE store_id = %s ORDER BY name"
+                cursor.execute(query, (store_id,))
+            else:
+                query = "SELECT staff_id, name FROM staff ORDER BY name"
+                cursor.execute(query)
             result = cursor.fetchall()
             return result
     except Exception as e:
