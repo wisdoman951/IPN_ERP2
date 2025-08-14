@@ -55,6 +55,16 @@ export const getMemberById = async (memberId: string) => {
     throw error;
   }
 };
+
+export const getMemberByCode = async (memberCode: string) => {
+  try {
+    const res = await axios.get(`${base_url}/member/code/${memberCode}`);
+    return res.data;
+  } catch (error) {
+    console.error("透過代碼獲取會員資料失敗", error);
+    throw error;
+  }
+};
 // 根據 ID 獲取單筆健康檢查記錄
 export const getMedicalRecordById = async (recordId: number) => {
   const response = await axios.get(`${API_URL}/${recordId}`);

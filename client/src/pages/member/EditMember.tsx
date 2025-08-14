@@ -48,7 +48,7 @@ const EditMember: React.FC = () => {
                 if (data) {
                     // 將從服務獲取的資料填充到表單 state
                     setForm({
-                        member_code: data.Member_ID || "",
+                        member_code: data.member_code || "",
                         name: data.Name || "",
                         birthday: data.Birth ? new Date(data.Birth).toISOString().split('T')[0] : "",
                         gender: data.Gender || "Male",

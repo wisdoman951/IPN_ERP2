@@ -11,6 +11,7 @@ from app.models.member_model import (
     create_member,
     update_member,
     get_member_by_id,
+    get_member_by_code,
     check_member_exists,
     check_member_code_exists,
     get_next_member_code,
@@ -213,6 +214,24 @@ def get_member_route(member_id):
             return jsonify({"error": "權限不足，無法查看非本店會員資料"}), 403
         # --- 權限檢查結束 ---
             
+        return jsonify(member)
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": f"獲取會員資料時發生錯誤: {str(e)}"}), 500
+
+@member_bp.route("/code/<string:member_code>", methods=["GET"])
+@auth_required
+def get_member_by_code_route(member_code):
+    try:
+        member = get_member_by_code(member_code)
+        if not member:
+            return jsonify({"error": "會員不存在"}), 404
+
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+        if user_store_level == '分店' and member['store_id'] != user_store_id:
+            return jsonify({"error": "權限不足，無法查看非本店會員資料"}), 403
+
         return jsonify(member)
     except Exception as e:
         traceback.print_exc()

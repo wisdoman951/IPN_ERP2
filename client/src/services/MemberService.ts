@@ -36,6 +36,8 @@ authAxios.interceptors.request.use(
  */
 export interface Member {
   Member_ID: string;
+  /** 會員代碼 (例如 M001) */
+  member_code?: string;
   Name: string;
   Gender: string;
   Birth: string;
@@ -53,6 +55,7 @@ export interface Member {
  */
 interface BackendMember {
   member_id: number | string;
+  member_code?: string;
   name: string;
   birthday: Date | string;
   gender: 'Male' | 'Female' | 'Other' | string;
@@ -71,6 +74,7 @@ interface BackendMember {
 const transformBackendToFrontend = (member: BackendMember): Member => {
   return {
     Member_ID: String(member.member_id),
+    member_code: member.member_code || undefined,
     Name: member.name,
     Gender: member.gender || '',
     Birth: member.birthday ? (typeof member.birthday === 'string' ? member.birthday : member.birthday.toISOString().split('T')[0]) : '',
@@ -91,6 +95,7 @@ const transformFrontendToBackend = (member: Partial<Member>): Partial<BackendMem
   const backendMember: Partial<BackendMember> = {};
   
   if (member.Member_ID) backendMember.member_id = member.Member_ID;
+  if (member.member_code) backendMember.member_code = member.member_code;
   if (member.Name) backendMember.name = member.Name;
   if (member.Gender) backendMember.gender = member.Gender;
   if (member.Birth) backendMember.birthday = member.Birth;

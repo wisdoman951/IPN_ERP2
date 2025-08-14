@@ -88,6 +88,7 @@ export const useMedicalRecordForm = (id?: string) => {
     const [isContraindicated, setIsContraindicated] = useState(false);
 
     const initialFormState: MedicalFormType = {
+        memberCode: "",
         memberId: "",
         name: "",
         height: "",
@@ -249,8 +250,8 @@ export const useMedicalRecordForm = (id?: string) => {
     }, [form.healthStatus, form.symptom, form.familyHistory]);
 
 
-    const handleMemberChange = (memberId: string, name: string, memberDataResult: MemberData | null) => {
-        setForm(prev => ({ ...prev, memberId, name }));
+    const handleMemberChange = (memberCode: string, name: string, memberDataResult: MemberData | null) => {
+        setForm(prev => ({ ...prev, memberCode, memberId: memberDataResult?.member_id?.toString() || "", name }));
         setMemberData(memberDataResult);
     };
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
