@@ -105,23 +105,29 @@ def export_staff_route():
         user_store_level = request.store_level
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
-        store_id_param = request.args.get('store_id')
-        target_store = store_id_param if is_admin and store_id_param else user_store_id
+        store_id_param = request.args.get('store_id', type=int)
+
+        # 總店若未指定 store_id，匯出所有分店的員工；分店僅匯出自身員工
+        target_store = store_id_param if is_admin else user_store_id
 
         staff_list = get_all_staff(user_store_level, target_store)
         if not staff_list:
             return jsonify({"message": "沒有可匯出的員工資料。"}), 404
 
+        # 僅輸出指定欄位，避免遺漏或順序錯亂
+        columns = [
+            'staff_id', 'family_information_id', 'emergency_contact_id',
+            'work_experience_id', 'hiring_information_id', 'name', 'gender',
+            'fill_date', 'onboard_date', 'nationality', 'education', 'married',
+            'position', 'phone', 'national_id', 'mailing_address',
+            'registered_address', 'account', 'password', 'store_id'
+        ]
+
         df = pd.DataFrame(staff_list)
-        column_mapping = {
-            'staff_id': '員工編號',
-            'name': '姓名',
-            'national_id': '身分證字號',
-            'phone': '手機號碼',
-            'gender': '性別',
-            'store_name': '分店'
-        }
-        df = df.rename(columns=column_mapping)
+        for col in columns:
+            if col not in df.columns:
+                df[col] = None
+        df = df[columns]
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
