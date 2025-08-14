@@ -52,7 +52,7 @@ const UsualSymptomsAndFamilyHistory = () => {
             <Form>
                 {/* 健康狀態部分 - 移到最上方或您認為合適的位置 */}
                 <Card className="mb-4">
-                    <Card.Header className="bg-danger text-white"> {/* 改為更醒目的顏色 */}
+                    <Card.Header variant="info" className="text-white"> {/* 改為更醒目的顏色 */}
                         <h5 className="mb-0">健康狀態</h5>
                     </Card.Header>
                     <Card.Body>
