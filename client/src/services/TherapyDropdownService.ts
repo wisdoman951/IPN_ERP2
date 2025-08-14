@@ -45,10 +45,11 @@ export const getTherapyPackages = async (): Promise<TherapyPackage[]> => {
 };
 
 // 獲取員工 (選項資料)
-export const getStaffMembers = async (): Promise<StaffMember[]> => {
+export const getStaffMembers = async (storeId?: number): Promise<StaffMember[]> => {
     try {
-        const response = await axios.get(`${API_URL}/staff`);
-        
+        const params = storeId ? { store_id: storeId } : undefined;
+        const response = await axios.get(`${API_URL}/staff`, { params });
+
         // 處理返回數據，確保與預期格式一致
         if (response.data && Array.isArray(response.data)) {
             // 統一字段名稱
@@ -59,10 +60,10 @@ export const getStaffMembers = async (): Promise<StaffMember[]> => {
                 Staff_Name: staff.Staff_Name || staff.name || ""
             }));
         }
-        
+
         return [];
     } catch (error) {
         console.error("獲取員工資料失敗:", error);
         return [];
     }
-}; 
+};

@@ -60,14 +60,14 @@ const AddProductSell: React.FC = () => {
 
     const fetchStaffMembers = async () => {
       try {
-        const data = await getStaffMembers();
+        const data = await getStaffMembers(currentStoreId ? parseInt(currentStoreId) : undefined);
         setStaffMembers(data);
         if (data.length > 0 && !localStorage.getItem('productSellFormState')) {
           setSelectedStaffId(data[0].staff_id.toString());
         }
-      } catch (err) { 
-        console.error("載入銷售人員資料失敗：", err); 
-        setError("載入銷售人員資料失敗"); 
+      } catch (err) {
+        console.error("載入銷售人員資料失敗：", err);
+        setError("載入銷售人員資料失敗");
       }
     };
     fetchStaffMembers();
