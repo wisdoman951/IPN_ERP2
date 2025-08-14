@@ -92,7 +92,7 @@ const UsualSymptomsAndFamilyHistory = () => {
 
                 {/* 平時症狀部分 */}
                 <Card className="mb-4">
-                    <Card.Header className="bg-primary text-white">
+                    <Card.Header className="bg-info text-white">
                         <h5 className="mb-0">平時症狀</h5>
                     </Card.Header>
                     <Card.Body>
@@ -147,7 +147,7 @@ const UsualSymptomsAndFamilyHistory = () => {
                 
                 {/* 家族病史部分 */}
                 <Card className="mb-4">
-                    <Card.Header className="bg-primary text-white">
+                    <Card.Header className="bg-info text-white">
                         <h5 className="mb-0">家族病史</h5>
                     </Card.Header>
                     <Card.Body>
