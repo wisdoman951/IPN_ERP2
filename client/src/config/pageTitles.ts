@@ -32,6 +32,7 @@ export const pageTitles: PageTitleMap = {
   // Health
   '/health-data-analysis': { basic: '健康數據分析 1.1.1.4', admin: '健康數據分析 1.2.1.4' },
   '/health-data-analysis/stress-test/': { basic: 'iPN壓力源測試 1.1.1.4.1', admin: 'iPN壓力源測試 1.2.1.4.1' },
+  '/health-data-analysis/stress-test/add': { basic: '新增iPN壓力源測試 1.1.1.4.1.1', admin: '新增iPN壓力源測試 1.2.1.4.1.1' },
   '/health-data-analysis/stress-test/add/page1': { basic: '新增iPN壓力源測試 1.1.1.4.1.1', admin: '新增iPN壓力源測試 1.2.1.4.1.1' },
   '/health-data-analysis/stress-test/add/page2': { basic: '新增iPN壓力源測試 1.1.1.4.1.1.1', admin: '新增iPN壓力源測試 1.1.1.4.1.1.1' },
   '/health-data-analysis/stress-test/edit/:id': { basic: '編輯iPN壓力源測試 1.1.4.1.1.1', admin: '編輯iPN壓力源測試 1.2.4.1.1.1' },
