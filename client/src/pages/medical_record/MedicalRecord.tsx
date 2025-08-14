@@ -25,8 +25,8 @@ const MedicalRecord: React.FC = () => {
     const tableHeader = (
         <tr>
             <th>勾選</th>
-            <th>姓名</th>
             <th>會員編號</th>
+            <th>姓名</th>
             <th>身高</th>
             <th>體重</th>
             <th>血壓</th>
