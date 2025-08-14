@@ -128,7 +128,14 @@ export const getAllTherapyPackages = async (): Promise<ApiResponse<TherapyPackag
 // 員工相關 API - 根據分店取得員工資料
 export const getStaffMembers = async (storeId?: number): Promise<ApiResponse<StaffMember[]>> => {
     try {
-        const params = storeId ? { store_id: storeId } : undefined;
+        const perm = localStorage.getItem('permission');
+        let params;
+        if (perm === 'admin') {
+            params = undefined;
+        } else {
+            const resolvedStoreId = storeId ?? Number(localStorage.getItem('store_id'));
+            params = resolvedStoreId ? { store_id: resolvedStoreId } : undefined;
+        }
         const response = await axios.get(`${API_URL}/staff`, { params });
 
         if (response.data && Array.isArray(response.data)) {

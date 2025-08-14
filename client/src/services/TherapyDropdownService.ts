@@ -47,7 +47,14 @@ export const getTherapyPackages = async (): Promise<TherapyPackage[]> => {
 // 獲取員工 (選項資料)
 export const getStaffMembers = async (storeId?: number): Promise<StaffMember[]> => {
     try {
-        const params = storeId ? { store_id: storeId } : undefined;
+        const perm = localStorage.getItem('permission');
+        let params;
+        if (perm === 'admin') {
+            params = undefined;
+        } else {
+            const resolvedStoreId = storeId ?? Number(localStorage.getItem('store_id'));
+            params = resolvedStoreId ? { store_id: resolvedStoreId } : undefined;
+        }
         const response = await axios.get(`${API_URL}/staff`, { params });
 
         // 處理返回數據，確保與預期格式一致
