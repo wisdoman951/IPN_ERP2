@@ -13,7 +13,8 @@ import { calculateBMI, getTodayDateString } from "../../../utils/pureMedicalUtil
 // 更新 interface 以匹配新的欄位名稱
 interface PureMedicalFormRow {
   姓名: string;
-  會員ID: string;
+  會員ID: string; // 數值 ID
+  會員代碼: string; // 顯示用代碼
   血壓: string;
   日期: string;
   // 身高: string; // <--- 1) 刪除 身高
@@ -36,6 +37,7 @@ interface Staff {
 
 interface MemberData { // MemberColumn 會返回這個結構
   member_id: number;
+  member_code?: string;
   name: string;
 }
 
@@ -48,6 +50,7 @@ const AddPureMedicalRecord: React.FC = () => {
   const initialFormData: PureMedicalFormRow = {
     姓名: "",
     會員ID: "",
+    會員代碼: "",
     血壓: "",
     日期: getTodayDateString(),
     體重: "", 
@@ -130,20 +133,20 @@ const AddPureMedicalRecord: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleMemberChange = (memberId: string, name: string) => {
-   setFormData(prev => ({ ...prev, 會員ID: memberId, 姓名: name }));
-    if(error) setError(null);
-   };
+  const handleMemberChange = (memberCode: string, name: string, data: MemberData | null) => {
+    setFormData(prev => ({ ...prev, 會員代碼: memberCode, 會員ID: data?.member_id?.toString() || "", 姓名: name }));
+    if (error) setError(null);
+  };
 
   const handleError = (errorMessage: string) => {
     setError(errorMessage);
   };
 
   useEffect(() => {
-    if (error && error.includes("會員") && formData.會員ID) {
+    if (error && error.includes("會員") && formData.會員代碼) {
       setError(null);
     }
-  }, [formData.會員ID, error]);
+  }, [formData.會員代碼, error]);
 
   const convertFormDataToApiData = () => {
     const selectedStaff = staffList.find(staff =>
@@ -168,8 +171,8 @@ const AddPureMedicalRecord: React.FC = () => {
 
   // "確認" 按鈕的功能 - 即儲存
   const handleConfirmSubmit = async () => {
-    if (!formData.姓名 || !formData.會員ID) {
-      setError("姓名和會員ID為必填欄位");
+    if (!formData.姓名 || !formData.會員代碼) {
+      setError("姓名和會員代碼為必填欄位");
       // 自動滾動到 MemberColumn 附近或頂部
       const memberColumnElement = document.getElementById("member-column-section"); // 假設 MemberColumn 有 id
       if (memberColumnElement) {
@@ -209,8 +212,8 @@ const AddPureMedicalRecord: React.FC = () => {
             // 或者，直接操作 MemberColumn 的輸入框 (不推薦)
             // 最好的方式是 MemberColumn 能接收一個重置信號或空的 memberId/name
         }
-        // 簡易做法：直接清空 formData 中的姓名和會員ID，MemberColumn 會響應
-        setFormData(prev => ({...initialFormData, 姓名: "", 會員ID: ""}));
+        // 簡易做法：直接清空 formData 中的姓名和會員資訊，MemberColumn 會響應
+        setFormData(prev => ({...initialFormData, 姓名: "", 會員ID: "", 會員代碼: ""}));
 
     }
   };
@@ -236,7 +239,7 @@ const AddPureMedicalRecord: React.FC = () => {
         
         <div id="member-column-section"> {/* 給 MemberColumn 一個 ID 以便滾動定位 */}
             <MemberColumn
-                memberId={formData.會員ID}
+                memberCode={formData.會員代碼}
                 name={formData.姓名}
                 onMemberChange={handleMemberChange}
                 onError={handleError}

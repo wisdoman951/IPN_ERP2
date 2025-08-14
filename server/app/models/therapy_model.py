@@ -39,9 +39,9 @@ def get_all_therapy_records():
         with conn.cursor() as cursor:
             # --- SQL查詢簡化：直接選取 remaining_sessions_at_time 欄位 ---
             sql = """
-                SELECT 
+                SELECT
                     tr.therapy_record_id, tr.date, tr.note,
-                    tr.member_id, m.name AS member_name,
+                    tr.member_id, m.member_code, m.name AS member_name,
                     tr.therapy_id, t.name AS package_name, t.content AS therapy_content,
                     tr.staff_id, s.name AS staff_name,
                     tr.remaining_sessions_at_time AS remaining_sessions
@@ -61,10 +61,11 @@ def get_therapy_records_by_store(store_id):
     conn = connect_to_db()
     with conn.cursor() as cursor:
         query = """
-            SELECT 
-                tr.therapy_record_id, 
-                m.member_id, 
-                m.name as member_name, 
+            SELECT
+                tr.therapy_record_id,
+                m.member_id,
+                m.member_code,
+                m.name as member_name,
                 s.store_id,
                 s.store_name as store_name,
                 st.staff_id,
@@ -105,9 +106,9 @@ def search_therapy_records(filters):
         with conn.cursor() as cursor:
             # SQL 查詢本身不變
             sql = """
-                SELECT 
+                SELECT
                     tr.therapy_record_id, tr.date, tr.note,
-                    tr.member_id, m.name AS member_name,
+                    tr.member_id, m.member_code, m.name AS member_name,
                     tr.therapy_id, t.name AS package_name, t.content AS therapy_content,
                     tr.staff_id, s.name AS staff_name,
                     tr.remaining_sessions_at_time AS remaining_sessions
@@ -122,9 +123,9 @@ def search_therapy_records(filters):
             
             # 動態組合 WHERE 篩選條件 (邏輯不變)
             if filters.get('keyword'):
-                sql += " AND (m.name LIKE %s OR m.phone LIKE %s OR tr.member_id LIKE %s)"
+                sql += " AND (m.name LIKE %s OR m.phone LIKE %s OR tr.member_id LIKE %s OR m.member_code LIKE %s)"
                 like_keyword = f"%{filters['keyword']}%"
-                sql_params.extend([like_keyword, like_keyword, like_keyword])
+                sql_params.extend([like_keyword, like_keyword, like_keyword, like_keyword])
             
             if filters.get('startDate'):
                 sql += " AND tr.date >= %s"
@@ -160,10 +161,11 @@ def get_therapy_record_by_id(record_id):
     conn = connect_to_db()
     with conn.cursor() as cursor:
         query = """
-            SELECT 
-                tr.therapy_record_id, 
-                m.member_id, 
-                m.name as member_name, 
+            SELECT
+                tr.therapy_record_id,
+                m.member_id,
+                m.member_code,
+                m.name as member_name,
                 s.store_id,
                 s.store_name as store_name,
                 st.staff_id,
@@ -286,9 +288,10 @@ def export_therapy_records(store_id=None):
         with conn.cursor() as cursor:
             if store_id:
                 query = """
-                    SELECT tr.therapy_record_id, 
-                           m.member_id, 
-                           m.name as member_name, 
+                    SELECT tr.therapy_record_id,
+                           m.member_id,
+                           m.member_code,
+                           m.name as member_name,
                            s.name as store_name,
                            st.name as staff_name,
                            tr.date,
@@ -303,9 +306,10 @@ def export_therapy_records(store_id=None):
                 cursor.execute(query, (store_id,))
             else:
                 query = """
-                    SELECT tr.therapy_record_id, 
-                           m.member_id, 
-                           m.name as member_name, 
+                    SELECT tr.therapy_record_id,
+                           m.member_id,
+                           m.member_code,
+                           m.name as member_name,
                            s.name as store_name,
                            st.name as staff_name,
                            tr.date,
