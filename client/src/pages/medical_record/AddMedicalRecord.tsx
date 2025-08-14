@@ -45,7 +45,7 @@ const AddMedicalRecord = () => {
                     <Form noValidate validated={validated} onSubmit={formHook.handleSubmit}>
                         {/* ... (MemberColumn, 身高, 體重, 血壓, 備註, 健康狀態, 平時症狀, 家族病史, 微整型等欄位保持不變) ... */}
                         <MemberColumn
-                            memberId={form.memberId}
+                            memberCode={form.memberCode}
                             name={form.name}
                             onMemberChange={handleMemberChange}
                             onError={setError}

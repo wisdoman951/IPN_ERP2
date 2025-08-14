@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import MemberColumn from "../../components/MemberColumn";
+import { MemberData } from "../../types/medicalTypes";
 import { addProductSell, ProductSellData } from "../../services/ProductSellService";
 import { getStoreId } from "../../services/LoginService";
 import { getStaffMembers, StaffMember } from "../../services/TherapyDropdownService";
@@ -31,6 +32,7 @@ const AddProductSell: React.FC = () => {
   const navigate = useNavigate();
 
   const [storeId, setStoreId] = useState<string>("");
+  const [memberCode, setMemberCode] = useState<string>("");
   const [memberId, setMemberId] = useState<string>("");
   const [memberName, setMemberName] = useState<string>("");
   const [purchaseDate, setPurchaseDate] = useState<string>(new Date().toISOString().split("T")[0]);
@@ -91,6 +93,7 @@ const AddProductSell: React.FC = () => {
     if (formStateData) {
       try {
         const formState = JSON.parse(formStateData);
+        if (formState.memberCode) setMemberCode(formState.memberCode);
         if (formState.memberId) setMemberId(formState.memberId);
         if (formState.memberName) setMemberName(formState.memberName);
         if (formState.purchaseDate) setPurchaseDate(formState.purchaseDate);
@@ -127,18 +130,27 @@ const AddProductSell: React.FC = () => {
     setFinalPayableAmount(productsOriginalTotal - orderDiscountAmount);
   }, [productsOriginalTotal, orderDiscountAmount]);
 
-  const handleMemberChange = (id: string, name: string) => {
-    setMemberId(id);
+  const handleMemberChange = (code: string, name: string, data: MemberData | null) => {
+    setMemberCode(code);
     setMemberName(name);
+    setMemberId(data?.member_id?.toString() || "");
     setError(null);
   };
   const handleError = (errorMsg: string) => setError(errorMsg);
   const openProductSelection = () => {
     const formState = {
       selectedStore,
-      memberId, memberName, purchaseDate, paymentMethod,
-      transferCode, cardNumber, saleCategory, note,
-      selectedStaffId, discountAmount: orderDiscountAmount,
+      memberCode,
+      memberId,
+      memberName,
+      purchaseDate,
+      paymentMethod,
+      transferCode,
+      cardNumber,
+      saleCategory,
+      note,
+      selectedStaffId,
+      discountAmount: orderDiscountAmount,
     };
     localStorage.setItem('productSellFormState', JSON.stringify(formState));
     localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
@@ -158,7 +170,7 @@ const AddProductSell: React.FC = () => {
 
     if (selectedDate > today) { setError("購買日期不能選擇未來日期。"); return; }
     if (!storeId) { setError("無法獲取門市資訊，請重新登入。"); return; }
-    if (!memberId || !memberName) { setError("請選擇會員並確認姓名。"); return; }
+    if (!memberCode || !memberId) { setError("請選擇會員並確認姓名。"); return; }
     if (selectedProducts.length === 0) { setError("請選擇至少一項購買品項。"); return; }
     if (!paymentMethod) { setError("請選擇付款方式。"); return; }
     if (!selectedStaffId) { setError("請選擇銷售人員。"); return; }
@@ -246,8 +258,8 @@ const AddProductSell: React.FC = () => {
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>購買人姓名</Form.Label>
-              <MemberColumn memberId={memberId} name={memberName} onMemberChange={handleMemberChange} onError={handleError} triggerSearchOnMount={false} />
-              {formSubmitted && (!memberId || !memberName) && <div className="text-danger d-block small mt-1">請選擇購買會員</div>}
+              <MemberColumn memberCode={memberCode} name={memberName} isEditMode={false} onMemberChange={handleMemberChange} onError={handleError} />
+              {formSubmitted && (!memberCode || !memberId) && <div className="text-danger d-block small mt-1">請選擇購買會員</div>}
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>購買品項</Form.Label>

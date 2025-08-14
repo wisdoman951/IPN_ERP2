@@ -29,6 +29,7 @@ const AddTherapySell: React.FC = () => {
   const isEditMode = Boolean(editSale);
   const [formData, setFormData] = useState({
     memberId: "",
+    memberCode: "",
     staffId: "",
     date: new Date().toISOString().split("T")[0],
     paymentMethod: "Cash",
@@ -79,6 +80,7 @@ const AddTherapySell: React.FC = () => {
         setFormData(prev => ({
           ...prev,
           memberId: editSale.Member_ID?.toString() || "",
+          memberCode: editSale.member_code || "",
           staffId: editSale.Staff_ID?.toString() || "",
           date: editSale.PurchaseDate?.split("T")[0] || prev.date,
           paymentMethod: editSale.PaymentMethod || prev.paymentMethod,
@@ -103,6 +105,7 @@ const AddTherapySell: React.FC = () => {
         try {
           const formState = JSON.parse(formStateData);
           if (formState.memberId) setFormData(prev => ({ ...prev, memberId: formState.memberId }));
+          if (formState.memberCode) setFormData(prev => ({ ...prev, memberCode: formState.memberCode }));
           if (formState.memberName) setMemberName(formState.memberName);
           if (formState.staffId) setFormData(prev => ({ ...prev, staffId: formState.staffId }));
           if (formState.date) setFormData(prev => ({ ...prev, date: formState.date }));
@@ -161,6 +164,7 @@ const AddTherapySell: React.FC = () => {
   const openPackageSelection = () => {
     const formState = {
       memberId: formData.memberId,
+      memberCode: formData.memberCode,
       memberName,
       staffId: formData.staffId,
       date: formData.date,
@@ -282,7 +286,7 @@ const AddTherapySell: React.FC = () => {
                 <Row className="mb-3">
                   <Col>
                     <MemberColumn
-                      memberId={formData.memberId}
+                      memberCode={formData.memberCode}
                       name={memberName}
                       isEditMode={false}
                       onMemberChange={(id, name, memberData) => {
