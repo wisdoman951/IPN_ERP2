@@ -60,8 +60,8 @@ const MemberInfo: React.FC = () => {
                     />
                 </td>
                 <td className="align-middle">{member.Name}</td>
-                {/* 假設 Member_ID 是從資料庫來的數字 ID，而 member_code 是 M001 格式的編號 */}
-                <td className="align-middle">{member.member_code || String(member.Member_ID).padStart(4, '0')}</td>
+                {/* 顯示資料庫中的 member_code */}
+                <td className="align-middle">{member.member_code ?? ""}</td>
                 <td className="align-middle">{formatGregorianBirthday(member.Birth, 'YYYY/MM/DD')}</td>
                 <td className="align-middle">{calculateAge(member.Birth)}</td>
                 <td className="align-middle">{member.Address}</td>
