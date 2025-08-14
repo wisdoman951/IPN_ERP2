@@ -13,7 +13,7 @@ const HeadquartersBackend: React.FC = () => {
     const content = (
         <Container className="mt-5">
             <Card className="text-center shadow-sm">
-                <Card.Header as="h4">後臺功能選單</Card.Header>
+                <Card.Header as="h4">後台功能選單</Card.Header>
                 <Card.Body className="p-5">
                     <Row className="g-4">
                         <Col md={6}>
