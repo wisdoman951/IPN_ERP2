@@ -8,6 +8,7 @@ const API_URL = `${base_url}/therapy`;
 export interface TherapyRecord {
     therapy_record_id: number;
     member_id: number;
+    member_code: string;
     member_name: string;
     store_id: number;
     store_name: string;

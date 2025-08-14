@@ -188,6 +188,24 @@ def get_member_by_id(member_id: int):
     finally:
         conn.close()
 
+def get_member_by_code(member_code: str):
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT member_id, member_code, name, birthday, address, phone, gender, blood_type,
+                       line_id, inferrer_id, occupation, note, store_id
+                FROM member
+                WHERE member_code = %s
+                """,
+                (member_code,),
+            )
+            result = cursor.fetchone()
+        return result
+    finally:
+        conn.close()
+
 def check_member_exists(member_id: int):
     conn = connect_to_db()
     try:
