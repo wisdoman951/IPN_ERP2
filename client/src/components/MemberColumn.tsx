@@ -2,21 +2,21 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { Form, Col, Row } from "react-bootstrap";
-import { getMemberById } from "../services/MedicalService"; // 確保路徑正確
+import { getMemberByCode } from "../services/MedicalService"; // 確保路徑正確
 import { MemberData } from "../types/medicalTypes"; // 確保路徑正確
 
 // ***** 修正 1：在 Props 中加入 isEditMode *****
 interface MemberColumnProps {
-    memberId: string;
+    memberCode: string;
     name: string;
     isEditMode: boolean; // 接收來自父元件的「修改模式」旗標
-    onMemberChange: (memberId: string, name: string, memberData: MemberData | null) => void;
+    onMemberChange: (memberCode: string, name: string, memberData: MemberData | null) => void;
     onError?: (error: string) => void;
 }
 
 const MemberColumn: React.FC<MemberColumnProps> = ({ 
-    memberId, 
-    name, 
+    memberCode,
+    name,
     isEditMode, // 解構出 isEditMode
     onMemberChange,
     onError,
@@ -35,8 +35,8 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
 
         // --- 以下的邏輯只會在「新增模式」下執行 ---
 
-        // 如果 memberId 是空的，也不執行
-        if (!memberId) {
+        // 如果 memberCode 是空的，也不執行
+        if (!memberCode) {
             return;
         }
 
@@ -48,18 +48,18 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
         // 設置新的計時器，延遲 500ms 後才去 call API
         debounceTimeoutRef.current = setTimeout(async () => {
             try {
-                const member = await getMemberById(memberId);
+                const member = await getMemberByCode(memberCode);
                 if (member) {
                     // 找到會員，呼叫 onMemberChange 更新父元件的表單
-                    onMemberChange(memberId, member.name, member);
+                    onMemberChange(memberCode, member.name, member);
                 } else {
-                    if (onError) onError(`會員編號 ${memberId} 不存在`);
-                    onMemberChange(memberId, "未找到會員", null);
+                    if (onError) onError(`會員代碼 ${memberCode} 不存在`);
+                    onMemberChange(memberCode, "未找到會員", null);
                 }
             } catch (err) {
                 console.error("獲取會員資料失敗", err);
                 if (onError) onError("獲取會員資料失敗");
-                onMemberChange(memberId, "查詢失敗", null);
+                onMemberChange(memberCode, "查詢失敗", null);
             }
         }, 500);
 
@@ -70,17 +70,17 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
             }
         };
     // 依賴項現在更簡潔
-    }, [memberId, isEditMode, onMemberChange, onError]);
+    }, [memberCode, isEditMode, onMemberChange, onError]);
 
     return (
         <Row>
             <Col md={6}>
                 <Form.Group className="mb-3">
-                    <Form.Label>會員編號</Form.Label>
+                    <Form.Label>會員代碼</Form.Label>
                     <Form.Control
                         type="text"
-                        name="memberId"
-                        value={memberId} // 直接使用 props 傳入的 memberId
+                        name="memberCode"
+                        value={memberCode} // 直接使用 props 傳入的 memberCode
                         // ***** 修正 3：在 onChange 中直接呼叫 onMemberChange *****
                         // 這樣父元件的狀態才能即時更新
                         onChange={(e) => onMemberChange(e.target.value, name, null)}
@@ -89,7 +89,7 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
                         disabled={isEditMode}
                     />
                     <Form.Control.Feedback type="invalid">
-                        請輸入會員編號
+                        請輸入會員代碼
                     </Form.Control.Feedback>
                 </Form.Group>
             </Col>

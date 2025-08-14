@@ -1,6 +1,7 @@
 // 定義會員資料類型
 export interface MemberData {
     member_id: number;
+    member_code?: string;
     name: string;
     address: string;
     birthday: string;
@@ -25,6 +26,7 @@ export interface SelectedHealthStatusData {
 }
 // 擴展表單類型定義
 export interface MedicalFormType {
+    memberCode: string;
     memberId: string;
     name: string;
     height: string;
