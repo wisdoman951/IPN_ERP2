@@ -63,7 +63,8 @@ const AddTherapySell: React.FC = () => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
-        const staffRes = await getStaffMembers();
+        const storeId = localStorage.getItem('store_id');
+        const staffRes = await getStaffMembers(storeId ? Number(storeId) : undefined);
         if (staffRes.success && staffRes.data) {
           setStaffList(staffRes.data.map(s => ({ id: s.staff_id, name: s.name })));
         }

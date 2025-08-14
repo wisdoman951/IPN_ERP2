@@ -125,19 +125,25 @@ export const getAllTherapyPackages = async (): Promise<ApiResponse<TherapyPackag
     }
 };
 
-// 員工相關 API - 重命名為 getStaffMembers 並使用正確的 API 端點
-export const getStaffMembers = async (): Promise<ApiResponse<StaffMember[]>> => {
+// 員工相關 API - 根據分店取得員工資料
+export const getStaffMembers = async (storeId?: number): Promise<ApiResponse<StaffMember[]>> => {
     try {
-        const response = await axios.get(`${API_URL}/staff`); // 使用 API_URL
-        
+        const params = storeId ? { store_id: storeId } : undefined;
+        const response = await axios.get(`${API_URL}/staff`, { params });
+
         if (response.data && Array.isArray(response.data)) {
             const staffData = response.data.map((staff: any) => ({
                 staff_id: staff.staff_id || staff.Staff_ID,
                 name: staff.name || staff.Staff_Name || "未知員工",
             }));
             return { success: true, data: staffData };
-        } else if (response.data && typeof response.data === 'object' && response.data.hasOwnProperty('data') && Array.isArray(response.data.data)) {
-             const staffData = response.data.data.map((staff: any) => ({
+        } else if (
+            response.data &&
+            typeof response.data === 'object' &&
+            response.data.hasOwnProperty('data') &&
+            Array.isArray(response.data.data)
+        ) {
+            const staffData = response.data.data.map((staff: any) => ({
                 staff_id: staff.staff_id || staff.Staff_ID,
                 name: staff.name || staff.Staff_Name || "未知員工",
             }));
