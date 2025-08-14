@@ -5,7 +5,7 @@ import { Button, Form, Row, Col, Container, Alert, Spinner } from "react-bootstr
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-import { createMember, getNextMemberCode } from "../../services/MemberService";
+import { createMember, checkMemberCodeExists } from "../../services/MemberService";
 import { calculateAge } from "../../utils/memberUtils";
 import axios from "axios";
 
@@ -15,7 +15,7 @@ const AddMember: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
 
     const initialFormState = {
-        member_code: '載入中...',
+        member_code: "",
         name: "",
         birthday: "",
         age: "",
@@ -30,24 +30,7 @@ const AddMember: React.FC = () => {
     };
 
     const [form, setForm] = useState(initialFormState);
-
-    useEffect(() => {
-        const fetchNextCode = async () => {
-            try {
-                const result = await getNextMemberCode();
-                if (result.success && result.next_code) {
-                    setForm(prev => ({ ...prev, member_code: result.next_code }));
-                } else {
-                    setForm(prev => ({ ...prev, member_code: "無法獲取" }));
-                    setError(result.error || "無法獲取會員編號");
-                }
-            } catch (err: any) {
-                setForm(prev => ({ ...prev, member_code: "查詢錯誤" }));
-                setError(err.message);
-            }
-        };
-        fetchNextCode();
-    }, []);
+    const [codeAvailable, setCodeAvailable] = useState(true);
 
     useEffect(() => {
         if (form.birthday) {
@@ -61,11 +44,27 @@ const AddMember: React.FC = () => {
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setForm({ ...form, [name]: value });
+        if (name === 'member_code') {
+            setCodeAvailable(true);
+        }
     };
 
     const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const { name, value } = e.target;
         setForm({ ...form, [name]: value });
+    };
+
+    const handleCodeBlur = async () => {
+        if (!form.member_code) return;
+        try {
+            const exists = await checkMemberCodeExists(form.member_code);
+            setCodeAvailable(!exists);
+            if (exists) {
+                setError("會員代碼已存在，請使用其他代碼。");
+            }
+        } catch {
+            setError("檢查會員代碼時發生錯誤。");
+        }
     };
     const handlePrint = () => {
         // 創建一個新的打印窗口
@@ -74,6 +73,8 @@ const AddMember: React.FC = () => {
             alert('請允許打開彈出窗口以列印');
             return;
         }
+
+        const age = form.age;
         
         // 添加基本的HTML結構和樣式
         printWindow.document.write(`
@@ -197,10 +198,15 @@ const AddMember: React.FC = () => {
             setLoading(false);
             return;
         }
-        
-        // 確保 member_code 不是 '載入中...' 或錯誤訊息
-        if (!form.member_code || form.member_code.includes('載入中') || form.member_code.includes('無法獲取') || form.member_code.includes('查詢錯誤')) {
-            setError("會員編號無效，無法新增。請刷新頁面重試。");
+
+        if (!form.member_code) {
+            setError("會員代碼為必填欄位。");
+            setLoading(false);
+            return;
+        }
+
+        if (!codeAvailable) {
+            setError("會員代碼已存在，請使用其他代碼。");
             setLoading(false);
             return;
         }
@@ -252,10 +258,13 @@ const AddMember: React.FC = () => {
                                 type="text"
                                 name="member_code"
                                 value={form.member_code}
-                                readOnly
-                                disabled
-                                className="bg-light"
+                                onChange={handleChange}
+                                onBlur={handleCodeBlur}
+                                required
                             />
+                            {!codeAvailable && (
+                                <div className="text-danger small mt-1">會員代碼已存在</div>
+                            )}
                         </Form.Group>
                     </Col>
                     <Col md={6}></Col>

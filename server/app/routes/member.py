@@ -12,6 +12,7 @@ from app.models.member_model import (
     update_member,
     get_member_by_id,
     check_member_exists,
+    check_member_code_exists,
     get_next_member_code,
     delete_member_and_related_data as delete_member_model
 )
@@ -61,6 +62,12 @@ def create_member_route():
     try:
         # 獲取當前使用者的 store_id
         user_store_id = request.store_id
+
+        member_code = data.get("member_code")
+        if not member_code:
+            return jsonify({"error": "會員代碼為必填欄位。"}), 400
+        if check_member_code_exists(member_code):
+            return jsonify({"error": "會員代碼已存在，請使用其他代碼。"}), 400
 
         # --- 介紹人 ID 的驗證邏輯 ---
         inferrer_id = data.get("inferrer_id")
@@ -219,6 +226,17 @@ def check_member_exists_route(member_id):
     """檢查會員是否存在"""
     try:
         exists = check_member_exists(member_id)
+        return jsonify({"exists": exists})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@member_bp.route('/check-code/<string:member_code>', methods=['GET'])
+@auth_required  # 加上認證，避免被惡意查詢
+def check_member_code_route(member_code):
+    """檢查會員代碼是否存在"""
+    try:
+        exists = check_member_code_exists(member_code)
         return jsonify({"exists": exists})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
