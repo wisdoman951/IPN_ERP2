@@ -27,6 +27,7 @@ const AddEditUserAccount: React.FC = () => {
     const [staffList, setStaffList] = useState<StaffDropdownItem[]>([]);
     const [selectedStore, setSelectedStore] = useState('');
     const [selectedStaff, setSelectedStaff] = useState('');
+    const [employeeType, setEmployeeType] = useState('');
     const [account, setAccount] = useState('');
     const [password, setPassword] = useState('');
     
@@ -53,7 +54,7 @@ const AddEditUserAccount: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!selectedStaff || !account || !password) {
+        if (!selectedStaff || !employeeType || !account || !password) {
             setError("請填寫所有欄位");
             return;
         }
@@ -62,7 +63,7 @@ const AddEditUserAccount: React.FC = () => {
         setError(null);
         
         try {
-            const payload = { account, password };
+            const payload = { account, password, permission: employeeType };
             await updateStaffAccount(parseInt(selectedStaff), payload);
             alert('帳號設定成功！');
             navigate('/backend/user-accounts');
@@ -107,7 +108,18 @@ const AddEditUserAccount: React.FC = () => {
                                 </Form.Select>
                             </Col>
                         </Form.Group>
-                        
+
+                        <Form.Group as={Row} className="mb-3 align-items-center">
+                            <Form.Label column sm={3}>員工類型</Form.Label>
+                            <Col sm={9}>
+                                <Form.Select value={employeeType} onChange={e => setEmployeeType(e.target.value)} required disabled={!selectedStaff}>
+                                    <option value="">請選擇員工類型...</option>
+                                    <option value="admin">管理者</option>
+                                    <option value="basic">療癒師</option>
+                                </Form.Select>
+                            </Col>
+                        </Form.Group>
+
                         <hr/>
 
                         <Form.Group as={Row} className="mb-3 align-items-center">
