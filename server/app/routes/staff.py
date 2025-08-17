@@ -158,6 +158,9 @@ def add_staff():
     """新增員工"""
     data = request.json
     try:
+        basic_info = data.get("basic_info", {}) if data else {}
+        if basic_info.get("store_id") is None:
+            return jsonify({"error": "所屬分店為必填"}), 400
         staff_id = create_staff(data)
         if staff_id:
             return jsonify({"message": "員工新增成功", "staff_id": staff_id}), 201
