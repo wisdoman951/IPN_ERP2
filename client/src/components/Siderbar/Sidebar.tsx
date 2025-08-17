@@ -156,12 +156,12 @@ const Sidebar: React.FC = () => {
           </Button>
         </div>
         <div className="nav-item-wrapper w-100">
-          <Button variant="light" className="nav-button w-100 d-flex align-items-center" onClick={() => navigate("/finance")}>
+          <Button variant="light" className="nav-button w-100 d-flex align-items-center" onClick={() => navigate("/finance")}> 
             <img src="/group.svg" alt="" className="sidebar-icon me-2" />
             <span>帳務管理</span>
           </Button>
         </div>
-        {userRole === 'admin' && (
+        {userRole !== 'therapist' && (
           <div className="nav-item-wrapper w-100">
             <Button variant="light" className="nav-button w-100 d-flex align-items-center" onClick={() => navigate("/backend")}> 
               <img src="/group.svg" alt="" className="sidebar-icon me-2" />

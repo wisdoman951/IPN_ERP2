@@ -13,18 +13,16 @@ export const setupAxiosInterceptors = () => {
     });
 };
 
-// **修改後的 setUserRole**
+// **設定使用者角色**
 export const setUserRole = (token: string): void => {
     try {
-        // 解碼 Token，並告知 TypeScript permission 的類型是 string
+        // Token 中會包含使用者的 permission 欄位
         const decoded: { permission: string } = jwtDecode(token);
-        
-        // **核心改動**：直接使用 permission 的值 ('admin' 或 'basic') 作為角色
-        const role = decoded.permission; 
-        
+        const role = decoded.permission; // 可能是 'admin'、'basic' 或 'therapist'
+
         if (role) {
             localStorage.setItem('userRole', role);
-            console.log(`User role set based on permission: ${role}`); // 新增日誌
+            console.log(`User role set based on permission: ${role}`);
         } else {
             console.error('permission not found in token!');
         }
@@ -33,10 +31,10 @@ export const setUserRole = (token: string): void => {
     }
 };
 
-// **修改後的 getUserRole**
-export const getUserRole = (): 'admin' | 'basic' | null => {
-    // 返回 'admin', 'basic', 或 null
-    return localStorage.getItem('userRole') as 'admin' | 'basic' | null;
+// **取得使用者角色**
+export const getUserRole = (): 'admin' | 'basic' | 'therapist' | null => {
+    // 可能的角色：'admin'、'basic'、'therapist'
+    return localStorage.getItem('userRole') as 'admin' | 'basic' | 'therapist' | null;
 };
 
 // 登出函式

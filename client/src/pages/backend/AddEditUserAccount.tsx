@@ -115,7 +115,7 @@ const AddEditUserAccount: React.FC = () => {
                                 <Form.Select value={employeeType} onChange={e => setEmployeeType(e.target.value)} required disabled={!selectedStaff}>
                                     <option value="">請選擇員工類型...</option>
                                     <option value="admin">管理者</option>
-                                    <option value="basic">療癒師</option>
+                                    <option value="therapist">療癒師</option>
                                 </Form.Select>
                             </Col>
                         </Form.Group>

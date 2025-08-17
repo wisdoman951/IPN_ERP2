@@ -444,6 +444,7 @@ CREATE TABLE `staff` (
   `registered_address` text COLLATE utf8mb4_unicode_ci,
   `account` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '員工登入帳號',
   `password` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '員工登入密碼(應加密儲存)',
+  `permission` VARCHAR(50) DEFAULT NULL,
   `store_id` int DEFAULT NULL COMMENT '員工所屬分店ID',
   PRIMARY KEY (`staff_id`),
   UNIQUE KEY `account` (`account`),

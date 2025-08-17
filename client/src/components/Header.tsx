@@ -34,7 +34,9 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
 
         if (matchedPath && userRole) {
             const titleMapping = pageTitles[matchedPath];
-            return titleMapping[userRole]; // Return 'branch' or 'main_office' title
+            // 只有 'admin' 擁有獨立標題，其餘角色共用 basic 標題
+            const roleForTitle = userRole === 'admin' ? 'admin' : 'basic';
+            return titleMapping[roleForTitle];
         }
 
         return '全崴國際管理系統'; // Fallback title

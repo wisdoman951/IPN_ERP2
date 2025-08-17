@@ -449,12 +449,12 @@ def get_permission_list():
     try:
         with connection.cursor() as cursor:
             query = """
-            SELECT DISTINCT Staff_PermissionLevel FROM Staff 
-            WHERE Staff_PermissionLevel IS NOT NULL AND Staff_PermissionLevel != ''
+            SELECT DISTINCT permission FROM staff
+            WHERE permission IS NOT NULL AND permission != ''
             """
             cursor.execute(query)
             permissions = cursor.fetchall()
-            permission_list = [permission["Staff_PermissionLevel"] for permission in permissions]
+            permission_list = [permission["permission"] for permission in permissions]
     except Exception as e:
         print(f"獲取權限列表錯誤: {e}")
     finally:
