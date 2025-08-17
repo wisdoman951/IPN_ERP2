@@ -1,7 +1,6 @@
 # server\app\middleware.py
 from flask import request, jsonify, g
 from functools import wraps
-from app.models.login_model import find_store_by_account
 import jwt
 import datetime
 from app.config import JWT_SECRET_KEY
@@ -133,4 +132,4 @@ def get_user_from_token(request):
         # 如果token無效或過期，返回空字典
         pass
     
-    return user_info 
+    return user_info
