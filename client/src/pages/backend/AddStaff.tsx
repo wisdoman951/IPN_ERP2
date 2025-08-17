@@ -1,9 +1,10 @@
 // client\src/pages\backend\AddStaff.tsx
 import React, { useState } from "react";
-import { Container, Row, Col, Form, Button, Card, InputGroup } from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Card } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header"; // 建議使用您專案中統一的 Header
 import DynamicContainer from "../../components/DynamicContainer"; // 建議使用您專案中統一的 DynamicContainer
+import { addStaff } from "../../services/StaffService";
 
 const AddStaff: React.FC = () => {
     const navigate = useNavigate();
@@ -61,6 +62,8 @@ const AddStaff: React.FC = () => {
 
     // 狀態管理，與 Figma 欄位對應
     const [formData, setFormData] = useState(initialFormData);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState("");
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -82,12 +85,56 @@ const AddStaff: React.FC = () => {
     const prevStep = () => setCurrentStep((prev) => Math.max(prev - 1, 1)); // 可以考慮新增一個"上一頁"按鈕
 
     // 處理表單提交
-    const handleSave = () => {
-        // 在這裡加入呼叫後端 API 的邏輯
-        console.log("Submitting form data:", formData);
-        alert("資料已儲存 (模擬)！");
-        // 成功後導航到員工列表頁
-        navigate("/admin/staff");
+    const handleSave = async () => {
+        setSaving(true);
+        setError("");
+        try {
+            const payload: any = {
+                basic_info: {
+                    Staff_Name: formData.name,
+                    Staff_Phone: formData.phone,
+                    Staff_Sex: formData.gender,
+                    Staff_ID_Number: formData.idNumber,
+                    Staff_Birthday: formData.birthday || null,
+                    Staff_Address: formData.address2 || formData.address1 || "",
+                    Staff_JoinDate: formData.onboardDate || null,
+                    Staff_EmergencyContact: formData.emergencyName || "",
+                    Staff_EmergencyPhone: formData.emergencyPhone || "",
+                },
+                family_members: [],
+                work_experience: [],
+            };
+
+            if (formData.familyName) {
+                payload.family_members.push({
+                    Family_Name: formData.familyName,
+                    Family_Relation: formData.familyRelation,
+                    Family_Phone: formData.familyPhone,
+                    Family_Address: formData.address1,
+                });
+            }
+
+            if (formData.companyName) {
+                payload.work_experience.push({
+                    Work_Company: formData.companyName,
+                    Work_Position: formData.deptJob,
+                    Work_Description: formData.probationRemark || "",
+                });
+            }
+
+            const res = await addStaff(payload);
+            if (res.success) {
+                alert("員工新增成功");
+                navigate("/backend/staff");
+            } else {
+                setError(res.message || "新增失敗");
+            }
+        } catch (err) {
+            console.error(err);
+            setError("新增失敗");
+        } finally {
+            setSaving(false);
+        }
     };
 
     // 渲染第一步的表單
@@ -202,6 +249,7 @@ const AddStaff: React.FC = () => {
 
     const content = (
         <Container className="my-4">
+            {error && <div className="alert alert-danger" role="alert">{error}</div>}
             <Row className="justify-content-center">
                 <Col lg={10} xl={9}>
                     <Card>
@@ -229,7 +277,7 @@ const AddStaff: React.FC = () => {
                                     上一頁
                                 </Button>
                                 {currentStep < 3 && <Button variant="info" className="text-white" onClick={nextStep}>下一頁</Button>}
-                                {currentStep === 3 && <Button variant="info" className="text-white" onClick={handleSave}>儲存</Button>}
+                                {currentStep === 3 && <Button variant="info" className="text-white" onClick={handleSave} disabled={saving}>{saving ? "儲存中..." : "儲存"}</Button>}
                             </Card.Footer>
                         </Form>
                     </Card>
