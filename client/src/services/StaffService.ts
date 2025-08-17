@@ -84,16 +84,10 @@ export const getStaffById = async (staffId: number) => {
     const response = await axios.get(`${API_URL}/${staffId}`, {
       headers: getAuthHeaders()
     });
-    return {
-      success: true,
-      data: response.data
-    };
+    return response.data;
   } catch (error) {
     console.error(`獲取員工 ID ${staffId} 資料失敗:`, error);
-    return {
-      success: false,
-      data: null
-    };
+    throw error;
   }
 };
 

@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Card, Spinner, Alert, Row, Col } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
-    updateStaffAccount, 
+import {
+    updateStaffAccount,
     fetchStoresForDropdown,
     getStaffByStore,
-    Store 
+    getStaffById,
+    Store
 } from '../../services/StaffService';
 import Header from '../../components/Header'; // 1. 引入 Header
 import DynamicContainer from '../../components/DynamicContainer'; // 2. 引入 DynamicContainer
@@ -44,13 +45,33 @@ const AddEditUserAccount: React.FC = () => {
         if (selectedStore) {
             setLoading(true);
             setStaffList([]);
-            setSelectedStaff('');
+            if (!isEditMode) setSelectedStaff('');
             getStaffByStore(parseInt(selectedStore))
                 .then(setStaffList)
                 .catch(() => setError("無法載入該分店的員工列表"))
                 .finally(() => setLoading(false));
         }
-    }, [selectedStore]);
+    }, [selectedStore, isEditMode]);
+
+    useEffect(() => {
+        if (isEditMode && staffId) {
+            setLoading(true);
+            getStaffById(parseInt(staffId))
+                .then((staff: any) => {
+                    if (staff) {
+                        if (staff.store_id) setSelectedStore(String(staff.store_id));
+                        setSelectedStaff(String(staff.staff_id));
+                        setEmployeeType(staff.permission || '');
+                        setAccount(staff.account || '');
+                        setPassword(staff.password || '');
+                    } else {
+                        setError('找不到該員工');
+                    }
+                })
+                .catch(() => setError('無法載入員工資料'))
+                .finally(() => setLoading(false));
+        }
+    }, [isEditMode, staffId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -87,19 +108,28 @@ const AddEditUserAccount: React.FC = () => {
                         <Form.Group as={Row} className="mb-3 align-items-center">
                             <Form.Label column sm={3}>選擇分店</Form.Label>
                             <Col sm={9}>
-                                <Form.Select value={selectedStore} onChange={e => setSelectedStore(e.target.value)} required>
-                                    <option value="">請選擇分店...</option>
-                                    {stores.map(store => (
-                                        <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
-                                    ))}
-                                </Form.Select>
+                              <Form.Select
+                                  value={selectedStore}
+                                  onChange={e => setSelectedStore(e.target.value)}
+                                  required
+                              >
+                                  <option value="">請選擇分店...</option>
+                                  {stores.map(store => (
+                                      <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
+                                  ))}
+                              </Form.Select>
                             </Col>
                         </Form.Group>
 
                         <Form.Group as={Row} className="mb-3 align-items-center">
                             <Form.Label column sm={3}>選擇員工</Form.Label>
                             <Col sm={9}>
-                                <Form.Select value={selectedStaff} onChange={e => setSelectedStaff(e.target.value)} required disabled={!selectedStore || loading}>
+                                <Form.Select
+                                    value={selectedStaff}
+                                    onChange={e => setSelectedStaff(e.target.value)}
+                                    required
+                                    disabled={!selectedStore || loading}
+                                >
                                     <option value="">請選擇員工...</option>
                                     {loading && <option>載入中...</option>}
                                     {staffList.map(staff => (
@@ -110,11 +140,17 @@ const AddEditUserAccount: React.FC = () => {
                         </Form.Group>
 
                         <Form.Group as={Row} className="mb-3 align-items-center">
-                            <Form.Label column sm={3}>員工類型</Form.Label>
+                            <Form.Label column sm={3}>權限</Form.Label>
                             <Col sm={9}>
-                                <Form.Select value={employeeType} onChange={e => setEmployeeType(e.target.value)} required disabled={!selectedStaff}>
-                                    <option value="">請選擇員工類型...</option>
-                                    <option value="admin">管理者</option>
+                                <Form.Select
+                                    value={employeeType}
+                                    onChange={e => setEmployeeType(e.target.value)}
+                                    required
+                                    disabled={!selectedStaff}
+                                >
+                                    <option value="">請選擇權限...</option>
+                                    <option value="basic">一般權限</option>
+                                    <option value="admin">管理員</option>
                                     <option value="therapist">療癒師</option>
                                 </Form.Select>
                             </Col>

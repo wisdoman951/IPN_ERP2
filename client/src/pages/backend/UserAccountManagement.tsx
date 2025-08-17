@@ -7,6 +7,12 @@ import { getStaffAccounts, deleteMultipleStaff, StaffAccount } from '../../servi
 import Header from '../../components/Header'; // 1. 引入 Header
 import DynamicContainer from '../../components/DynamicContainer'; // 2. 引入 DynamicContainer
 
+const PERMISSION_LABELS: Record<string, string> = {
+    basic: '一般權限',
+    admin: '管理員',
+    therapist: '療癒師',
+};
+
 const UserAccountManagement: React.FC = () => {
     const navigate = useNavigate();
     const [accounts, setAccounts] = useState<StaffAccount[]>([]);
@@ -102,14 +108,15 @@ const UserAccountManagement: React.FC = () => {
                         <th>電話</th>
                         <th>員工編號</th>
                         <th>帳號</th>
+                        <th>權限</th>
                         <th>密碼</th>
                     </tr>
                 </thead>
                 <tbody>
                     {loading ? (
-                        <tr><td colSpan={6} className="text-center py-5"><Spinner animation="border" /></td></tr>
+                        <tr><td colSpan={7} className="text-center py-5"><Spinner animation="border" /></td></tr>
                     ) : accounts.length === 0 ? (
-                        <tr><td colSpan={6} className="text-center text-muted py-5">尚無資料</td></tr>
+                        <tr><td colSpan={7} className="text-center text-muted py-5">尚無資料</td></tr>
                     ) : accounts.map(acc => (
                         <tr key={acc.staff_id}>
                             <td className="text-center align-middle"><Form.Check type="checkbox" checked={selectedIds.includes(acc.staff_id)} onChange={e => handleCheckboxChange(acc.staff_id, e.target.checked)} /></td>
@@ -117,6 +124,7 @@ const UserAccountManagement: React.FC = () => {
                             <td className="align-middle">{acc.phone || '-'}</td>
                             <td className="align-middle">{acc.staff_id}</td>
                             <td className="align-middle">{acc.account || '-'}</td>
+                            <td className="align-middle">{acc.permission ? PERMISSION_LABELS[acc.permission] || acc.permission : '-'}</td>
                             <td className="align-middle">{'******'}</td>
                         </tr>
                     ))}
