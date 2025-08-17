@@ -1,14 +1,17 @@
 // client\src/pages\backend\AddStaff.tsx
-import React, { useState } from "react";
-import { Container, Row, Col, Form, Button, Card } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Container, Row, Col, Form, Button, Card, Spinner } from "react-bootstrap";
+import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header"; // 建議使用您專案中統一的 Header
 import DynamicContainer from "../../components/DynamicContainer"; // 建議使用您專案中統一的 DynamicContainer
-import { addStaff } from "../../services/StaffService";
+import { addStaff, getStaffDetails, updateStaff } from "../../services/StaffService";
 
 const AddStaff: React.FC = () => {
     const navigate = useNavigate();
+    const { staffId } = useParams<{ staffId?: string }>();
+    const isEditMode = !!staffId;
     const [currentStep, setCurrentStep] = useState(1);
+    const [loading, setLoading] = useState(isEditMode);
 
     const initialFormData = {
         // 步驟 1: 基本資料
@@ -64,6 +67,52 @@ const AddStaff: React.FC = () => {
     const [formData, setFormData] = useState(initialFormData);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!isEditMode || !staffId) return;
+            try {
+                const res = await getStaffDetails(Number(staffId));
+                if (res.success && res.data && res.data.basic_info) {
+                    const info = res.data.basic_info;
+                    const family = res.data.family_members?.[0] || {};
+                    const work = res.data.work_experience?.[0] || {};
+                    setFormData(prev => ({
+                        ...prev,
+                        onboardDate: info.Staff_JoinDate || "",
+                        name: info.Staff_Name || "",
+                        gender: info.Staff_Sex || "",
+                        birthday: info.Staff_Birthday || "",
+                        nationality: info.Staff_Nationality || "",
+                        education: info.Staff_Education || "",
+                        maritalStatus: info.Staff_MaritalStatus || "",
+                        applyPosition: info.Staff_ApplyPosition || "",
+                        positionLevel: info.Staff_PositionLevel || "",
+                        phone: info.Staff_Phone || "",
+                        idNumber: info.Staff_ID_Number || "",
+                        address1: info.Staff_Address || "",
+                        address2: info.Staff_Address || "",
+                        emergencyName: info.Staff_EmergencyContact || "",
+                        emergencyPhone: info.Staff_EmergencyPhone || "",
+                        familyName: family.Family_Name || "",
+                        familyRelation: family.Family_Relation || "",
+                        familyPhone: family.Family_Phone || "",
+                        companyName: work.Work_Company || "",
+                        deptJob: work.Work_Position || "",
+                        probationRemark: work.Work_Description || "",
+                    }));
+                } else {
+                    setError("載入員工資料失敗");
+                }
+            } catch (err) {
+                console.error(err);
+                setError("載入員工資料失敗");
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchData();
+    }, [isEditMode, staffId]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
@@ -122,16 +171,22 @@ const AddStaff: React.FC = () => {
                 });
             }
 
-            const res = await addStaff(payload);
+            let res;
+            if (isEditMode && staffId) {
+                res = await updateStaff(Number(staffId), payload);
+            } else {
+                res = await addStaff(payload);
+            }
+
             if (res.success) {
-                alert("員工新增成功");
+                alert(isEditMode ? "員工更新成功" : "員工新增成功");
                 navigate("/backend/staff");
             } else {
-                setError(res.message || "新增失敗");
+                setError(res.message || (isEditMode ? "更新失敗" : "新增失敗"));
             }
         } catch (err) {
             console.error(err);
-            setError("新增失敗");
+            setError(isEditMode ? "更新失敗" : "新增失敗");
         } finally {
             setSaving(false);
         }
@@ -247,7 +302,9 @@ const AddStaff: React.FC = () => {
         </Card.Body>
     );
 
-    const content = (
+    const content = loading ? (
+        <div className="text-center py-5"><Spinner /></div>
+    ) : (
         <Container className="my-4">
             {error && <div className="alert alert-danger" role="alert">{error}</div>}
             <Row className="justify-content-center">
@@ -268,7 +325,7 @@ const AddStaff: React.FC = () => {
                             {currentStep === 1 && renderStep1()}
                             {currentStep === 2 && renderStep2()}
                             {currentStep === 3 && renderStep3()}
-                            
+
                             <Card.Footer className="text-end">
                                 <Button variant="info" className="me-2 text-white" onClick={() => { if(window.confirm("確定要清除所有已填寫的資料嗎？")) setFormData(initialFormData); }}>
                                     清除
