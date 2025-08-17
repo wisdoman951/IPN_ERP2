@@ -74,7 +74,7 @@ def search_staff(keyword, store_level=None, store_id=None):
                 st.store_name
             FROM staff s
             LEFT JOIN store st ON s.store_id = st.store_id
-            WHERE (s.name LIKE %s OR s.phone LIKE %s OR s.email LIKE %s)
+            WHERE (s.name LIKE %s OR s.phone LIKE %s OR s.account LIKE %s)
             """
             params = [f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"]
             if store_level == '分店':
@@ -118,17 +118,11 @@ def get_staff_details(staff_id):
         "family_members": [],
         "work_experience": []
     }
-    
+
     try:
         with connection.cursor() as cursor:
-            # 獲取基本資料
-            query = """
-            SELECT s.*, 
-                   DATE_FORMAT(s.Staff_Birthday, '%Y-%m-%d') as Staff_Birthday,
-                   DATE_FORMAT(s.Staff_JoinDate, '%Y-%m-%d') as Staff_JoinDate
-            FROM Staff s
-            WHERE s.Staff_ID = %s
-            """
+            # 使用新欄位從 staff 表取得基本資料
+            query = "SELECT * FROM staff WHERE staff_id = %s"
             cursor.execute(query, (staff_id,))
             result["basic_info"] = cursor.fetchone()
             
@@ -167,45 +161,51 @@ def create_staff(data):
         with connection.cursor() as cursor:
             # 1. 新增基本資料
             basic_info = data.get("basic_info", {})
-            
+
             # 處理日期格式
-            if "Staff_Birthday" in basic_info and basic_info["Staff_Birthday"]:
-                basic_info["Staff_Birthday"] = datetime.strptime(basic_info["Staff_Birthday"], "%Y-%m-%d")
+            if "fill_date" in basic_info and basic_info["fill_date"]:
+                basic_info["fill_date"] = datetime.strptime(basic_info["fill_date"], "%Y-%m-%d")
             else:
-                basic_info["Staff_Birthday"] = None
-                
-            if "Staff_JoinDate" in basic_info and basic_info["Staff_JoinDate"]:
-                basic_info["Staff_JoinDate"] = datetime.strptime(basic_info["Staff_JoinDate"], "%Y-%m-%d")
+                basic_info["fill_date"] = None
+
+            if "onboard_date" in basic_info and basic_info["onboard_date"]:
+                basic_info["onboard_date"] = datetime.strptime(basic_info["onboard_date"], "%Y-%m-%d")
             else:
-                basic_info["Staff_JoinDate"] = datetime.now()
-            
-            # 插入基本資料
+                basic_info["onboard_date"] = None
+
+            # 插入基本資料 (使用新欄位)
             query = """
-            INSERT INTO Staff (
-                name, Staff_Phone, Staff_Email, Staff_Sex,
-                Staff_Birthday, Staff_Address, Staff_Store,
-                Staff_PermissionLevel, Staff_Salary, Staff_JoinDate,
-                Staff_EmergencyContact, Staff_EmergencyPhone,
-                Staff_Note, Staff_Status
+            INSERT INTO staff (
+                family_information_id, emergency_contact_id, work_experience_id,
+                hiring_information_id, name, gender, fill_date, onboard_date,
+                nationality, education, married, position, phone, national_id,
+                mailing_address, registered_address, account, password, store_id,
+                permission
             ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
             )
             """
             cursor.execute(query, (
-                basic_info.get("Staff_Name"),
-                basic_info.get("Staff_Phone"),
-                basic_info.get("Staff_Email"),
-                basic_info.get("Staff_Sex"),
-                basic_info.get("Staff_Birthday"),
-                basic_info.get("Staff_Address"),
-                basic_info.get("Staff_Store"),
-                basic_info.get("Staff_PermissionLevel"),
-                basic_info.get("Staff_Salary"),
-                basic_info.get("Staff_JoinDate"),
-                basic_info.get("Staff_EmergencyContact"),
-                basic_info.get("Staff_EmergencyPhone"),
-                basic_info.get("Staff_Note"),
-                basic_info.get("Staff_Status", "在職")
+                basic_info.get("family_information_id"),
+                basic_info.get("emergency_contact_id"),
+                basic_info.get("work_experience_id"),
+                basic_info.get("hiring_information_id"),
+                basic_info.get("name"),
+                basic_info.get("gender"),
+                basic_info.get("fill_date"),
+                basic_info.get("onboard_date"),
+                basic_info.get("nationality"),
+                basic_info.get("education"),
+                basic_info.get("married"),
+                basic_info.get("position"),
+                basic_info.get("phone"),
+                basic_info.get("national_id"),
+                basic_info.get("mailing_address"),
+                basic_info.get("registered_address"),
+                basic_info.get("account"),
+                basic_info.get("password"),
+                basic_info.get("store_id"),
+                basic_info.get("permission")
             ))
             
             # 獲取新增員工的ID
@@ -280,45 +280,57 @@ def update_staff(staff_id, data):
             basic_info = data.get("basic_info", {})
             if basic_info:
                 # 處理日期格式
-                if "Staff_Birthday" in basic_info and basic_info["Staff_Birthday"]:
-                    basic_info["Staff_Birthday"] = datetime.strptime(basic_info["Staff_Birthday"], "%Y-%m-%d")
-                
-                if "Staff_JoinDate" in basic_info and basic_info["Staff_JoinDate"]:
-                    basic_info["Staff_JoinDate"] = datetime.strptime(basic_info["Staff_JoinDate"], "%Y-%m-%d")
-                
+                if "fill_date" in basic_info and basic_info["fill_date"]:
+                    basic_info["fill_date"] = datetime.strptime(basic_info["fill_date"], "%Y-%m-%d")
+
+                if "onboard_date" in basic_info and basic_info["onboard_date"]:
+                    basic_info["onboard_date"] = datetime.strptime(basic_info["onboard_date"], "%Y-%m-%d")
+
                 query = """
-                UPDATE Staff SET
+                UPDATE staff SET
+                    family_information_id = %s,
+                    emergency_contact_id = %s,
+                    work_experience_id = %s,
+                    hiring_information_id = %s,
                     name = %s,
-                    Staff_Phone = %s,
-                    Staff_Email = %s,
-                    Staff_Sex = %s,
-                    Staff_Birthday = %s,
-                    Staff_Address = %s,
-                    Staff_Store = %s,
-                    Staff_PermissionLevel = %s,
-                    Staff_Salary = %s,
-                    Staff_JoinDate = %s,
-                    Staff_EmergencyContact = %s,
-                    Staff_EmergencyPhone = %s,
-                    Staff_Note = %s,
-                    Staff_Status = %s
-                WHERE Staff_ID = %s
+                    gender = %s,
+                    fill_date = %s,
+                    onboard_date = %s,
+                    nationality = %s,
+                    education = %s,
+                    married = %s,
+                    position = %s,
+                    phone = %s,
+                    national_id = %s,
+                    mailing_address = %s,
+                    registered_address = %s,
+                    account = %s,
+                    password = %s,
+                    store_id = %s,
+                    permission = %s
+                WHERE staff_id = %s
                 """
                 cursor.execute(query, (
-                    basic_info.get("Staff_Name"),
-                    basic_info.get("Staff_Phone"),
-                    basic_info.get("Staff_Email"),
-                    basic_info.get("Staff_Sex"),
-                    basic_info.get("Staff_Birthday"),
-                    basic_info.get("Staff_Address"),
-                    basic_info.get("Staff_Store"),
-                    basic_info.get("Staff_PermissionLevel"),
-                    basic_info.get("Staff_Salary"),
-                    basic_info.get("Staff_JoinDate"),
-                    basic_info.get("Staff_EmergencyContact"),
-                    basic_info.get("Staff_EmergencyPhone"),
-                    basic_info.get("Staff_Note"),
-                    basic_info.get("Staff_Status"),
+                    basic_info.get("family_information_id"),
+                    basic_info.get("emergency_contact_id"),
+                    basic_info.get("work_experience_id"),
+                    basic_info.get("hiring_information_id"),
+                    basic_info.get("name"),
+                    basic_info.get("gender"),
+                    basic_info.get("fill_date"),
+                    basic_info.get("onboard_date"),
+                    basic_info.get("nationality"),
+                    basic_info.get("education"),
+                    basic_info.get("married"),
+                    basic_info.get("position"),
+                    basic_info.get("phone"),
+                    basic_info.get("national_id"),
+                    basic_info.get("mailing_address"),
+                    basic_info.get("registered_address"),
+                    basic_info.get("account"),
+                    basic_info.get("password"),
+                    basic_info.get("store_id"),
+                    basic_info.get("permission"),
                     staff_id
                 ))
             
@@ -406,7 +418,7 @@ def delete_staff(staff_id):
             cursor.execute("DELETE FROM Staff_WorkExperience WHERE Staff_ID = %s", (staff_id,))
 
             # 3. 刪除基本資料
-            cursor.execute("DELETE FROM Staff WHERE Staff_ID = %s", (staff_id,))
+            cursor.execute("DELETE FROM staff WHERE staff_id = %s", (staff_id,))
             
             connection.commit()
             success = True
@@ -428,12 +440,12 @@ def get_store_list():
     try:
         with connection.cursor() as cursor:
             query = """
-            SELECT DISTINCT Staff_Store FROM Staff 
-            WHERE Staff_Store IS NOT NULL AND Staff_Store != ''
+            SELECT DISTINCT store_id FROM staff
+            WHERE store_id IS NOT NULL
             """
             cursor.execute(query)
             stores = cursor.fetchall()
-            store_list = [store["Staff_Store"] for store in stores]
+            store_list = [store["store_id"] for store in stores]
     except Exception as e:
         print(f"獲取分店列表錯誤: {e}")
     finally:
