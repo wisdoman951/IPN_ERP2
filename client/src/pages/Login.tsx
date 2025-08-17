@@ -86,6 +86,56 @@ const Login: React.FC = () => {
     }
   };
 
+  const handleTherapistLogin = async () => {
+    // 檢查帳號密碼是否填寫
+    if (!account || !password) {
+      setAlertMsg("請輸入帳號與密碼");
+      setAlertVariant("danger");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      console.log(`開始療癒師登入: ${account}`);
+      const result = await login(account, password);
+
+      // 僅允許 permission 為 therapist 的帳號登入
+      if (result.permission !== "therapist") {
+        setAlertMsg("此帳號無療癒師權限");
+        setAlertVariant("danger");
+        // 清除登入信息
+        localStorage.removeItem('token');
+        localStorage.removeItem('store_id');
+        localStorage.removeItem('store_level');
+        localStorage.removeItem('store_name');
+        localStorage.removeItem('permission');
+        setIsLoading(false);
+        return;
+      }
+
+      setAlertMsg("登入成功！");
+      setAlertVariant("success");
+
+      // 導向療程紀錄頁面
+      navigate("/therapy-record");
+    } catch (err: any) {
+      // 處理錯誤訊息
+      let errorMessage = "登入失敗，請稍後再試";
+
+      if (err instanceof Error) {
+        errorMessage = err.message;
+      } else if (err.response?.data?.error) {
+        errorMessage = err.response.data.error;
+      }
+
+      console.error("療癒師登入失敗:", errorMessage);
+      setAlertMsg(errorMessage);
+      setAlertVariant("danger");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleForgotPassword = () => {
     // 導向忘記密碼頁面
     navigate("/forgot-password");
@@ -196,7 +246,7 @@ const Login: React.FC = () => {
             variant="info"
             size="lg"
             className="text-white"
-            onClick={() => {}}
+            onClick={handleTherapistLogin}
             disabled={isLoading}
           >
             療癒師登入
