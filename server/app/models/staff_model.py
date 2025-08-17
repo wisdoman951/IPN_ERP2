@@ -144,9 +144,9 @@ def get_staff_details(staff_id):
                 """
                 SELECT staff_id, family_information_id, emergency_contact_id, work_experience_id,
                        hiring_information_id, name, gender,
-                       DATE_FORMAT(fill_date, '%Y-%m-%d') AS fill_date,
-                       DATE_FORMAT(onboard_date, '%Y-%m-%d') AS onboard_date,
-                       DATE_FORMAT(birthday, '%Y-%m-%d') AS birthday,
+                       DATE_FORMAT(fill_date, '%%Y-%%m-%%d') AS fill_date,
+                       DATE_FORMAT(onboard_date, '%%Y-%%m-%%d') AS onboard_date,
+                       DATE_FORMAT(birthday, '%%Y-%%m-%%d') AS birthday,
                        nationality, education, married, position, phone, national_id,
                        mailing_address, registered_address, account, password, store_id, permission
                 FROM staff WHERE staff_id = %s
@@ -174,7 +174,7 @@ def get_staff_details(staff_id):
             # 取得工作經驗資料
             if result["basic_info"] and result["basic_info"].get("work_experience_id"):
                 cursor.execute(
-                    "SELECT *, DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date FROM work_experience WHERE work_experience_id = %s",
+                    "SELECT *, DATE_FORMAT(start_date, '%%Y-%%m-%%d') AS start_date, DATE_FORMAT(end_date, '%%Y-%%m-%%d') AS end_date FROM work_experience WHERE work_experience_id = %s",
                     (result["basic_info"]["work_experience_id"],)
                 )
                 result["work_experience"] = cursor.fetchone()
@@ -182,7 +182,7 @@ def get_staff_details(staff_id):
             # 取得錄用資料
             if result["basic_info"] and result["basic_info"].get("hiring_information_id"):
                 cursor.execute(
-                    "SELECT *, DATE_FORMAT(official_employment_date, '%Y-%m-%d') AS official_employment_date, DATE_FORMAT(approval_date, '%Y-%m-%d') AS approval_date, DATE_FORMAT(disqualification_date, '%Y-%m-%d') AS disqualification_date FROM hiring_information WHERE hiring_information_id = %s",
+                    "SELECT *, DATE_FORMAT(official_employment_date, '%%Y-%%m-%%d') AS official_employment_date, DATE_FORMAT(approval_date, '%%Y-%%m-%%d') AS approval_date, DATE_FORMAT(disqualification_date, '%%Y-%%m-%%d') AS disqualification_date FROM hiring_information WHERE hiring_information_id = %s",
                     (result["basic_info"]["hiring_information_id"],)
                 )
                 result["hiring_information"] = cursor.fetchone()

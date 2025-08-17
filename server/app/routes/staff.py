@@ -8,7 +8,6 @@ from app.models.staff_model import (
     create_staff,
     update_staff,
     delete_staff,
-    get_store_list,
     get_permission_list,
     get_staff_details,
     get_all_staff_for_dropdown,
@@ -16,6 +15,7 @@ from app.models.staff_model import (
     get_all_staff_with_accounts,
     update_staff_account,
     get_staff_by_store_for_dropdown,
+    get_all_stores,
     get_all_stores_for_dropdown
 )
 from app.middleware import auth_required, login_required, admin_required
@@ -158,6 +158,9 @@ def add_staff():
     """新增員工"""
     data = request.json
     try:
+        basic_info = data.get("basic_info", {}) if data else {}
+        if basic_info.get("store_id") is None:
+            return jsonify({"error": "所屬分店為必填"}), 400
         staff_id = create_staff(data)
         if staff_id:
             return jsonify({"message": "員工新增成功", "staff_id": staff_id}), 201
@@ -194,16 +197,6 @@ def delete_staff_route(staff_id):
             return jsonify({"error": "員工刪除失敗"}), 400
     except Exception as e:
         print(f"刪除員工失敗: {e}")
-        return jsonify({"error": str(e)}), 500
-
-@staff_bp.route("/stores", methods=["GET"])
-def get_stores():
-    """獲取所有分店"""
-    try:
-        stores = get_store_list()
-        return jsonify(stores)
-    except Exception as e:
-        print(f"獲取分店列表失敗: {e}")
         return jsonify({"error": str(e)}), 500
 
 @staff_bp.route("/permissions", methods=["GET"])
@@ -251,14 +244,11 @@ def update_account_route(staff_id):
 
 # 總部專用：獲取所有分店列表，用於下拉式選單
 @staff_bp.route("/stores", methods=["GET"])
-@login_required # 使用 login_required 即可，因為分店和總部可能都需要這個列表
-def get_all_stores_route():
-    """
-    提供給前端下拉式選單所需要的所有分店列表。
-    """
+@login_required  # 使用 login_required 即可，因為分店和總部可能都需要這個列表
+def get_stores():
+    """提供給前端下拉式選單所需要的所有分店列表。"""
     try:
         stores = get_all_stores()
-        print(stores)
         return jsonify(stores)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

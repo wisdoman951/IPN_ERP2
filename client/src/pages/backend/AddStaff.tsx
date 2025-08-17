@@ -4,7 +4,7 @@ import { Container, Row, Col, Form, Button, Card, Spinner } from "react-bootstra
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header"; // 建議使用您專案中統一的 Header
 import DynamicContainer from "../../components/DynamicContainer"; // 建議使用您專案中統一的 DynamicContainer
-import { addStaff, getStaffDetails, updateStaff } from "../../services/StaffService";
+import { addStaff, getStaffDetails, updateStaff, getAllStores } from "../../services/StaffService";
 
 // 將後端回傳的日期字串或 Date 物件轉為 input[type=date] 可用的 "YYYY-MM-DD"
 const toDateInputValue = (value: any): string => {
@@ -27,6 +27,7 @@ const AddStaff: React.FC = () => {
 
     const initialFormData = {
         // 步驟 1: 基本資料
+        storeId: "",
         fillDate: "",
         onboardDate: "",
         name: "",
@@ -84,6 +85,10 @@ const AddStaff: React.FC = () => {
     const [formData, setFormData] = useState(initialFormData);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
+    const [stores, setStores] = useState<{ store_id: number; store_name: string }[]>([]);
+    const [userStoreName, setUserStoreName] = useState("");
+    const permission = localStorage.getItem("permission");
+    const isAdminUser = permission === "admin";
 
     useEffect(() => {
         const fetchData = async () => {
@@ -98,6 +103,7 @@ const AddStaff: React.FC = () => {
                     const hiring = res.data.hiring_information || {};
                     setFormData(prev => ({
                         ...prev,
+                        storeId: info.store_id ? String(info.store_id) : prev.storeId,
                         fillDate: toDateInputValue(info.fill_date),
                         onboardDate: toDateInputValue(info.onboard_date),
                         birthday: toDateInputValue(info.birthday),
@@ -155,6 +161,21 @@ const AddStaff: React.FC = () => {
         fetchData();
     }, [isEditMode, staffId]);
 
+    useEffect(() => {
+        const initStore = async () => {
+            if (isAdminUser) {
+                const res = await getAllStores();
+                if (res.success) setStores(res.data);
+            } else {
+                const id = localStorage.getItem("store_id");
+                const name = localStorage.getItem("store_name") || "";
+                setUserStoreName(name);
+                if (id) setFormData(prev => ({ ...prev, storeId: id }));
+            }
+        };
+        initStore();
+    }, [isAdminUser]);
+
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value, type } = e.target;
         // 如果是 checkbox，處理方式不同
@@ -179,6 +200,11 @@ const AddStaff: React.FC = () => {
         setSaving(true);
         setError("");
         try {
+            if (!formData.storeId) {
+                setError("請選擇所屬分店");
+                setSaving(false);
+                return;
+            }
             const payload: any = {
                 basic_info: {
                     family_information_id: formData.family_information_id,
@@ -200,7 +226,7 @@ const AddStaff: React.FC = () => {
                     registered_address: formData.address1 || "",
                     account: null,
                     password: null,
-                    store_id: null,
+                    store_id: parseInt(formData.storeId),
                     permission: null,
                 },
             };
@@ -284,8 +310,23 @@ const AddStaff: React.FC = () => {
     const renderStep1 = () => (
         <Card.Body>
             <Row className="g-3"> {/* 使用 g-3 增加欄位間距 */}
-                <Col md={6}><Form.Group><Form.Label>填表日期</Form.Label><Form.Control type="date" name="fillDate" value={formData.fillDate} onChange={handleChange} /></Form.Group></Col>
-                <Col md={6}><Form.Group><Form.Label>入職日期</Form.Label><Form.Control type="date" name="onboardDate" value={formData.onboardDate} onChange={handleChange} /></Form.Group></Col>
+                <Col md={4}>
+                    <Form.Group>
+                        <Form.Label>所屬分店</Form.Label>
+                        {isAdminUser ? (
+                            <Form.Select name="storeId" value={formData.storeId} onChange={handleChange} required>
+                                <option value="">請選擇</option>
+                                {stores.map(store => (
+                                    <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
+                                ))}
+                            </Form.Select>
+                        ) : (
+                            <Form.Control value={userStoreName} disabled />
+                        )}
+                    </Form.Group>
+                </Col>
+                <Col md={4}><Form.Group><Form.Label>填表日期</Form.Label><Form.Control type="date" name="fillDate" value={formData.fillDate} onChange={handleChange} /></Form.Group></Col>
+                <Col md={4}><Form.Group><Form.Label>入職日期</Form.Label><Form.Control type="date" name="onboardDate" value={formData.onboardDate} onChange={handleChange} /></Form.Group></Col>
                 
                 <Col md={4}><Form.Group><Form.Label>姓名</Form.Label><Form.Control name="name" value={formData.name} onChange={handleChange} /></Form.Group></Col>
                 <Col md={4}><Form.Group><Form.Label>性別</Form.Label><Form.Select name="gender" value={formData.gender} onChange={handleChange}><option value="">請選擇</option><option value="Male">男</option><option value="Female">女</option><option value="Other">其他</option></Form.Select></Form.Group></Col>
