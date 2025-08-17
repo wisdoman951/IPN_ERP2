@@ -6,6 +6,18 @@ import Header from "../../components/Header"; // 建議使用您專案中統一�
 import DynamicContainer from "../../components/DynamicContainer"; // 建議使用您專案中統一的 DynamicContainer
 import { addStaff, getStaffDetails, updateStaff } from "../../services/StaffService";
 
+// 將後端回傳的日期字串或 Date 物件轉為 input[type=date] 可用的 "YYYY-MM-DD"
+const toDateInputValue = (value: any): string => {
+    if (!value) return "";
+    try {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return "";
+        return date.toISOString().split("T")[0];
+    } catch {
+        return "";
+    }
+};
+
 const AddStaff: React.FC = () => {
     const navigate = useNavigate();
     const { staffId } = useParams<{ staffId?: string }>();
@@ -20,22 +32,27 @@ const AddStaff: React.FC = () => {
         name: "",
         gender: "",
         birthday: "",
-        nationality: "", 
-        education: "", 
-        maritalStatus: "", // Figma 是 "婚否"
-        applyPosition: "", 
+        nationality: "",
+        education: "",
+        maritalStatus: "Single", // Figma 是 "婚否"
+        applyPosition: "",
         positionLevel: "", // Figma 是 "入職職位"
-        phone: "", 
+        phone: "",
         idNumber: "",
         address1: "", // 戶籍地
         contactPhone1: "", // 連絡電話 (戶籍地旁)
         address2: "", // 通訊地
         contactPhone2: "", // 連絡電話 (通訊地旁)
 
+        family_information_id: null as number | null,
+        emergency_contact_id: null as number | null,
+        work_experience_id: null as number | null,
+        hiring_information_id: null as number | null,
+
         // 步驟 2: 家庭與學歷
         familyName: "", familyRelation: "", familyAge: "",
         familyJobUnit: "", familyJob: "", familyPhone: "",
-        emergencyName: "", emergencyRelation: "", emergencyAge: "", 
+        emergencyName: "", emergencyRelation: "", emergencyAge: "",
         emergencyJobUnit: "", emergencyJob: "", emergencyPhone: "",
         graduationDegree: "", // 學籍
         graduationSchool: "", // 學校
@@ -44,21 +61,21 @@ const AddStaff: React.FC = () => {
 
         // 步驟 3: 工作經驗與公司內部資料
         workPeriod: "", // 工作總時間
-        companyName: "", 
+        companyName: "",
         deptJob: "", // 部門/職務
         supervisor: "", // 主管名稱
-        workPhone: "", 
+        workPhone: "",
         salary: "", // 月薪金額
         hasOtherJob: "No", // 是否有其他工作 (預設為 'No')
         otherJobUnit: "",
-        
+
         // 公司填寫部分
         probationPeriod: "", // 試用期
         probationTime: "",   // 時間
         probationSalary: "", // 薪資
         officialPeriod: "",  // 正式錄用期 (Figma 有此欄位)
         probationRemark: "", // 備註
-        
+
         licenseApprovedDate: "", // 批准日期
         licenseNotApprovedDate: "", // 不適用日期
     };
@@ -75,31 +92,55 @@ const AddStaff: React.FC = () => {
                 const res = await getStaffDetails(Number(staffId));
                 if (res.success && res.data && res.data.basic_info) {
                     const info = res.data.basic_info;
-                    const family = res.data.family_members?.[0] || {};
-                    const work = res.data.work_experience?.[0] || {};
+                    const family = res.data.family_information || {};
+                    const emergency = res.data.emergency_contact || {};
+                    const work = res.data.work_experience || {};
+                    const hiring = res.data.hiring_information || {};
                     setFormData(prev => ({
                         ...prev,
-                        onboardDate: info.Staff_JoinDate || "",
-                        name: info.Staff_Name || "",
-                        gender: info.Staff_Sex || "",
-                        birthday: info.Staff_Birthday || "",
-                        nationality: info.Staff_Nationality || "",
-                        education: info.Staff_Education || "",
-                        maritalStatus: info.Staff_MaritalStatus || "",
-                        applyPosition: info.Staff_ApplyPosition || "",
-                        positionLevel: info.Staff_PositionLevel || "",
-                        phone: info.Staff_Phone || "",
-                        idNumber: info.Staff_ID_Number || "",
-                        address1: info.Staff_Address || "",
-                        address2: info.Staff_Address || "",
-                        emergencyName: info.Staff_EmergencyContact || "",
-                        emergencyPhone: info.Staff_EmergencyPhone || "",
-                        familyName: family.Family_Name || "",
-                        familyRelation: family.Family_Relation || "",
-                        familyPhone: family.Family_Phone || "",
-                        companyName: work.Work_Company || "",
-                        deptJob: work.Work_Position || "",
-                        probationRemark: work.Work_Description || "",
+                        fillDate: toDateInputValue(info.fill_date),
+                        onboardDate: toDateInputValue(info.onboard_date),
+                        birthday: toDateInputValue(info.birthday),
+                        name: info.name || "",
+                        gender: info.gender || "",
+                        nationality: info.nationality || "",
+                        education: info.education || "",
+                        maritalStatus: info.married === 1 ? "Married" : "Single",
+                        applyPosition: info.position || "",
+                        phone: info.phone || "",
+                        idNumber: info.national_id || "",
+                        address1: info.registered_address || "",
+                        address2: info.mailing_address || "",
+                        familyName: family.name || "",
+                        familyRelation: family.relationship || "",
+                        familyAge: family.age ? String(family.age) : "",
+                        familyJobUnit: family.company || "",
+                        familyJob: family.occupation || "",
+                        familyPhone: family.phone || "",
+                        emergencyName: emergency.name || "",
+                        emergencyRelation: emergency.relationship || "",
+                        emergencyAge: emergency.age ? String(emergency.age) : "",
+                        emergencyJobUnit: emergency.company || "",
+                        emergencyJob: emergency.occupation || "",
+                        emergencyPhone: emergency.phone || "",
+                        companyName: work.company_name || "",
+                        deptJob: work.job_title || "",
+                        supervisor: work.supervise_name || "",
+                        workPhone: work.department_telephone || "",
+                        salary: work.salary ? String(work.salary) : "",
+                        hasOtherJob: work.is_still_on_work ? "Yes" : "No",
+                        otherJobUnit: work.working_department || "",
+                        probationPeriod: hiring.probation_period ? String(hiring.probation_period) : "",
+                        probationTime: hiring.duration ? String(hiring.duration) : "",
+                        probationSalary: hiring.salary ? String(hiring.salary) : "",
+                        officialPeriod: hiring.official_employment_date || "",
+                        probationRemark: hiring.note || "",
+                        licenseApprovedDate: hiring.approval_date || "",
+                        licenseNotApprovedDate: hiring.disqualification_date || "",
+                        family_information_id: info.family_information_id || null,
+                        emergency_contact_id: info.emergency_contact_id || null,
+                        work_experience_id: info.work_experience_id || null,
+                        hiring_information_id: info.hiring_information_id || null,
                     }));
                 } else {
                     setError("載入員工資料失敗");
@@ -140,35 +181,82 @@ const AddStaff: React.FC = () => {
         try {
             const payload: any = {
                 basic_info: {
-                    Staff_Name: formData.name,
-                    Staff_Phone: formData.phone,
-                    Staff_Sex: formData.gender,
-                    Staff_ID_Number: formData.idNumber,
-                    Staff_Birthday: formData.birthday || null,
-                    Staff_Address: formData.address2 || formData.address1 || "",
-                    Staff_JoinDate: formData.onboardDate || null,
-                    Staff_EmergencyContact: formData.emergencyName || "",
-                    Staff_EmergencyPhone: formData.emergencyPhone || "",
+                    family_information_id: formData.family_information_id,
+                    emergency_contact_id: formData.emergency_contact_id,
+                    work_experience_id: formData.work_experience_id,
+                    hiring_information_id: formData.hiring_information_id,
+                    name: formData.name,
+                    phone: formData.phone,
+                    gender: formData.gender,
+                    national_id: formData.idNumber,
+                    fill_date: formData.fillDate || null,
+                    onboard_date: formData.onboardDate || null,
+                    birthday: formData.birthday || null,
+                    nationality: formData.nationality || "",
+                    education: formData.education || "",
+                    married: formData.maritalStatus === "Married" ? 1 : 0,
+                    position: formData.applyPosition || "",
+                    mailing_address: formData.address2 || "",
+                    registered_address: formData.address1 || "",
+                    account: null,
+                    password: null,
+                    store_id: null,
+                    permission: null,
                 },
-                family_members: [],
-                work_experience: [],
             };
 
             if (formData.familyName) {
-                payload.family_members.push({
-                    Family_Name: formData.familyName,
-                    Family_Relation: formData.familyRelation,
-                    Family_Phone: formData.familyPhone,
-                    Family_Address: formData.address1,
-                });
+                payload.family_information = {
+                    name: formData.familyName,
+                    relationship: formData.familyRelation,
+                    age: formData.familyAge ? parseInt(formData.familyAge) : null,
+                    company: formData.familyJobUnit,
+                    occupation: formData.familyJob,
+                    phone: formData.familyPhone,
+                };
+            }
+
+            if (formData.emergencyName) {
+                payload.emergency_contact = {
+                    name: formData.emergencyName,
+                    relationship: formData.emergencyRelation,
+                    age: formData.emergencyAge ? parseInt(formData.emergencyAge) : null,
+                    company: formData.emergencyJobUnit,
+                    occupation: formData.emergencyJob,
+                    phone: formData.emergencyPhone,
+                };
             }
 
             if (formData.companyName) {
-                payload.work_experience.push({
-                    Work_Company: formData.companyName,
-                    Work_Position: formData.deptJob,
-                    Work_Description: formData.probationRemark || "",
-                });
+                payload.work_experience = {
+                    company_name: formData.companyName,
+                    job_title: formData.deptJob,
+                    supervise_name: formData.supervisor,
+                    department_telephone: formData.workPhone,
+                    salary: formData.salary ? parseFloat(formData.salary) : null,
+                    is_still_on_work: formData.hasOtherJob === "Yes" ? 1 : 0,
+                    working_department: formData.otherJobUnit,
+                };
+            }
+
+            if (
+                formData.probationPeriod ||
+                formData.probationTime ||
+                formData.probationSalary ||
+                formData.officialPeriod ||
+                formData.probationRemark ||
+                formData.licenseApprovedDate ||
+                formData.licenseNotApprovedDate
+            ) {
+                payload.hiring_information = {
+                    probation_period: formData.probationPeriod ? parseInt(formData.probationPeriod) : null,
+                    duration: formData.probationTime ? parseInt(formData.probationTime) : null,
+                    salary: formData.probationSalary ? parseFloat(formData.probationSalary) : null,
+                    official_employment_date: formData.officialPeriod || null,
+                    approval_date: formData.licenseApprovedDate || null,
+                    disqualification_date: formData.licenseNotApprovedDate || null,
+                    note: formData.probationRemark || "",
+                };
             }
 
             let res;

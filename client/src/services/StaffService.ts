@@ -14,14 +14,21 @@ const isAdmin = (): boolean => {
 
 // 定義員工接口
 export interface Staff {
-  Staff_ID: number;
-  Staff_Name: string;
-  Staff_ID_Number: string;
+  Staff_ID?: number;
+  staff_id?: number;
+  Staff_Name?: string;
+  name?: string;
+  Staff_ID_Number?: string;
+  national_id?: string;
   Staff_Phone?: string;
+  phone?: string;
   Staff_Status?: string;
+  permission?: string;
   Staff_Email?: string;
   Staff_Sex?: string;
+  gender?: string;
   Staff_Store?: string;
+  store_id?: number;
   Staff_PermissionLevel?: string;
   Staff_IdNumber?: string;
 }

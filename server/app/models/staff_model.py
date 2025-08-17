@@ -3,7 +3,23 @@ import pymysql
 import os
 import numpy as np
 from app.config import DB_CONFIG
-from datetime import datetime
+from datetime import datetime, date
+
+
+def parse_date(value, field_name):
+    """將前端傳入的日期字串轉為 datetime，若為空或格式錯誤則回傳 None 或拋出錯誤"""
+    if not value:
+        return None
+    if isinstance(value, (datetime, date)):
+        return value
+    value_str = str(value)
+    try:
+        return datetime.strptime(value_str, "%Y-%m-%d")
+    except ValueError:
+        try:
+            return datetime.strptime(value_str, "%a, %d %b %Y %H:%M:%S %Z")
+        except ValueError:
+            raise ValueError(f"{field_name} 格式錯誤")
 
 def connect_to_db():
     """取得資料庫連接"""
@@ -56,7 +72,8 @@ def get_all_staff_for_dropdown():
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            sql = "SELECT Staff_ID AS staff_id, Staff_Name AS name FROM Staff ORDER BY Staff_Name"
+            # 使用正確的欄位名稱 name
+            sql = "SELECT staff_id, name FROM staff ORDER BY name"
             cursor.execute(sql)
             return cursor.fetchall()
     finally:
@@ -73,7 +90,7 @@ def search_staff(keyword, store_level=None, store_id=None):
                 st.store_name
             FROM staff s
             LEFT JOIN store st ON s.store_id = st.store_id
-            WHERE (s.name LIKE %s OR s.phone LIKE %s OR s.email LIKE %s)
+            WHERE (s.name LIKE %s OR s.phone LIKE %s OR s.account LIKE %s)
             """
             params = [f"%{keyword}%", f"%{keyword}%", f"%{keyword}%"]
             if store_level == '分店':
@@ -114,41 +131,61 @@ def get_staff_details(staff_id):
     connection = connect_to_db()
     result = {
         "basic_info": None,
-        "family_members": [],
-        "work_experience": []
+        "family_information": None,
+        "emergency_contact": None,
+        "work_experience": None,
+        "hiring_information": None
     }
-    
+
     try:
         with connection.cursor() as cursor:
-            # 獲取基本資料
-            query = """
-            SELECT s.*, 
-                   DATE_FORMAT(s.Staff_Birthday, '%Y-%m-%d') as Staff_Birthday,
-                   DATE_FORMAT(s.Staff_JoinDate, '%Y-%m-%d') as Staff_JoinDate
-            FROM Staff s
-            WHERE s.Staff_ID = %s
-            """
+            # 使用新欄位從 staff 表取得基本資料並格式化日期欄位
+            query = (
+                """
+                SELECT staff_id, family_information_id, emergency_contact_id, work_experience_id,
+                       hiring_information_id, name, gender,
+                       DATE_FORMAT(fill_date, '%Y-%m-%d') AS fill_date,
+                       DATE_FORMAT(onboard_date, '%Y-%m-%d') AS onboard_date,
+                       DATE_FORMAT(birthday, '%Y-%m-%d') AS birthday,
+                       nationality, education, married, position, phone, national_id,
+                       mailing_address, registered_address, account, password, store_id, permission
+                FROM staff WHERE staff_id = %s
+                """
+            )
             cursor.execute(query, (staff_id,))
             result["basic_info"] = cursor.fetchone()
             
-            # 獲取家庭成員
-            query = """
-            SELECT * FROM Staff_Family 
-            WHERE Staff_ID = %s
-            """
-            cursor.execute(query, (staff_id,))
-            result["family_members"] = cursor.fetchall()
-            
-            # 獲取工作經驗
-            query = """
-            SELECT *, 
-                   DATE_FORMAT(Work_StartDate, '%Y-%m-%d') as Work_StartDate,
-                   DATE_FORMAT(Work_EndDate, '%Y-%m-%d') as Work_EndDate
-            FROM Staff_WorkExperience 
-            WHERE Staff_ID = %s
-            """
-            cursor.execute(query, (staff_id,))
-            result["work_experience"] = cursor.fetchall()
+            # 取得家庭資料
+            if result["basic_info"] and result["basic_info"].get("family_information_id"):
+                cursor.execute(
+                    "SELECT * FROM family_information WHERE family_information_id = %s",
+                    (result["basic_info"]["family_information_id"],)
+                )
+                result["family_information"] = cursor.fetchone()
+
+            # 取得緊急聯絡人資料
+            if result["basic_info"] and result["basic_info"].get("emergency_contact_id"):
+                cursor.execute(
+                    "SELECT * FROM emergency_contact WHERE emergency_contact_id = %s",
+                    (result["basic_info"]["emergency_contact_id"],)
+                )
+                result["emergency_contact"] = cursor.fetchone()
+
+            # 取得工作經驗資料
+            if result["basic_info"] and result["basic_info"].get("work_experience_id"):
+                cursor.execute(
+                    "SELECT *, DATE_FORMAT(start_date, '%Y-%m-%d') AS start_date, DATE_FORMAT(end_date, '%Y-%m-%d') AS end_date FROM work_experience WHERE work_experience_id = %s",
+                    (result["basic_info"]["work_experience_id"],)
+                )
+                result["work_experience"] = cursor.fetchone()
+
+            # 取得錄用資料
+            if result["basic_info"] and result["basic_info"].get("hiring_information_id"):
+                cursor.execute(
+                    "SELECT *, DATE_FORMAT(official_employment_date, '%Y-%m-%d') AS official_employment_date, DATE_FORMAT(approval_date, '%Y-%m-%d') AS approval_date, DATE_FORMAT(disqualification_date, '%Y-%m-%d') AS disqualification_date FROM hiring_information WHERE hiring_information_id = %s",
+                    (result["basic_info"]["hiring_information_id"],)
+                )
+                result["hiring_information"] = cursor.fetchone()
     except Exception as e:
         print(f"獲取員工詳細資料錯誤: {e}")
     finally:
@@ -164,98 +201,173 @@ def create_staff(data):
     
     try:
         with connection.cursor() as cursor:
-            # 1. 新增基本資料
             basic_info = data.get("basic_info", {})
-            
-            # 處理日期格式
-            if "Staff_Birthday" in basic_info and basic_info["Staff_Birthday"]:
-                basic_info["Staff_Birthday"] = datetime.strptime(basic_info["Staff_Birthday"], "%Y-%m-%d")
-            else:
-                basic_info["Staff_Birthday"] = None
-                
-            if "Staff_JoinDate" in basic_info and basic_info["Staff_JoinDate"]:
-                basic_info["Staff_JoinDate"] = datetime.strptime(basic_info["Staff_JoinDate"], "%Y-%m-%d")
-            else:
-                basic_info["Staff_JoinDate"] = datetime.now()
-            
-            # 插入基本資料
-            query = """
-            INSERT INTO Staff (
-                Staff_Name, Staff_Phone, Staff_Email, Staff_Sex, 
-                Staff_Birthday, Staff_Address, Staff_Store, 
-                Staff_PermissionLevel, Staff_Salary, Staff_JoinDate,
-                Staff_EmergencyContact, Staff_EmergencyPhone,
-                Staff_Note, Staff_Status
-            ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
-            )
-            """
-            cursor.execute(query, (
-                basic_info.get("Staff_Name"),
-                basic_info.get("Staff_Phone"),
-                basic_info.get("Staff_Email"),
-                basic_info.get("Staff_Sex"),
-                basic_info.get("Staff_Birthday"),
-                basic_info.get("Staff_Address"),
-                basic_info.get("Staff_Store"),
-                basic_info.get("Staff_PermissionLevel"),
-                basic_info.get("Staff_Salary"),
-                basic_info.get("Staff_JoinDate"),
-                basic_info.get("Staff_EmergencyContact"),
-                basic_info.get("Staff_EmergencyPhone"),
-                basic_info.get("Staff_Note"),
-                basic_info.get("Staff_Status", "在職")
-            ))
-            
-            # 獲取新增員工的ID
-            staff_id = connection.insert_id()
-            
-            # 2. 新增家庭成員
-            family_members = data.get("family_members", [])
-            if family_members and len(family_members) > 0:
-                for member in family_members:
-                    query = """
-                    INSERT INTO Staff_Family (
-                        Staff_ID, Family_Name, Family_Relation, 
-                        Family_Phone, Family_Address
-                    ) VALUES (%s, %s, %s, %s, %s)
+            family_info = data.get("family_information")
+            emergency_info = data.get("emergency_contact")
+            work_info = data.get("work_experience")
+            hiring_info = data.get("hiring_information")
+
+            # 先寫入各個外鍵表格並取得 ID
+            family_id = None
+            if family_info:
+                cursor.execute(
+                    "INSERT INTO family_information (name, relationship, age, company, occupation, phone) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (
+                        family_info.get("name"),
+                        family_info.get("relationship"),
+                        family_info.get("age"),
+                        family_info.get("company"),
+                        family_info.get("occupation"),
+                        family_info.get("phone"),
+                    ),
+                )
+                family_id = connection.insert_id()
+
+            emergency_id = None
+            if emergency_info:
+                cursor.execute(
+                    "INSERT INTO emergency_contact (name, relationship, age, company, occupation, phone) VALUES (%s, %s, %s, %s, %s, %s)",
+                    (
+                        emergency_info.get("name"),
+                        emergency_info.get("relationship"),
+                        emergency_info.get("age"),
+                        emergency_info.get("company"),
+                        emergency_info.get("occupation"),
+                        emergency_info.get("phone"),
+                    ),
+                )
+                emergency_id = connection.insert_id()
+
+            work_id = None
+            if work_info:
+                start_date = (
+                    datetime.strptime(work_info.get("start_date"), "%Y-%m-%d")
+                    if work_info.get("start_date")
+                    else None
+                )
+                end_date = (
+                    datetime.strptime(work_info.get("end_date"), "%Y-%m-%d")
+                    if work_info.get("end_date")
+                    else None
+                )
+                cursor.execute(
                     """
-                    cursor.execute(query, (
-                        staff_id,
-                        member.get("Family_Name"),
-                        member.get("Family_Relation"),
-                        member.get("Family_Phone"),
-                        member.get("Family_Address")
-                    ))
-            
-            # 3. 新增工作經驗
-            work_experience = data.get("work_experience", [])
-            if work_experience and len(work_experience) > 0:
-                for experience in work_experience:
-                    # 處理日期格式
-                    start_date = None
-                    if "Work_StartDate" in experience and experience["Work_StartDate"]:
-                        start_date = datetime.strptime(experience["Work_StartDate"], "%Y-%m-%d")
-                    
-                    end_date = None
-                    if "Work_EndDate" in experience and experience["Work_EndDate"]:
-                        end_date = datetime.strptime(experience["Work_EndDate"], "%Y-%m-%d")
-                    
-                    query = """
-                    INSERT INTO Staff_WorkExperience (
-                        Staff_ID, Work_Company, Work_Position, 
-                        Work_StartDate, Work_EndDate, Work_Description
-                    ) VALUES (%s, %s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(query, (
-                        staff_id,
-                        experience.get("Work_Company"),
-                        experience.get("Work_Position"),
+                    INSERT INTO work_experience (
+                        start_date, end_date, company_name, department, job_title,
+                        supervise_name, department_telephone, salary, is_still_on_work, working_department
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
                         start_date,
                         end_date,
-                        experience.get("Work_Description")
-                    ))
-            
+                        work_info.get("company_name"),
+                        work_info.get("department"),
+                        work_info.get("job_title"),
+                        work_info.get("supervise_name"),
+                        work_info.get("department_telephone"),
+                        work_info.get("salary"),
+                        work_info.get("is_still_on_work"),
+                        work_info.get("working_department"),
+                    ),
+                )
+                work_id = connection.insert_id()
+
+            hiring_id = None
+            if hiring_info:
+                official_date = (
+                    datetime.strptime(hiring_info.get("official_employment_date"), "%Y-%m-%d")
+                    if hiring_info.get("official_employment_date")
+                    else None
+                )
+                approval_date = (
+                    datetime.strptime(hiring_info.get("approval_date"), "%Y-%m-%d")
+                    if hiring_info.get("approval_date")
+                    else None
+                )
+                disqualification_date = (
+                    datetime.strptime(hiring_info.get("disqualification_date"), "%Y-%m-%d")
+                    if hiring_info.get("disqualification_date")
+                    else None
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO hiring_information (
+                        probation_period, duration, salary, official_employment_date,
+                        approval_date, disqualification_date, note
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        hiring_info.get("probation_period"),
+                        hiring_info.get("duration"),
+                        hiring_info.get("salary"),
+                        official_date,
+                        approval_date,
+                        disqualification_date,
+                        hiring_info.get("note"),
+                    ),
+                )
+                hiring_id = connection.insert_id()
+
+            # 處理 staff 表日期與 married 值
+            try:
+                basic_info["fill_date"] = parse_date(basic_info.get("fill_date"), "填表日期")
+                basic_info["onboard_date"] = parse_date(basic_info.get("onboard_date"), "入職日期")
+                basic_info["birthday"] = parse_date(basic_info.get("birthday"), "出生年月日")
+            except ValueError as e:
+                raise e
+
+            married = basic_info.get("married")
+            if isinstance(married, str):
+                married_str = married.strip().lower()
+                married = 1 if married_str in ["1", "married", "yes", "true", "已婚"] else 0
+            basic_info["married"] = married
+
+            if not basic_info.get("account"):
+                basic_info["account"] = None
+            if not basic_info.get("password"):
+                basic_info["password"] = None
+            if basic_info.get("store_id") is None:
+                basic_info["store_id"] = None
+            if not basic_info.get("permission"):
+                basic_info["permission"] = None
+
+            cursor.execute(
+                """
+                INSERT INTO staff (
+                    family_information_id, emergency_contact_id, work_experience_id,
+                    hiring_information_id, name, gender, fill_date, onboard_date, birthday,
+                    nationality, education, married, position, phone, national_id,
+                    mailing_address, registered_address, account, password, store_id,
+                    permission
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """,
+                (
+                    family_id,
+                    emergency_id,
+                    work_id,
+                    hiring_id,
+                    basic_info.get("name"),
+                    basic_info.get("gender"),
+                    basic_info.get("fill_date"),
+                    basic_info.get("onboard_date"),
+                    basic_info.get("birthday"),
+                    basic_info.get("nationality"),
+                    basic_info.get("education"),
+                    basic_info.get("married"),
+                    basic_info.get("position"),
+                    basic_info.get("phone"),
+                    basic_info.get("national_id"),
+                    basic_info.get("mailing_address"),
+                    basic_info.get("registered_address"),
+                    basic_info.get("account"),
+                    basic_info.get("password"),
+                    basic_info.get("store_id"),
+                    basic_info.get("permission"),
+                ),
+            )
+
+            staff_id = connection.insert_id()
+
             connection.commit()
     except Exception as e:
         if connection:
@@ -275,102 +387,259 @@ def update_staff(staff_id, data):
     
     try:
         with connection.cursor() as cursor:
-            # 1. 更新基本資料
             basic_info = data.get("basic_info", {})
-            if basic_info:
-                # 處理日期格式
-                if "Staff_Birthday" in basic_info and basic_info["Staff_Birthday"]:
-                    basic_info["Staff_Birthday"] = datetime.strptime(basic_info["Staff_Birthday"], "%Y-%m-%d")
-                
-                if "Staff_JoinDate" in basic_info and basic_info["Staff_JoinDate"]:
-                    basic_info["Staff_JoinDate"] = datetime.strptime(basic_info["Staff_JoinDate"], "%Y-%m-%d")
-                
-                query = """
-                UPDATE Staff SET 
-                    Staff_Name = %s,
-                    Staff_Phone = %s,
-                    Staff_Email = %s,
-                    Staff_Sex = %s,
-                    Staff_Birthday = %s,
-                    Staff_Address = %s,
-                    Staff_Store = %s,
-                    Staff_PermissionLevel = %s,
-                    Staff_Salary = %s,
-                    Staff_JoinDate = %s,
-                    Staff_EmergencyContact = %s,
-                    Staff_EmergencyPhone = %s,
-                    Staff_Note = %s,
-                    Staff_Status = %s
-                WHERE Staff_ID = %s
+            family_info = data.get("family_information")
+            emergency_info = data.get("emergency_contact")
+            work_info = data.get("work_experience")
+            hiring_info = data.get("hiring_information")
+
+            cursor.execute(
+                "SELECT account, password, store_id, permission FROM staff WHERE staff_id=%s",
+                (staff_id,),
+            )
+            existing = cursor.fetchone() or {}
+            if not basic_info.get("account"):
+                basic_info["account"] = existing.get("account")
+            if not basic_info.get("password"):
+                basic_info["password"] = existing.get("password")
+            if basic_info.get("store_id") is None:
+                basic_info["store_id"] = existing.get("store_id")
+            if not basic_info.get("permission"):
+                basic_info["permission"] = existing.get("permission")
+
+            family_id = basic_info.get("family_information_id")
+            if family_info:
+                if family_id:
+                    cursor.execute(
+                        "UPDATE family_information SET name=%s, relationship=%s, age=%s, company=%s, occupation=%s, phone=%s WHERE family_information_id=%s",
+                        (
+                            family_info.get("name"),
+                            family_info.get("relationship"),
+                            family_info.get("age"),
+                            family_info.get("company"),
+                            family_info.get("occupation"),
+                            family_info.get("phone"),
+                            family_id,
+                        ),
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT INTO family_information (name, relationship, age, company, occupation, phone) VALUES (%s,%s,%s,%s,%s,%s)",
+                        (
+                            family_info.get("name"),
+                            family_info.get("relationship"),
+                            family_info.get("age"),
+                            family_info.get("company"),
+                            family_info.get("occupation"),
+                            family_info.get("phone"),
+                        ),
+                    )
+                    family_id = connection.insert_id()
+
+            emergency_id = basic_info.get("emergency_contact_id")
+            if emergency_info:
+                if emergency_id:
+                    cursor.execute(
+                        "UPDATE emergency_contact SET name=%s, relationship=%s, age=%s, company=%s, occupation=%s, phone=%s WHERE emergency_contact_id=%s",
+                        (
+                            emergency_info.get("name"),
+                            emergency_info.get("relationship"),
+                            emergency_info.get("age"),
+                            emergency_info.get("company"),
+                            emergency_info.get("occupation"),
+                            emergency_info.get("phone"),
+                            emergency_id,
+                        ),
+                    )
+                else:
+                    cursor.execute(
+                        "INSERT INTO emergency_contact (name, relationship, age, company, occupation, phone) VALUES (%s,%s,%s,%s,%s,%s)",
+                        (
+                            emergency_info.get("name"),
+                            emergency_info.get("relationship"),
+                            emergency_info.get("age"),
+                            emergency_info.get("company"),
+                            emergency_info.get("occupation"),
+                            emergency_info.get("phone"),
+                        ),
+                    )
+                    emergency_id = connection.insert_id()
+
+            work_id = basic_info.get("work_experience_id")
+            if work_info:
+                start_date = (
+                    datetime.strptime(work_info.get("start_date"), "%Y-%m-%d")
+                    if work_info.get("start_date")
+                    else None
+                )
+                end_date = (
+                    datetime.strptime(work_info.get("end_date"), "%Y-%m-%d")
+                    if work_info.get("end_date")
+                    else None
+                )
+                if work_id:
+                    cursor.execute(
+                        """
+                        UPDATE work_experience SET start_date=%s, end_date=%s, company_name=%s, department=%s, job_title=%s,
+                            supervise_name=%s, department_telephone=%s, salary=%s, is_still_on_work=%s, working_department=%s
+                        WHERE work_experience_id=%s
+                        """,
+                        (
+                            start_date,
+                            end_date,
+                            work_info.get("company_name"),
+                            work_info.get("department"),
+                            work_info.get("job_title"),
+                            work_info.get("supervise_name"),
+                            work_info.get("department_telephone"),
+                            work_info.get("salary"),
+                            work_info.get("is_still_on_work"),
+                            work_info.get("working_department"),
+                            work_id,
+                        ),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        INSERT INTO work_experience (
+                            start_date, end_date, company_name, department, job_title,
+                            supervise_name, department_telephone, salary, is_still_on_work, working_department
+                        ) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (
+                            start_date,
+                            end_date,
+                            work_info.get("company_name"),
+                            work_info.get("department"),
+                            work_info.get("job_title"),
+                            work_info.get("supervise_name"),
+                            work_info.get("department_telephone"),
+                            work_info.get("salary"),
+                            work_info.get("is_still_on_work"),
+                            work_info.get("working_department"),
+                        ),
+                    )
+                    work_id = connection.insert_id()
+
+            hiring_id = basic_info.get("hiring_information_id")
+            if hiring_info:
+                official_date = (
+                    datetime.strptime(hiring_info.get("official_employment_date"), "%Y-%m-%d")
+                    if hiring_info.get("official_employment_date")
+                    else None
+                )
+                approval_date = (
+                    datetime.strptime(hiring_info.get("approval_date"), "%Y-%m-%d")
+                    if hiring_info.get("approval_date")
+                    else None
+                )
+                disqualification_date = (
+                    datetime.strptime(hiring_info.get("disqualification_date"), "%Y-%m-%d")
+                    if hiring_info.get("disqualification_date")
+                    else None
+                )
+                if hiring_id:
+                    cursor.execute(
+                        """
+                        UPDATE hiring_information SET probation_period=%s, duration=%s, salary=%s, official_employment_date=%s,
+                            approval_date=%s, disqualification_date=%s, note=%s WHERE hiring_information_id=%s
+                        """,
+                        (
+                            hiring_info.get("probation_period"),
+                            hiring_info.get("duration"),
+                            hiring_info.get("salary"),
+                            official_date,
+                            approval_date,
+                            disqualification_date,
+                            hiring_info.get("note"),
+                            hiring_id,
+                        ),
+                    )
+                else:
+                    cursor.execute(
+                        """
+                        INSERT INTO hiring_information (
+                            probation_period, duration, salary, official_employment_date,
+                            approval_date, disqualification_date, note
+                        ) VALUES (%s,%s,%s,%s,%s,%s,%s)
+                        """,
+                        (
+                            hiring_info.get("probation_period"),
+                            hiring_info.get("duration"),
+                            hiring_info.get("salary"),
+                            official_date,
+                            approval_date,
+                            disqualification_date,
+                            hiring_info.get("note"),
+                        ),
+                    )
+                    hiring_id = connection.insert_id()
+
+            try:
+                basic_info["fill_date"] = parse_date(basic_info.get("fill_date"), "填表日期")
+                basic_info["onboard_date"] = parse_date(basic_info.get("onboard_date"), "入職日期")
+                basic_info["birthday"] = parse_date(basic_info.get("birthday"), "出生年月日")
+            except ValueError as e:
+                raise e
+
+            married = basic_info.get("married")
+            if isinstance(married, str):
+                married_str = married.strip().lower()
+                married = 1 if married_str in ["1", "married", "yes", "true", "已婚"] else 0
+            basic_info["married"] = married
+
+            cursor.execute(
                 """
-                cursor.execute(query, (
-                    basic_info.get("Staff_Name"),
-                    basic_info.get("Staff_Phone"),
-                    basic_info.get("Staff_Email"),
-                    basic_info.get("Staff_Sex"),
-                    basic_info.get("Staff_Birthday"),
-                    basic_info.get("Staff_Address"),
-                    basic_info.get("Staff_Store"),
-                    basic_info.get("Staff_PermissionLevel"),
-                    basic_info.get("Staff_Salary"),
-                    basic_info.get("Staff_JoinDate"),
-                    basic_info.get("Staff_EmergencyContact"),
-                    basic_info.get("Staff_EmergencyPhone"),
-                    basic_info.get("Staff_Note"),
-                    basic_info.get("Staff_Status"),
-                    staff_id
-                ))
-            
-            # 2. 更新家庭成員 - 先刪除原有記錄，再新增新記錄
-            family_members = data.get("family_members", [])
-            cursor.execute("DELETE FROM Staff_Family WHERE Staff_ID = %s", (staff_id,))
-            
-            if family_members and len(family_members) > 0:
-                for member in family_members:
-                    query = """
-                    INSERT INTO Staff_Family (
-                        Staff_ID, Family_Name, Family_Relation, 
-                        Family_Phone, Family_Address
-                    ) VALUES (%s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(query, (
-                        staff_id,
-                        member.get("Family_Name"),
-                        member.get("Family_Relation"),
-                        member.get("Family_Phone"),
-                        member.get("Family_Address")
-                    ))
-            
-            # 3. 更新工作經驗 - 先刪除原有記錄，再新增新記錄
-            work_experience = data.get("work_experience", [])
-            cursor.execute("DELETE FROM Staff_WorkExperience WHERE Staff_ID = %s", (staff_id,))
-            
-            if work_experience and len(work_experience) > 0:
-                for experience in work_experience:
-                    # 處理日期格式
-                    start_date = None
-                    if "Work_StartDate" in experience and experience["Work_StartDate"]:
-                        start_date = datetime.strptime(experience["Work_StartDate"], "%Y-%m-%d")
-                    
-                    end_date = None
-                    if "Work_EndDate" in experience and experience["Work_EndDate"]:
-                        end_date = datetime.strptime(experience["Work_EndDate"], "%Y-%m-%d")
-                    
-                    query = """
-                    INSERT INTO Staff_WorkExperience (
-                        Staff_ID, Work_Company, Work_Position, 
-                        Work_StartDate, Work_EndDate, Work_Description
-                    ) VALUES (%s, %s, %s, %s, %s, %s)
-                    """
-                    cursor.execute(query, (
-                        staff_id,
-                        experience.get("Work_Company"),
-                        experience.get("Work_Position"),
-                        start_date,
-                        end_date,
-                        experience.get("Work_Description")
-                    ))
-            
+                UPDATE staff SET
+                    family_information_id=%s,
+                    emergency_contact_id=%s,
+                    work_experience_id=%s,
+                    hiring_information_id=%s,
+                    name=%s,
+                    gender=%s,
+                    fill_date=%s,
+                    onboard_date=%s,
+                    birthday=%s,
+                    nationality=%s,
+                    education=%s,
+                    married=%s,
+                    position=%s,
+                    phone=%s,
+                    national_id=%s,
+                    mailing_address=%s,
+                    registered_address=%s,
+                    account=%s,
+                    password=%s,
+                    store_id=%s,
+                    permission=%s
+                WHERE staff_id=%s
+                """,
+                (
+                    family_id,
+                    emergency_id,
+                    work_id,
+                    hiring_id,
+                    basic_info.get("name"),
+                    basic_info.get("gender"),
+                    basic_info.get("fill_date"),
+                    basic_info.get("onboard_date"),
+                    basic_info.get("birthday"),
+                    basic_info.get("nationality"),
+                    basic_info.get("education"),
+                    basic_info.get("married"),
+                    basic_info.get("position"),
+                    basic_info.get("phone"),
+                    basic_info.get("national_id"),
+                    basic_info.get("mailing_address"),
+                    basic_info.get("registered_address"),
+                    basic_info.get("account"),
+                    basic_info.get("password"),
+                    basic_info.get("store_id"),
+                    basic_info.get("permission"),
+                    staff_id,
+                ),
+            )
+
             connection.commit()
             success = True
     except Exception as e:
@@ -393,19 +662,38 @@ def delete_staff(staff_id):
             # 0. 刪除對應的登入帳號資料 (若存在)
             cursor.execute("DELETE FROM store_account WHERE account = %s", (str(staff_id),))
 
-            # 1. 刪除家庭成員
-            try:
-                cursor.execute("DELETE FROM Staff_Family WHERE Staff_ID = %s", (staff_id,))
-            except pymysql.err.ProgrammingError as e:
-                # 資料表不存在時略過
-                if e.args[0] != 1146:
-                    raise
+            # 1. 取得外鍵 ID
+            cursor.execute(
+                "SELECT family_information_id, emergency_contact_id, work_experience_id, hiring_information_id FROM staff WHERE staff_id = %s",
+                (staff_id,),
+            )
+            fk_ids = cursor.fetchone()
 
-            # 2. 刪除工作經驗
-            cursor.execute("DELETE FROM Staff_WorkExperience WHERE Staff_ID = %s", (staff_id,))
+            # 2. 刪除基本資料
+            cursor.execute("DELETE FROM staff WHERE staff_id = %s", (staff_id,))
 
-            # 3. 刪除基本資料
-            cursor.execute("DELETE FROM Staff WHERE Staff_ID = %s", (staff_id,))
+            # 3. 刪除相關表格資料
+            if fk_ids:
+                if fk_ids.get("family_information_id"):
+                    cursor.execute(
+                        "DELETE FROM family_information WHERE family_information_id = %s",
+                        (fk_ids["family_information_id"],),
+                    )
+                if fk_ids.get("emergency_contact_id"):
+                    cursor.execute(
+                        "DELETE FROM emergency_contact WHERE emergency_contact_id = %s",
+                        (fk_ids["emergency_contact_id"],),
+                    )
+                if fk_ids.get("work_experience_id"):
+                    cursor.execute(
+                        "DELETE FROM work_experience WHERE work_experience_id = %s",
+                        (fk_ids["work_experience_id"],),
+                    )
+                if fk_ids.get("hiring_information_id"):
+                    cursor.execute(
+                        "DELETE FROM hiring_information WHERE hiring_information_id = %s",
+                        (fk_ids["hiring_information_id"],),
+                    )
             
             connection.commit()
             success = True
@@ -427,12 +715,12 @@ def get_store_list():
     try:
         with connection.cursor() as cursor:
             query = """
-            SELECT DISTINCT Staff_Store FROM Staff 
-            WHERE Staff_Store IS NOT NULL AND Staff_Store != ''
+            SELECT DISTINCT store_id FROM staff
+            WHERE store_id IS NOT NULL
             """
             cursor.execute(query)
             stores = cursor.fetchall()
-            store_list = [store["Staff_Store"] for store in stores]
+            store_list = [store["store_id"] for store in stores]
     except Exception as e:
         print(f"獲取分店列表錯誤: {e}")
     finally:
