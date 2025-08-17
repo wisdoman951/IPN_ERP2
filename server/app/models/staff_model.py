@@ -345,6 +345,7 @@ def create_staff(data):
                 ),
             )
 
+
             staff_id = connection.insert_id()
 
             connection.commit()
@@ -623,6 +624,7 @@ def update_staff(staff_id, data):
                     staff_id,
                 ),
             )
+
 
             connection.commit()
             success = True
