@@ -487,7 +487,7 @@ def get_all_staff_with_accounts():
     try:
         with conn.cursor() as cursor:
             query = """
-            SELECT s.staff_id, s.name, s.phone, s.account, s.password, st.store_name
+            SELECT s.staff_id, s.name, s.phone, s.account, s.password, s.permission, st.store_name
             FROM staff s
             LEFT JOIN store st ON s.store_id = st.store_id
             ORDER BY s.staff_id DESC
@@ -505,7 +505,7 @@ def search_staff_with_accounts(keyword):
         with conn.cursor() as cursor:
             like_keyword = f"%{keyword}%"
             query = """
-            SELECT s.staff_id, s.name, s.phone, s.account, s.password, st.store_name
+            SELECT s.staff_id, s.name, s.phone, s.account, s.password, s.permission, st.store_name
             FROM staff s
             LEFT JOIN store st ON s.store_id = st.store_id
             WHERE s.name LIKE %s OR s.phone LIKE %s OR s.account LIKE %s
