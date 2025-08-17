@@ -242,10 +242,11 @@ def update_account_route(staff_id):
         else:
             return jsonify({"error": "更新失敗或無此員工"}), 404
     except Exception as e:
-        # 處理帳號重複的錯誤
-        if "Duplicate entry" in str(e) and "for key 'account'" in str(e):
-             return jsonify({"error": f"帳號 '{data.get('account')}' 已被使用，請更換一個。"}), 400
-        return jsonify({"error": str(e)}), 500
+        # 處理帳號重複的錯誤，避免回傳資料庫明碼
+        error_message = str(e)
+        if "Duplicate entry" in error_message and "account" in error_message:
+            return jsonify({"error": "使用者帳號重複"}), 400
+        return jsonify({"error": error_message}), 500
 
 
 # 總部專用：獲取所有分店列表，用於下拉式選單
