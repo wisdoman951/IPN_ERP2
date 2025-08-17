@@ -168,6 +168,10 @@ const AddStaff: React.FC = () => {
         try {
             const payload: any = {
                 basic_info: {
+                    family_information_id: formData.family_information_id,
+                    emergency_contact_id: formData.emergency_contact_id,
+                    work_experience_id: formData.work_experience_id,
+                    hiring_information_id: formData.hiring_information_id,
                     name: formData.name,
                     phone: formData.phone,
                     gender: formData.gender,
@@ -180,10 +184,10 @@ const AddStaff: React.FC = () => {
                     position: formData.applyPosition || "",
                     mailing_address: formData.address2 || "",
                     registered_address: formData.address1 || "",
-                    account: "",
-                    password: "",
+                    account: null,
+                    password: null,
                     store_id: null,
-                    permission: "",
+                    permission: null,
                 },
             };
 

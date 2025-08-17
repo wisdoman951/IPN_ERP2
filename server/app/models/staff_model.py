@@ -298,8 +298,18 @@ def create_staff(data):
 
             married = basic_info.get("married")
             if isinstance(married, str):
-                married = 1 if married.lower() in ["1", "married", "yes", "true"] else 0
+                married_str = married.strip().lower()
+                married = 1 if married_str in ["1", "married", "yes", "true", "已婚"] else 0
             basic_info["married"] = married
+
+            if not basic_info.get("account"):
+                basic_info["account"] = None
+            if not basic_info.get("password"):
+                basic_info["password"] = None
+            if basic_info.get("store_id") is None:
+                basic_info["store_id"] = None
+            if not basic_info.get("permission"):
+                basic_info["permission"] = None
 
             cursor.execute(
                 """
@@ -334,6 +344,8 @@ def create_staff(data):
                     basic_info.get("permission"),
                 ),
             )
+
+
             staff_id = connection.insert_id()
 
             connection.commit()
@@ -360,6 +372,20 @@ def update_staff(staff_id, data):
             emergency_info = data.get("emergency_contact")
             work_info = data.get("work_experience")
             hiring_info = data.get("hiring_information")
+
+            cursor.execute(
+                "SELECT account, password, store_id, permission FROM staff WHERE staff_id=%s",
+                (staff_id,),
+            )
+            existing = cursor.fetchone() or {}
+            if not basic_info.get("account"):
+                basic_info["account"] = existing.get("account")
+            if not basic_info.get("password"):
+                basic_info["password"] = existing.get("password")
+            if basic_info.get("store_id") is None:
+                basic_info["store_id"] = existing.get("store_id")
+            if not basic_info.get("permission"):
+                basic_info["permission"] = existing.get("permission")
 
             family_id = basic_info.get("family_information_id")
             if family_info:
@@ -545,7 +571,8 @@ def update_staff(staff_id, data):
 
             married = basic_info.get("married")
             if isinstance(married, str):
-                married = 1 if married.lower() in ["1", "married", "yes", "true"] else 0
+                married_str = married.strip().lower()
+                married = 1 if married_str in ["1", "married", "yes", "true", "已婚"] else 0
             basic_info["married"] = married
 
             cursor.execute(
@@ -597,6 +624,8 @@ def update_staff(staff_id, data):
                     staff_id,
                 ),
             )
+
+
             connection.commit()
             success = True
     except Exception as e:
@@ -628,7 +657,7 @@ def delete_staff(staff_id):
 
             # 2. 刪除基本資料
             cursor.execute("DELETE FROM staff WHERE staff_id = %s", (staff_id,))
-            
+
             # 3. 刪除相關表格資料
             if fk_ids:
                 if fk_ids.get("family_information_id"):
