@@ -3,11 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { Container, Form, Button, Card, Spinner, Alert, Row, Col } from 'react-bootstrap';
 import { useNavigate, useParams } from 'react-router-dom';
-import { 
-    updateStaffAccount, 
+import {
+    updateStaffAccount,
     fetchStoresForDropdown,
     getStaffByStore,
-    Store 
+    getStaffById,
+    Store
 } from '../../services/StaffService';
 import Header from '../../components/Header'; // 1. 引入 Header
 import DynamicContainer from '../../components/DynamicContainer'; // 2. 引入 DynamicContainer
@@ -44,13 +45,33 @@ const AddEditUserAccount: React.FC = () => {
         if (selectedStore) {
             setLoading(true);
             setStaffList([]);
-            setSelectedStaff('');
+            if (!isEditMode) setSelectedStaff('');
             getStaffByStore(parseInt(selectedStore))
                 .then(setStaffList)
                 .catch(() => setError("無法載入該分店的員工列表"))
                 .finally(() => setLoading(false));
         }
-    }, [selectedStore]);
+    }, [selectedStore, isEditMode]);
+
+    useEffect(() => {
+        if (isEditMode && staffId) {
+            setLoading(true);
+            getStaffById(parseInt(staffId))
+                .then((staff: any) => {
+                    if (staff) {
+                        if (staff.store_id) setSelectedStore(String(staff.store_id));
+                        setSelectedStaff(String(staff.staff_id));
+                        setEmployeeType(staff.permission || '');
+                        setAccount(staff.account || '');
+                        setPassword(staff.password || '');
+                    } else {
+                        setError('找不到該員工');
+                    }
+                })
+                .catch(() => setError('無法載入員工資料'))
+                .finally(() => setLoading(false));
+        }
+    }, [isEditMode, staffId]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
