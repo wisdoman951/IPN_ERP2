@@ -58,6 +58,7 @@ import InventoryInsert from "./pages/inventory/InventoryInsert";
 import BranchBackend from "./pages/backend/BranchBackend";
 import Staff from "./pages/backend/Staff";
 import AddStaff from "./pages/backend/AddStaff";
+import EditStaff from "./pages/backend/EditStaff";
 import HeadquartersBackend from './pages/backend/HeadquartersBackend';
 import UserAccountManagement from './pages/backend/UserAccountManagement';
 import AddEditUserAccount from './pages/backend/AddEditUserAccount';
@@ -163,6 +164,7 @@ const App: React.FC = () => {
                     {/* 總部專用的其他後台路徑 */}
                     <Route path="/backend/staff" element={<ProtectedRoute element={<Staff />} />} />
                     <Route path="/backend/add-staff" element={<ProtectedRoute element={<AddStaff />} />} />
+                    <Route path="/backend/edit-staff/:staffId" element={<ProtectedRoute element={<EditStaff />} />} />
                     <Route path="/backend/user-accounts" element={<ProtectedRoute element={<UserAccountManagement />} adminOnly={true} />} />
                     <Route path="/backend/user-accounts/add" element={<ProtectedRoute element={<AddEditUserAccount />} adminOnly={true} />} />
                     <Route path="/backend/user-accounts/edit/:staffId" element={<ProtectedRoute element={<AddEditUserAccount />} adminOnly={true} />} />
