@@ -340,6 +340,7 @@ def create_staff(data):
                     mailing_address, registered_address, account, password, store_id,
                     permission
                 ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+
                 """,
                 (
                     family_id,
