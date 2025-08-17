@@ -80,7 +80,8 @@ const AddStaff: React.FC = () => {
                     setFormData(prev => ({
                         ...prev,
                         onboardDate: info.Staff_JoinDate || "",
-                        name: info.Staff_Name || "",
+                        // 後端欄位已改為 name，為了相容性同時支援舊欄位
+                        name: info.name || info.Staff_Name || "",
                         gender: info.Staff_Sex || "",
                         birthday: info.Staff_Birthday || "",
                         nationality: info.Staff_Nationality || "",

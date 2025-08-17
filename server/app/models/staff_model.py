@@ -56,7 +56,8 @@ def get_all_staff_for_dropdown():
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            sql = "SELECT Staff_ID AS staff_id, Staff_Name AS name FROM Staff ORDER BY Staff_Name"
+            # 使用正確的欄位名稱 name
+            sql = "SELECT staff_id, name FROM staff ORDER BY name"
             cursor.execute(sql)
             return cursor.fetchall()
     finally:
@@ -181,8 +182,8 @@ def create_staff(data):
             # 插入基本資料
             query = """
             INSERT INTO Staff (
-                Staff_Name, Staff_Phone, Staff_Email, Staff_Sex, 
-                Staff_Birthday, Staff_Address, Staff_Store, 
+                name, Staff_Phone, Staff_Email, Staff_Sex,
+                Staff_Birthday, Staff_Address, Staff_Store,
                 Staff_PermissionLevel, Staff_Salary, Staff_JoinDate,
                 Staff_EmergencyContact, Staff_EmergencyPhone,
                 Staff_Note, Staff_Status
@@ -286,8 +287,8 @@ def update_staff(staff_id, data):
                     basic_info["Staff_JoinDate"] = datetime.strptime(basic_info["Staff_JoinDate"], "%Y-%m-%d")
                 
                 query = """
-                UPDATE Staff SET 
-                    Staff_Name = %s,
+                UPDATE Staff SET
+                    name = %s,
                     Staff_Phone = %s,
                     Staff_Email = %s,
                     Staff_Sex = %s,
