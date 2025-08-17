@@ -168,10 +168,6 @@ const AddStaff: React.FC = () => {
         try {
             const payload: any = {
                 basic_info: {
-                    family_information_id: formData.family_information_id,
-                    emergency_contact_id: formData.emergency_contact_id,
-                    work_experience_id: formData.work_experience_id,
-                    hiring_information_id: formData.hiring_information_id,
                     name: formData.name,
                     phone: formData.phone,
                     gender: formData.gender,

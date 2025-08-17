@@ -334,7 +334,6 @@ def create_staff(data):
                     basic_info.get("permission"),
                 ),
             )
-
             staff_id = connection.insert_id()
 
             connection.commit()
@@ -598,7 +597,6 @@ def update_staff(staff_id, data):
                     staff_id,
                 ),
             )
-
             connection.commit()
             success = True
     except Exception as e:
@@ -630,7 +628,7 @@ def delete_staff(staff_id):
 
             # 2. 刪除基本資料
             cursor.execute("DELETE FROM staff WHERE staff_id = %s", (staff_id,))
-
+            
             # 3. 刪除相關表格資料
             if fk_ids:
                 if fk_ids.get("family_information_id"):
