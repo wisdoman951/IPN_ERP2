@@ -120,7 +120,7 @@ def export_staff_route():
             'work_experience_id', 'hiring_information_id', 'name', 'gender',
             'fill_date', 'onboard_date', 'nationality', 'education', 'married',
             'position', 'phone', 'national_id', 'mailing_address',
-            'registered_address', 'account', 'password', 'store_id'
+            'registered_address', 'account', 'password', 'permission', 'store_id'
         ]
 
         df = pd.DataFrame(staff_list)

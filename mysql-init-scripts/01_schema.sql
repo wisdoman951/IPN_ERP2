@@ -148,6 +148,7 @@ CREATE TABLE staff (
     `national_id` VARCHAR(20),
     `mailing_address` TEXT,
     `registered_address` TEXT,
+    `permission` VARCHAR(50) DEFAULT 'therapist',
     FOREIGN KEY (`family_information_id`) REFERENCES family_information(`family_information_id`),
     FOREIGN KEY (`emergency_contact_id`) REFERENCES emergency_contact(`emergency_contact_id`),
     FOREIGN KEY (`work_experience_id`) REFERENCES work_experience(`work_experience_id`),
@@ -380,6 +381,7 @@ ALTER COLUMN `store_id` DROP DEFAULT;
 ALTER TABLE `staff`
 ADD COLUMN `account` VARCHAR(50) NULL UNIQUE COMMENT '員工登入帳號',
 ADD COLUMN `password` VARCHAR(255) NULL COMMENT '員工登入密碼(應加密儲存)',
+ADD COLUMN `permission` VARCHAR(50) NULL DEFAULT 'therapist' COMMENT '員工權限',
 ADD COLUMN `store_id` INT NULL COMMENT '員工所屬分店ID',
 ADD CONSTRAINT `fk_staff_store` FOREIGN KEY (`store_id`) REFERENCES `store`(`store_id`);
 

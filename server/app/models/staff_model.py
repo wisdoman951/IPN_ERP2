@@ -449,12 +449,12 @@ def get_permission_list():
     try:
         with connection.cursor() as cursor:
             query = """
-            SELECT DISTINCT Staff_PermissionLevel FROM Staff 
-            WHERE Staff_PermissionLevel IS NOT NULL AND Staff_PermissionLevel != ''
+            SELECT DISTINCT permission FROM staff
+            WHERE permission IS NOT NULL AND permission != ''
             """
             cursor.execute(query)
             permissions = cursor.fetchall()
-            permission_list = [permission["Staff_PermissionLevel"] for permission in permissions]
+            permission_list = [permission["permission"] for permission in permissions]
     except Exception as e:
         print(f"獲取權限列表錯誤: {e}")
     finally:
@@ -525,19 +525,21 @@ def update_staff_account(staff_id, data):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            # 準備參數，只包含我們需要的 account 和 password
+            # 準備參數，包含帳號、密碼與權限
             # 注意：這裡應該對密碼進行加密，為了簡化，我們先用明文
             params = {
                 "account": data.get("account"),
                 "password": data.get("password"),
+                "permission": data.get("permission"),
                 "staff_id": staff_id
             }
 
-            # 修正後的 SQL，只更新帳號和密碼
+            # 更新帳號、密碼與權限
             query = """
             UPDATE staff SET
                 account = %(account)s,
-                password = %(password)s
+                password = %(password)s,
+                permission = %(permission)s
             WHERE staff_id = %(staff_id)s
             """
             
