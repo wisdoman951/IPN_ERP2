@@ -3,7 +3,23 @@ import pymysql
 import os
 import numpy as np
 from app.config import DB_CONFIG
-from datetime import datetime
+from datetime import datetime, date
+
+
+def parse_date(value, field_name):
+    """將前端傳入的日期字串轉為 datetime，若為空或格式錯誤則回傳 None 或拋出錯誤"""
+    if not value:
+        return None
+    if isinstance(value, (datetime, date)):
+        return value
+    value_str = str(value)
+    try:
+        return datetime.strptime(value_str, "%Y-%m-%d")
+    except ValueError:
+        try:
+            return datetime.strptime(value_str, "%a, %d %b %Y %H:%M:%S %Z")
+        except ValueError:
+            raise ValueError(f"{field_name} 格式錯誤")
 
 def connect_to_db():
     """取得資料庫連接"""
@@ -123,8 +139,19 @@ def get_staff_details(staff_id):
 
     try:
         with connection.cursor() as cursor:
-            # 使用新欄位從 staff 表取得基本資料
-            query = "SELECT * FROM staff WHERE staff_id = %s"
+            # 使用新欄位從 staff 表取得基本資料並格式化日期欄位
+            query = (
+                """
+                SELECT staff_id, family_information_id, emergency_contact_id, work_experience_id,
+                       hiring_information_id, name, gender,
+                       DATE_FORMAT(fill_date, '%Y-%m-%d') AS fill_date,
+                       DATE_FORMAT(onboard_date, '%Y-%m-%d') AS onboard_date,
+                       DATE_FORMAT(birthday, '%Y-%m-%d') AS birthday,
+                       nationality, education, married, position, phone, national_id,
+                       mailing_address, registered_address, account, password, store_id, permission
+                FROM staff WHERE staff_id = %s
+                """
+            )
             cursor.execute(query, (staff_id,))
             result["basic_info"] = cursor.fetchone()
             
@@ -282,19 +309,12 @@ def create_staff(data):
                 hiring_id = connection.insert_id()
 
             # 處理 staff 表日期與 married 值
-            if basic_info.get("fill_date"):
-                basic_info["fill_date"] = datetime.strptime(
-                    basic_info["fill_date"], "%Y-%m-%d"
-                )
-            else:
-                basic_info["fill_date"] = None
-
-            if basic_info.get("onboard_date"):
-                basic_info["onboard_date"] = datetime.strptime(
-                    basic_info["onboard_date"], "%Y-%m-%d"
-                )
-            else:
-                basic_info["onboard_date"] = None
+            try:
+                basic_info["fill_date"] = parse_date(basic_info.get("fill_date"), "填表日期")
+                basic_info["onboard_date"] = parse_date(basic_info.get("onboard_date"), "入職日期")
+                basic_info["birthday"] = parse_date(basic_info.get("birthday"), "出生年月日")
+            except ValueError as e:
+                raise e
 
             married = basic_info.get("married")
             if isinstance(married, str):
@@ -315,11 +335,12 @@ def create_staff(data):
                 """
                 INSERT INTO staff (
                     family_information_id, emergency_contact_id, work_experience_id,
-                    hiring_information_id, name, gender, fill_date, onboard_date,
+                    hiring_information_id, name, gender, fill_date, onboard_date, birthday,
                     nationality, education, married, position, phone, national_id,
                     mailing_address, registered_address, account, password, store_id,
                     permission
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+
                 """,
                 (
                     family_id,
@@ -330,6 +351,7 @@ def create_staff(data):
                     basic_info.get("gender"),
                     basic_info.get("fill_date"),
                     basic_info.get("onboard_date"),
+                    basic_info.get("birthday"),
                     basic_info.get("nationality"),
                     basic_info.get("education"),
                     basic_info.get("married"),
@@ -344,7 +366,6 @@ def create_staff(data):
                     basic_info.get("permission"),
                 ),
             )
-
 
             staff_id = connection.insert_id()
 
@@ -555,19 +576,12 @@ def update_staff(staff_id, data):
                     )
                     hiring_id = connection.insert_id()
 
-            if basic_info.get("fill_date"):
-                basic_info["fill_date"] = datetime.strptime(
-                    basic_info["fill_date"], "%Y-%m-%d"
-                )
-            else:
-                basic_info["fill_date"] = None
-
-            if basic_info.get("onboard_date"):
-                basic_info["onboard_date"] = datetime.strptime(
-                    basic_info["onboard_date"], "%Y-%m-%d"
-                )
-            else:
-                basic_info["onboard_date"] = None
+            try:
+                basic_info["fill_date"] = parse_date(basic_info.get("fill_date"), "填表日期")
+                basic_info["onboard_date"] = parse_date(basic_info.get("onboard_date"), "入職日期")
+                basic_info["birthday"] = parse_date(basic_info.get("birthday"), "出生年月日")
+            except ValueError as e:
+                raise e
 
             married = basic_info.get("married")
             if isinstance(married, str):
@@ -586,6 +600,7 @@ def update_staff(staff_id, data):
                     gender=%s,
                     fill_date=%s,
                     onboard_date=%s,
+                    birthday=%s,
                     nationality=%s,
                     education=%s,
                     married=%s,
@@ -609,6 +624,7 @@ def update_staff(staff_id, data):
                     basic_info.get("gender"),
                     basic_info.get("fill_date"),
                     basic_info.get("onboard_date"),
+                    basic_info.get("birthday"),
                     basic_info.get("nationality"),
                     basic_info.get("education"),
                     basic_info.get("married"),
@@ -624,7 +640,6 @@ def update_staff(staff_id, data):
                     staff_id,
                 ),
             )
-
 
             connection.commit()
             success = True

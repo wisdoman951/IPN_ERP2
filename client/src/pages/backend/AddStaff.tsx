@@ -6,6 +6,18 @@ import Header from "../../components/Header"; // 建議使用您專案中統一�
 import DynamicContainer from "../../components/DynamicContainer"; // 建議使用您專案中統一的 DynamicContainer
 import { addStaff, getStaffDetails, updateStaff } from "../../services/StaffService";
 
+// 將後端回傳的日期字串或 Date 物件轉為 input[type=date] 可用的 "YYYY-MM-DD"
+const toDateInputValue = (value: any): string => {
+    if (!value) return "";
+    try {
+        const date = new Date(value);
+        if (isNaN(date.getTime())) return "";
+        return date.toISOString().split("T")[0];
+    } catch {
+        return "";
+    }
+};
+
 const AddStaff: React.FC = () => {
     const navigate = useNavigate();
     const { staffId } = useParams<{ staffId?: string }>();
@@ -86,8 +98,9 @@ const AddStaff: React.FC = () => {
                     const hiring = res.data.hiring_information || {};
                     setFormData(prev => ({
                         ...prev,
-                        fillDate: info.fill_date || "",
-                        onboardDate: info.onboard_date || "",
+                        fillDate: toDateInputValue(info.fill_date),
+                        onboardDate: toDateInputValue(info.onboard_date),
+                        birthday: toDateInputValue(info.birthday),
                         name: info.name || "",
                         gender: info.gender || "",
                         nationality: info.nationality || "",
@@ -178,6 +191,7 @@ const AddStaff: React.FC = () => {
                     national_id: formData.idNumber,
                     fill_date: formData.fillDate || null,
                     onboard_date: formData.onboardDate || null,
+                    birthday: formData.birthday || null,
                     nationality: formData.nationality || "",
                     education: formData.education || "",
                     married: formData.maritalStatus === "Married" ? 1 : 0,
