@@ -1,6 +1,6 @@
 # server\app\routes\login.py
 from flask import Blueprint, request, jsonify, make_response
-from app.models.login_model import find_store_by_account, update_store_password, get_all_stores
+from app.models.login_model import find_staff_by_account, update_staff_password, get_all_stores
 import secrets
 import time
 import jwt
@@ -61,22 +61,22 @@ def login():
         if not account or not password:
             return jsonify({"error": "請輸入帳號與密碼"}), 400
 
-        store = find_store_by_account(account)
-        if not store:
+        staff = find_staff_by_account(account)
+        if not staff:
             return jsonify({"error": "查無此帳號"}), 404
 
-        if store["password"] != password:
+        if staff["password"] != password:
             return jsonify({"error": "密碼錯誤"}), 401
-
         # 判斷商店級別
-        store_level = "總店" if store["permission"] == "admin" else "分店"
+        store_level = "總店" if staff["permission"] == "admin" else "分店"
 
         # 生成JWT令牌
         payload = {
-            'store_id': store["store_id"],
+            'store_id': staff["store_id"],
             'store_level': store_level,
-            'store_name': store["store_name"],
-            'permission': store["permission"],
+            'store_name': staff["store_name"],
+            'staff_id': staff["staff_id"],
+            'permission': staff["permission"],
             'exp': datetime.utcnow() + timedelta(seconds=JWT_EXPIRATION)  # 使用配置中的過期時間
         }
         token = jwt.encode(payload, JWT_SECRET_KEY, algorithm='HS256')
@@ -85,11 +85,12 @@ def login():
         response_data = {
             "message": "登入成功",
             "token": token,
-            "store_id": store["store_id"],
+            "store_id": staff["store_id"],
             "store_level": store_level,
-            "store_name": store["store_name"],
-            "permission": store["permission"],
-            "account": account 
+            "store_name": staff["store_name"],
+            "permission": staff["permission"],
+            "staff_id": staff["staff_id"],
+            "account": account
         }
         
         print("返回登錄成功響應:", response_data)
@@ -116,8 +117,8 @@ def request_password_reset():
     if not account:
         return jsonify({"error": "請輸入帳號"}), 400
 
-    store = find_store_by_account(account)
-    if not store:
+    staff = find_staff_by_account(account)
+    if not staff:
         return jsonify({"error": "查無此帳號"}), 404
 
     # 產生重設 token，有效期為 1 小時
@@ -146,8 +147,8 @@ def forgot_password():
     if not account:
         return jsonify({"error": "請輸入帳號"}), 400
 
-    store = find_store_by_account(account)
-    if not store:
+    staff = find_staff_by_account(account)
+    if not staff:
         return jsonify({"error": "查無此帳號"}), 404
 
     # 產生重設 token，有效期為 1 小時
@@ -193,13 +194,13 @@ def reset_password():
     if token_data["account"] != account:
         return jsonify({"error": "帳號與重設連結不匹配"}), 400
 
-    store = find_store_by_account(account)
-    if not store:
+    staff = find_staff_by_account(account)
+    if not staff:
         return jsonify({"error": "帳號已不存在"}), 404
 
     # 更新密碼
     try:
-        update_store_password(account, new_password)
+        update_staff_password(account, new_password)
         
         # 密碼更新成功，移除 token
         password_reset_tokens.pop(token, None)
@@ -230,6 +231,7 @@ def refresh_token():
             'store_id': payload['store_id'],
             'store_level': payload['store_level'],
             'store_name': payload['store_name'],
+            'staff_id': payload.get('staff_id'),
             'permission': payload['permission'],
             'exp': datetime.utcnow() + timedelta(seconds=JWT_EXPIRATION)  # 使用配置中的過期時間
         }
@@ -242,7 +244,8 @@ def refresh_token():
             "store_id": payload['store_id'],
             "store_level": payload['store_level'],
             "store_name": payload['store_name'],
-            "permission": payload['permission']
+            "permission": payload['permission'],
+            "staff_id": payload.get('staff_id')
         }), 200
         
     except jwt.ExpiredSignatureError:
@@ -278,7 +281,8 @@ def check_auth():
             "store_id": payload['store_id'],
             "store_level": payload['store_level'],
             "store_name": payload['store_name'],
-            "permission": payload['permission'] 
+            "permission": payload['permission'],
+            "staff_id": payload.get('staff_id')
         }), 200
         
     except jwt.ExpiredSignatureError:
