@@ -525,19 +525,21 @@ def update_staff_account(staff_id, data):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            # 準備參數，只包含我們需要的 account 和 password
+            # 準備參數，包含帳號、密碼與權限
             # 注意：這裡應該對密碼進行加密，為了簡化，我們先用明文
             params = {
                 "account": data.get("account"),
                 "password": data.get("password"),
+                "permission": data.get("permission"),
                 "staff_id": staff_id
             }
 
-            # 修正後的 SQL，只更新帳號和密碼
+            # 更新帳號、密碼與權限
             query = """
             UPDATE staff SET
                 account = %(account)s,
-                password = %(password)s
+                password = %(password)s,
+                permission = %(permission)s
             WHERE staff_id = %(staff_id)s
             """
             

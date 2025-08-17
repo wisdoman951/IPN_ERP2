@@ -6,6 +6,7 @@ import { Icon } from "@iconify/react";
 import './Sidebar.css';
 import { logout } from "../../services/LoginService";
 import { formatStoreName } from "../../utils/authUtils";
+import { getUserRole } from "../../utils/authUtils";
 
 interface StoreInfo {
   store_id: number;
@@ -18,6 +19,7 @@ const Sidebar: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [storeName, setStoreName] = useState<string>("");
+  const userRole = getUserRole();
   
   // 新增狀態儲存 header 高度
   const [headerHeight, setHeaderHeight] = useState<number>(0); // 默認高度
@@ -159,12 +161,14 @@ const Sidebar: React.FC = () => {
             <span>帳務管理</span>
           </Button>
         </div>
-        <div className="nav-item-wrapper w-100">
-          <Button variant="light" className="nav-button w-100 d-flex align-items-center" onClick={() => navigate("/backend")}>
-            <img src="/group.svg" alt="" className="sidebar-icon me-2" />
-            <span>後台管理系統</span>
-          </Button>
-        </div>
+        {userRole === 'admin' && (
+          <div className="nav-item-wrapper w-100">
+            <Button variant="light" className="nav-button w-100 d-flex align-items-center" onClick={() => navigate("/backend")}> 
+              <img src="/group.svg" alt="" className="sidebar-icon me-2" />
+              <span>後台管理系統</span>
+            </Button>
+          </div>
+        )}
         <div className="nav-item-wrapper w-100 mt-auto">
           <Button variant="danger" className="nav-button w-100 d-flex align-items-center" onClick={handleLogout}>
             <span>登出</span>

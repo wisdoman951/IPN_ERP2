@@ -270,6 +270,7 @@ export interface StaffAccount {
     password?: string;
     store_id?: number;
     store_name?: string;
+    permission?: string;
 }
 
 // 2. 新增：分店列表的介面 (保持不變)
