@@ -7,7 +7,10 @@ import MemberColumn from "../../components/MemberColumn";
 import { MemberData } from "../../types/medicalTypes";
 import { addProductSell, ProductSellData } from "../../services/ProductSellService";
 import { getStoreId } from "../../services/LoginService";
+import { fetchAllStores, Store } from "../../services/StoreService";
 import { getStaffMembers, StaffMember } from "../../services/TherapyDropdownService";
+import { SalesOrderItemData } from "../../services/SalesOrderService";
+import { getUserRole, getStoreName } from "../../utils/authUtils";
 
 interface SelectedProduct {
   product_id: number;
@@ -27,9 +30,12 @@ const paymentMethodDisplayMap: { [key: string]: string } = {
 };
 
 const AddProductSell: React.FC = () => {
-  const [selectedStore, setSelectedStore] = useState<string>("");
-  const storeOptions = ["店別A", "店別B", "店別C"];
+  const userRole = getUserRole();
   const navigate = useNavigate();
+
+  const [stores, setStores] = useState<Store[]>([]);
+  const [storeNameToId, setStoreNameToId] = useState<{ [name: string]: number }>({});
+  const [selectedStore, setSelectedStore] = useState<string>(getStoreName() || "");
 
   const [storeId, setStoreId] = useState<string>("");
   const [memberCode, setMemberCode] = useState<string>("");
@@ -54,71 +60,102 @@ const AddProductSell: React.FC = () => {
   const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
 
   useEffect(() => {
-    const currentStoreId = getStoreId();
-    if (currentStoreId) setStoreId(currentStoreId);
-    else setError("無法獲取當前門市資訊，請重新登入。");
+    const init = async () => {
+      const currentStoreId = getStoreId();
+      if (currentStoreId) setStoreId(currentStoreId);
+      else setError("無法獲取當前門市資訊，請重新登入。");
 
-    const fetchStaffMembers = async () => {
-      try {
-        const data = await getStaffMembers(currentStoreId ? parseInt(currentStoreId) : undefined);
-        setStaffMembers(data);
-        if (data.length > 0 && !localStorage.getItem('productSellFormState')) {
-          setSelectedStaffId(data[0].staff_id.toString());
+      let nameToIdMap: { [name: string]: number } = {};
+      if (userRole === 'admin') {
+        try {
+          const data = await fetchAllStores();
+          setStores(data);
+          const map: { [name: string]: number } = {};
+          data.forEach(s => { map[s.store_name] = s.store_id; });
+          nameToIdMap = map;
+          setStoreNameToId(map);
+          if (!localStorage.getItem('productSellFormState')) {
+            if (data.length > 0) {
+              setSelectedStore(data[0].store_name);
+              setStoreId(data[0].store_id.toString());
+            }
+          }
+        } catch (err) {
+          console.error("載入分店資料失敗：", err);
+          setError("載入分店資料失敗");
         }
-      } catch (err) {
-        console.error("載入銷售人員資料失敗：", err);
-        setError("載入銷售人員資料失敗");
+      } else {
+        const name = getStoreName();
+        if (name) setSelectedStore(name);
       }
+
+      const fetchStaffMembersData = async () => {
+        try {
+          const data = await getStaffMembers(currentStoreId ? parseInt(currentStoreId) : undefined);
+          setStaffMembers(data);
+          if (data.length > 0 && !localStorage.getItem('productSellFormState')) {
+            setSelectedStaffId(data[0].staff_id.toString());
+          }
+        } catch (err) {
+          console.error("載入銷售人員資料失敗：", err);
+          setError("載入銷售人員資料失敗");
+        }
+      };
+      await fetchStaffMembersData();
+
+      // ---- 資料還原在這邊 ----
+      const selectedProductsData = localStorage.getItem('selectedProducts');
+      const formStateData = localStorage.getItem('productSellFormState');
+      let initialProducts: SelectedProduct[] = [];
+      if (selectedProductsData) {
+        try {
+          initialProducts = JSON.parse(selectedProductsData);
+          setSelectedProducts(initialProducts);
+        }
+        catch (e) { console.error("解析 selectedProducts 失敗", e); }
+      }
+      let currentTotalFromProds = 0;
+      initialProducts.forEach(p => {
+        currentTotalFromProds += (p.price || 0) * (p.quantity || 0);
+      });
+      setProductsOriginalTotal(currentTotalFromProds);
+
+      let currentDiscAmount = 0;
+      if (formStateData) {
+        try {
+          const formState = JSON.parse(formStateData);
+          if (formState.memberCode) setMemberCode(formState.memberCode);
+          if (formState.memberId) setMemberId(formState.memberId);
+          if (formState.memberName) setMemberName(formState.memberName);
+          if (formState.purchaseDate) setPurchaseDate(formState.purchaseDate);
+          if (formState.paymentMethod && paymentMethodOptions.includes(formState.paymentMethod)) {
+            setPaymentMethod(formState.paymentMethod);
+          }
+          if (formState.transferCode) setTransferCode(formState.transferCode);
+          if (formState.cardNumber) setCardNumber(formState.cardNumber);
+          if (formState.saleCategory) setSaleCategory(formState.saleCategory);
+          if (formState.note) setNote(formState.note);
+          if (formState.selectedStaffId) setSelectedStaffId(formState.selectedStaffId);
+          if (formState.selectedStore) {
+            setSelectedStore(formState.selectedStore);
+            const id = nameToIdMap[formState.selectedStore];
+            if (id) setStoreId(id.toString());
+          }
+          if (typeof formState.discountAmount === 'number') {
+            currentDiscAmount = formState.discountAmount;
+            setOrderDiscountAmount(currentDiscAmount);
+          }
+        } catch (e) { console.error("解析 productSellFormState 失敗", e); }
+      }
+      setFinalPayableAmount(currentTotalFromProds - currentDiscAmount);
+
+      // 千萬不要在這裡清除 localStorage！
+      // return () => {
+      //   localStorage.removeItem('selectedProducts');
+      //   localStorage.removeItem('productSellFormState');
+      // };
     };
-    fetchStaffMembers();
-
-    // ---- 資料還原在這邊 ----
-    const selectedProductsData = localStorage.getItem('selectedProducts');
-    const formStateData = localStorage.getItem('productSellFormState');
-    let initialProducts: SelectedProduct[] = [];
-    if (selectedProductsData) {
-      try { 
-        initialProducts = JSON.parse(selectedProductsData); 
-        setSelectedProducts(initialProducts); 
-      }
-      catch (e) { console.error("解析 selectedProducts 失敗", e); }
-    }
-    let currentTotalFromProds = 0;
-    initialProducts.forEach(p => {
-      currentTotalFromProds += (p.price || 0) * (p.quantity || 0);
-    });
-    setProductsOriginalTotal(currentTotalFromProds);
-
-    let currentDiscAmount = 0;
-    if (formStateData) {
-      try {
-        const formState = JSON.parse(formStateData);
-        if (formState.memberCode) setMemberCode(formState.memberCode);
-        if (formState.memberId) setMemberId(formState.memberId);
-        if (formState.memberName) setMemberName(formState.memberName);
-        if (formState.purchaseDate) setPurchaseDate(formState.purchaseDate);
-        if (formState.paymentMethod && paymentMethodOptions.includes(formState.paymentMethod)) {
-          setPaymentMethod(formState.paymentMethod);
-        }
-        if (formState.transferCode) setTransferCode(formState.transferCode);
-        if (formState.cardNumber) setCardNumber(formState.cardNumber);
-        if (formState.saleCategory) setSaleCategory(formState.saleCategory);
-        if (formState.note) setNote(formState.note);
-        if (formState.selectedStaffId) setSelectedStaffId(formState.selectedStaffId);
-        if (formState.selectedStore) setSelectedStore(formState.selectedStore);
-        if (typeof formState.discountAmount === 'number') {
-          currentDiscAmount = formState.discountAmount;
-          setOrderDiscountAmount(currentDiscAmount);
-        }
-      } catch (e) { console.error("解析 productSellFormState 失敗", e); }
-    }
-    setFinalPayableAmount(currentTotalFromProds - currentDiscAmount);
-
-    // 千萬不要在這裡清除 localStorage！
-    // return () => {
-    //   localStorage.removeItem('selectedProducts');
-    //   localStorage.removeItem('productSellFormState');
-    // };
+    init();
   }, []);
 
   useEffect(() => {
@@ -156,10 +193,7 @@ const AddProductSell: React.FC = () => {
     localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
     navigate('/product-selection', { state: { fromSellPage: true } });
   };
-  const handlePrint = () => { window.print(); };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const processSale = async (): Promise<boolean> => {
     setFormSubmitted(true);
     setError(null);
 
@@ -168,15 +202,15 @@ const AddProductSell: React.FC = () => {
     const selectedDate = new Date(purchaseDate);
     selectedDate.setHours(0,0,0,0);
 
-    if (selectedDate > today) { setError("購買日期不能選擇未來日期。"); return; }
-    if (!storeId) { setError("無法獲取門市資訊，請重新登入。"); return; }
-    if (!memberCode || !memberId) { setError("請選擇會員並確認姓名。"); return; }
-    if (selectedProducts.length === 0) { setError("請選擇至少一項購買品項。"); return; }
-    if (!paymentMethod) { setError("請選擇付款方式。"); return; }
-    if (!selectedStaffId) { setError("請選擇銷售人員。"); return; }
-    if (!saleCategory) { setError("請選擇銷售類別。"); return; }
-    if (orderDiscountAmount < 0) { setError("折價金額不能為負數。"); return; }
-    if (finalPayableAmount < 0) { setError("應收金額低於零，請檢查產品總價和折價。"); return;}
+    if (selectedDate > today) { setError("購買日期不能選擇未來日期。"); return false; }
+    if (!storeId) { setError("無法獲取當前門市資訊，請重新登入。"); return false; }
+    if (!memberCode || !memberId) { setError("請選擇會員並確認姓名。"); return false; }
+    if (selectedProducts.length === 0) { setError("請選擇至少一項購買品項。"); return false; }
+    if (!paymentMethod) { setError("請選擇付款方式。"); return false; }
+    if (!selectedStaffId) { setError("請選擇銷售人員。"); return false; }
+    if (!saleCategory) { setError("請選擇銷售類別。"); return false; }
+    if (orderDiscountAmount < 0) { setError("折價金額不能為負數。"); return false; }
+    if (finalPayableAmount < 0) { setError("應收金額低於零，請檢查產品總價和折價。"); return false; }
 
     setLoading(true);
     try {
@@ -217,13 +251,48 @@ const AddProductSell: React.FC = () => {
       // 只在送出成功時清除
       localStorage.removeItem('productSellFormState');
       localStorage.removeItem('selectedProducts');
-      alert("銷售記錄已成功新增！");
-      navigate('/product-sell', { state: { refresh: true } });
+      return true;
     } catch (err: any) {
       console.error("新增產品銷售失敗:", err);
       setError(err.response?.data?.error || err.message || "新增產品銷售失敗，請檢查輸入並重試。");
+      return false;
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await processSale();
+    if (success) {
+      alert("銷售記錄已成功新增！");
+      navigate('/product-sell', { state: { refresh: true } });
+    }
+  };
+
+  const handlePrint = async () => {
+    const success = await processSale();
+    if (success) {
+      const itemsForOrder: SalesOrderItemData[] = selectedProducts.map(p => ({
+        product_id: p.product_id,
+        item_description: p.name,
+        item_type: 'Product',
+        unit: '',
+        unit_price: p.price,
+        quantity: p.quantity,
+        subtotal: p.price * p.quantity,
+      }));
+      localStorage.setItem('selectedSalesOrderItems', JSON.stringify(itemsForOrder));
+      const staffName = staffMembers.find(st => st.staff_id === parseInt(selectedStaffId))?.name || '';
+      const preSaleData = {
+        orderDate: purchaseDate,
+        saleUnit: selectedStore,
+        saleCategory,
+        buyer: memberName,
+        salesperson: staffName,
+      };
+      localStorage.setItem('preSaleData', JSON.stringify(preSaleData));
+      navigate('/finance/sales/add');
     }
   };
 
@@ -251,10 +320,24 @@ const AddProductSell: React.FC = () => {
           <Col md={6}>
             <Form.Group className="mb-3">
               <Form.Label>店別</Form.Label>
-              <Form.Select value={selectedStore} onChange={(e) => setSelectedStore(e.target.value)} required>
-                <option value="" disabled>請選擇店別</option>
-                {storeOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </Form.Select>
+              {userRole === 'admin' ? (
+                <Form.Select
+                  value={selectedStore}
+                  onChange={(e) => {
+                    const name = e.target.value;
+                    setSelectedStore(name);
+                    const id = storeNameToId[name];
+                    if (id) setStoreId(id.toString());
+                  }}
+                  required
+                >
+                  {stores.map(store => (
+                    <option key={store.store_id} value={store.store_name}>{store.store_name}</option>
+                  ))}
+                </Form.Select>
+              ) : (
+                <Form.Control value={selectedStore} readOnly disabled />
+              )}
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>購買人姓名</Form.Label>
