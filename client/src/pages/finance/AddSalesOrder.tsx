@@ -25,6 +25,7 @@ const AddSalesOrder: React.FC = () => {
     const [orderNumber, setOrderNumber] = useState(""); // 銷售單號
     const [memberId, setMemberId] = useState<string>("");
     const [note, setNote] = useState<string>("");
+    const [storeId, setStoreId] = useState<number | null>(null);
 
     // 訂單項目
     const [items, setItems] = useState<Partial<SalesOrderItemData>[]>([
@@ -54,8 +55,20 @@ const AddSalesOrder: React.FC = () => {
         return `${prefix}${now.getFullYear()}${pad(now.getMonth() + 1, 2)}${pad(now.getDate(), 2)}${pad(now.getHours(), 2)}${pad(now.getMinutes(), 2)}${pad(now.getSeconds(), 2)}${pad(now.getMilliseconds(), 3)}`;
     };
 
+    const getStorePrefix = (id: string | null): string => {
+        switch (id) {
+            case '2':
+                return 'TC';
+            case '1':
+            default:
+                return 'TP';
+        }
+    };
+
     useEffect(() => {
-        setOrderNumber(generateOrderNumber());
+        const id = localStorage.getItem('store_id');
+        setStoreId(id ? parseInt(id) : null);
+        setOrderNumber(generateOrderNumber(getStorePrefix(id)));
         const storedItems = localStorage.getItem('selectedSalesOrderItems');
         if (storedItems) {
             try {
@@ -104,13 +117,24 @@ const AddSalesOrder: React.FC = () => {
         try {
             // 在這裡進行表單驗證...
 
-            const sanitizedItems = items.map(({ item_code, ...rest }) => rest as SalesOrderItemData);
+            const sanitizedItems: SalesOrderItemData[] = items.map(({ item_code, ...rest }) => ({
+                product_id: rest.product_id ?? null,
+                therapy_id: rest.therapy_id ?? null,
+                item_description: rest.item_description || '',
+                item_type: rest.item_type as 'Product' | 'Therapy',
+                unit: rest.unit || '',
+                unit_price: Number(rest.unit_price) || 0,
+                quantity: Number(rest.quantity) || 0,
+                subtotal: Number(rest.subtotal) || 0,
+                category: rest.category || '',
+                note: rest.note || ''
+            }));
             const orderPayload: SalesOrderPayload = {
                 order_number: orderNumber,
                 order_date: orderDate,
                 member_id: memberId ? parseInt(memberId) : null,
                 staff_id: salesperson ? parseInt(salesperson) : null,
-                store_id: 1, // 暫用假資料，應從 state 獲取
+                store_id: storeId ?? 0,
                 subtotal: subtotal,
                 total_discount: totalDiscount,
                 grand_total: grandTotal,

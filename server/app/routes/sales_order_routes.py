@@ -21,7 +21,11 @@ def add_sales_order_route():
             now = datetime.now()
             return f"{prefix}{now.strftime('%Y%m%d%H%M%S%f')[:-3]}"
 
-        order_data['order_number'] = order_data.get('order_number') or generate_order_number()
+        # 根據 store_id 決定銷售單號前綴
+        prefix_map = {1: "TP", 2: "TC"}
+        store_id = order_data.get("store_id")
+        prefix = prefix_map.get(store_id, "TP")
+        order_data['order_number'] = order_data.get('order_number') or generate_order_number(prefix)
 
         result = create_sales_order(order_data)
         return jsonify(result), 201
