@@ -31,6 +31,7 @@ const AddTherapyRecord: React.FC = () => {
         member_id: presetMemberId,
         staff_id: '',
         therapy_id: '',
+        deduct_sessions: '1',
         date: new Date().toISOString().split('T')[0],
         note: '',
     });
@@ -44,6 +45,12 @@ const AddTherapyRecord: React.FC = () => {
     const [isFetchingSessions, setIsFetchingSessions] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        if (remainingSessions !== null && Number(formData.deduct_sessions) > remainingSessions) {
+            setFormData(prev => ({ ...prev, deduct_sessions: remainingSessions.toString() }));
+        }
+    }, [remainingSessions]);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -65,6 +72,7 @@ const AddTherapyRecord: React.FC = () => {
                         member_id: record.member_id.toString(),
                         staff_id: record.staff_id?.toString() || '',
                         therapy_id: record.therapy_id?.toString() || '',
+                        deduct_sessions: record.deduct_sessions?.toString() || '1',
                         date: record.date.split('T')[0],
                         note: record.note || '',
                     });
@@ -149,18 +157,27 @@ const AddTherapyRecord: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!recordId && remainingSessions !== null && remainingSessions <= 0) {
-            setError('剩餘堂數不足，無法新增紀錄。');
+        const deduct = Number(formData.deduct_sessions);
+        if (!recordId && remainingSessions !== null && remainingSessions < deduct) {
+            setError('扣除堂數大於剩餘堂數，無法新增紀錄。');
             return;
         }
         setLoading(true);
         setError('');
         try {
+            const payload = {
+                member_id: Number(formData.member_id),
+                staff_id: formData.staff_id ? Number(formData.staff_id) : undefined,
+                therapy_id: formData.therapy_id ? Number(formData.therapy_id) : undefined,
+                deduct_sessions: deduct,
+                date: formData.date,
+                note: formData.note,
+            };
             if (recordId) {
-                await updateTherapyRecord(recordId, formData);
+                await updateTherapyRecord(recordId, payload);
                 alert('療程紀錄更新成功！');
             } else {
-                await addTherapyRecord(formData);
+                await addTherapyRecord(payload);
                 alert('療程紀錄新增成功！');
             }
             navigate('/therapy-record');
@@ -227,6 +244,22 @@ const AddTherapyRecord: React.FC = () => {
                                 remainingSessions !== null ? `${remainingSessions} 堂` : '請先選擇會員和方案'
                             )}
                         </div>
+                    </Form.Group>
+                </Row>
+                <Row className="mb-3">
+                    <Form.Group as={Col} controlId="formDeduct">
+                        <Form.Label>療程扣除數</Form.Label>
+                        <Form.Select
+                            name="deduct_sessions"
+                            value={formData.deduct_sessions}
+                            onChange={handleChange}
+                            required
+                            disabled={loading || isFetchingSessions || remainingSessions === null}
+                        >
+                            {Array.from({ length: remainingSessions ?? 1 }, (_, i) => i + 1).map((n) => (
+                                <option key={n} value={n}>{n}</option>
+                            ))}
+                        </Form.Select>
                     </Form.Group>
                 </Row>
                 <Row className="mb-3">

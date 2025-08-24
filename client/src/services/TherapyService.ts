@@ -20,6 +20,7 @@ export interface TherapyRecord {
     package_name: string;
     therapy_content: string;
     remaining_sessions: number;
+    deduct_sessions?: number;
 }
 
 // 療程紀錄 API
@@ -44,10 +45,10 @@ export const addTherapyRecord = async (data: {
     member_id: number;
     store_id?: number; // 可選，系統會自動填入當前用戶所屬商店
     staff_id?: number; // 可選，系統會自動填入當前用戶ID
+    therapy_id: number;
+    deduct_sessions?: number;
     date: string;
     note?: string;
-    package_id?: number;
-    therapy_content?: string;
 }) => {
     return axios.post(`${API_URL}/record`, data);
 };
@@ -58,10 +59,10 @@ export const updateTherapyRecord = async (
         member_id?: number;
         store_id?: number;
         staff_id?: number;
+        therapy_id?: number;
+        deduct_sessions?: number;
         date?: string;
         note?: string;
-        package_id?: number;
-        therapy_content?: string;
     }
 ) => {
     return axios.put(`${API_URL}/record/${recordId}`, data);

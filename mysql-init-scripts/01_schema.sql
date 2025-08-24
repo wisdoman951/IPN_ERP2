@@ -530,6 +530,7 @@ CREATE TABLE `therapy_record` (
   `staff_id` int DEFAULT NULL,
   `date` date DEFAULT NULL,
   `note` text COLLATE utf8mb4_unicode_ci,
+  `deduct_sessions` int DEFAULT 1,
   `remaining_sessions_at_time` int DEFAULT NULL,
   PRIMARY KEY (`therapy_record_id`),
   KEY `member_id` (`member_id`),
