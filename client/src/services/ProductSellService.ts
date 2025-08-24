@@ -19,6 +19,7 @@ const getAuthHeaders = () => {
 // 產品介面 (保持不變)
 export interface Product {
   product_id: number;
+  product_code?: string;
   product_name: string;
   product_price: number;
   inventory_id: number;

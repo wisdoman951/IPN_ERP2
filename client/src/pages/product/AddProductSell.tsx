@@ -14,6 +14,7 @@ import { getUserRole, getStoreName } from "../../utils/authUtils";
 
 interface SelectedProduct {
   product_id: number;
+  code?: string;
   name: string;
   price: number;
   quantity: number;
@@ -277,7 +278,8 @@ const AddProductSell: React.FC = () => {
         product_id: p.product_id,
         item_description: p.name,
         item_type: 'Product',
-        unit: '',
+        item_code: p.code,
+        unit: '個',
         unit_price: p.price,
         quantity: p.quantity,
         subtotal: p.price * p.quantity,

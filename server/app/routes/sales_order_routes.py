@@ -1,10 +1,11 @@
 # app/routes/sales_order_routes.py
 from flask import Blueprint, request, jsonify
 from app.models.sales_order_model import (
-    create_sales_order, 
-    get_all_sales_orders, # <--- 導入新函數
-    delete_sales_orders_by_ids # <--- 導入新函數
+    create_sales_order,
+    get_all_sales_orders,
+    delete_sales_orders_by_ids
 )
+from datetime import datetime
 import traceback
 
 sales_order_bp = Blueprint('sales_order_bp', __name__, url_prefix='/api/sales-orders')
@@ -16,9 +17,11 @@ def add_sales_order_route():
         return jsonify({"success": False, "error": "請求數據無效或缺少品項列表"}), 400
     
     try:
-        # 您可以在這裡生成唯一的 order_number
-        from datetime import datetime
-        order_data['order_number'] = f"SO-{datetime.now().strftime('%Y%m%d%H%M%S')}"
+        def generate_order_number(prefix: str = "TP") -> str:
+            now = datetime.now()
+            return f"{prefix}{now.strftime('%Y%m%d%H%M%S%f')[:-3]}"
+
+        order_data['order_number'] = order_data.get('order_number') or generate_order_number()
 
         result = create_sales_order(order_data)
         return jsonify(result), 201

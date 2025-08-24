@@ -23,6 +23,8 @@ const AddSalesOrder: React.FC = () => {
     const [buyer, setBuyer] = useState(""); // 購買人
     const [salesperson, setSalesperson] = useState(""); // 銷售人
     const [orderNumber, setOrderNumber] = useState(""); // 銷售單號
+    const [memberId, setMemberId] = useState<string>("");
+    const [note, setNote] = useState<string>("");
 
     // 訂單項目
     const [items, setItems] = useState<Partial<SalesOrderItemData>[]>([
@@ -46,7 +48,14 @@ const AddSalesOrder: React.FC = () => {
         newItems[index] = item;
         setItems(newItems);
     };
+    const generateOrderNumber = (prefix: string = 'TP') => {
+        const now = new Date();
+        const pad = (num: number, size: number) => num.toString().padStart(size, '0');
+        return `${prefix}${now.getFullYear()}${pad(now.getMonth() + 1, 2)}${pad(now.getDate(), 2)}${pad(now.getHours(), 2)}${pad(now.getMinutes(), 2)}${pad(now.getSeconds(), 2)}${pad(now.getMilliseconds(), 3)}`;
+    };
+
     useEffect(() => {
+        setOrderNumber(generateOrderNumber());
         const storedItems = localStorage.getItem('selectedSalesOrderItems');
         if (storedItems) {
             try {
@@ -95,17 +104,19 @@ const AddSalesOrder: React.FC = () => {
         try {
             // 在這裡進行表單驗證...
 
+            const sanitizedItems = items.map(({ item_code, ...rest }) => rest as SalesOrderItemData);
             const orderPayload: SalesOrderPayload = {
+                order_number: orderNumber,
                 order_date: orderDate,
-                member_id: memberId ? parseInt(memberId) : null,     // <-- 使用 member_id
-                staff_id: salesperson ? parseInt(salesperson) : null, // <-- 使用 staff_id
+                member_id: memberId ? parseInt(memberId) : null,
+                staff_id: salesperson ? parseInt(salesperson) : null,
                 store_id: 1, // 暫用假資料，應從 state 獲取
                 subtotal: subtotal,
                 total_discount: totalDiscount,
                 grand_total: grandTotal,
                 sale_category: saleCategory,
                 note: note,
-                items: items as SalesOrderItemData[],
+                items: sanitizedItems,
             };
             
             const result = await addSalesOrder(orderPayload);
@@ -122,9 +133,9 @@ const AddSalesOrder: React.FC = () => {
         }
     };
 
-    // 報表匯出功能尚未實作，點擊僅顯示提示
-    const handleExport = () => {
-        alert('報表匯出功能待實現');
+    // 列印功能尚未實作，點擊僅顯示提示
+    const handlePrint = () => {
+        alert('列印功能待實現');
     };
     
     // --- JSX 部分 ---
@@ -137,7 +148,7 @@ const AddSalesOrder: React.FC = () => {
                 </Card.Header>
                 <Card.Body>
                     <Row className="mb-3">
-                        <Col md={3}><Form.Group><Form.Label>銷售單號</Form.Label><Form.Control value={orderNumber} onChange={e => setOrderNumber(e.target.value)}/></Form.Group></Col>
+                        <Col md={3}><Form.Group><Form.Label>銷售單號</Form.Label><Form.Control value={orderNumber} readOnly /></Form.Group></Col>
                         <Col md={3}><Form.Group><Form.Label>銷售單位</Form.Label><Form.Control value={saleUnit} onChange={e => setSaleUnit(e.target.value)}/></Form.Group></Col>
                         <Col md={3}><Form.Group><Form.Label>銷售列別</Form.Label><Form.Control value={saleCategory} onChange={e => setSaleCategory(e.target.value)}/></Form.Group></Col>
                         <Col md={3}><Form.Group><Form.Label>銷售日期</Form.Label><Form.Control type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)}/></Form.Group></Col>
@@ -155,7 +166,7 @@ const AddSalesOrder: React.FC = () => {
                                 {items.map((item, index) => (
                                     <tr key={index}>
                                         <td>{index + 1}</td>
-                                        <td><Form.Control size="sm" /></td>
+                                        <td><Form.Control size="sm" value={item.item_code || ""} readOnly /></td>
                                         <td><Form.Control size="sm" value={item.item_description || ""} onChange={e => handleItemChange(index, 'item_description', e.target.value)} /></td>
                                         <td><Form.Control size="sm" value={item.unit || ""} onChange={e => handleItemChange(index, 'unit', e.target.value)} /></td>
                                         <td><Form.Control type="number" size="sm" value={item.unit_price || ""} onChange={e => handleItemChange(index, 'unit_price', Number(e.target.value))} /></td>
@@ -186,7 +197,7 @@ const AddSalesOrder: React.FC = () => {
                     </Row>
                 </Card.Body>
                 <Card.Footer className="text-center">
-                    <Button variant="info" className="mx-1 text-white" onClick={handleExport}>報表匯出</Button>
+                    <Button variant="info" className="mx-1 text-white" onClick={handlePrint}>列印</Button>
                     <Button variant="info" className="mx-1 text-white" onClick={() => setItems([{}])}>刪除</Button>
                     <Button variant="info" className="mx-1 text-white">修改</Button>
                     <Button variant="info" className="mx-1 text-white" onClick={handleSubmit} disabled={loading}>
