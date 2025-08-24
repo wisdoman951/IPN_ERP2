@@ -210,7 +210,7 @@ const TherapyRecord: React.FC = () => {
                             <th>療程日期</th>
                             <th>方案</th>
                             <th>使用療程內容</th>
-                            <th>用掉堂數</th>
+                            <th>扣除堂數</th>
                             <th>療程剩餘數</th>
                             <th>療癒師</th>
                             <th>備註</th>
