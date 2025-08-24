@@ -23,7 +23,7 @@ def add_sales_order_route():
             return f"{prefix}{now.strftime('%Y%m%d%H%M%S%f')[:-3]}"
 
         # 根據 store_id 決定銷售單號前綴
-        prefix_map = {1: "TP", 2: "TC"}
+        prefix_map = {1: "TP", 2: "TC", 3: "TP", 4: "PH", 5: "TY"}
         store_id = order_data.get("store_id")
         prefix = prefix_map.get(store_id, "TP")
         order_data['order_number'] = order_data.get('order_number') or generate_order_number(prefix)
