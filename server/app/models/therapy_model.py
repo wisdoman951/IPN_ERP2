@@ -22,7 +22,7 @@ def get_remaining_sessions(member_id, therapy_id):
             
             # 計算已使用量
             cursor.execute("""
-                SELECT COUNT(*) as total_used
+                SELECT COALESCE(SUM(deduct_sessions), 0) as total_used
                 FROM therapy_record WHERE member_id = %s AND therapy_id = %s
             """, (member_id, therapy_id))
             used_result = cursor.fetchone()
@@ -74,7 +74,8 @@ def get_therapy_records_by_store(store_id):
                 tr.note,
                 tr.therapy_id,
                 t.name as package_name,
-                t.content as therapy_content
+                t.content as therapy_content,
+                tr.deduct_sessions
             FROM therapy_record tr
             LEFT JOIN member m ON tr.member_id = m.member_id
             LEFT JOIN store s ON tr.store_id = s.store_id
@@ -174,7 +175,8 @@ def get_therapy_record_by_id(record_id):
                 tr.note,
                 tr.therapy_id,
                 t.name as package_name,
-                t.content as therapy_content
+                t.content as therapy_content,
+                tr.deduct_sessions
             FROM therapy_record tr
             LEFT JOIN member m ON tr.member_id = m.member_id
             LEFT JOIN store s ON tr.store_id = s.store_id
@@ -206,21 +208,22 @@ def insert_therapy_record(data):
         with conn.cursor() as cursor:
             member_id = data.get("member_id")
             therapy_id = data.get("therapy_id")
-            
-            # 直接接收計算回傳的數字
+            deduct_sessions = int(data.get("deduct_sessions", 1))
+
             sessions_before_use = get_remaining_sessions(member_id, therapy_id)
-            # 使用完這一堂後，剩餘數減 1
-            remaining_snapshot = sessions_before_use - 1
+            remaining_snapshot = sessions_before_use - deduct_sessions
+            if remaining_snapshot < 0:
+                raise ValueError("扣除堂數大於剩餘堂數")
 
             sql = """
                 INSERT INTO therapy_record (
-                    member_id, store_id, staff_id, date, note, therapy_id, remaining_sessions_at_time
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    member_id, store_id, staff_id, date, note, therapy_id, deduct_sessions, remaining_sessions_at_time
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             """
             values = (
                 member_id, data.get("store_id"), data.get("staff_id"),
                 data.get("date"), data.get("note"), therapy_id,
-                remaining_snapshot # 存入計算好的快照
+                deduct_sessions, remaining_snapshot
             )
             cursor.execute(sql, values)
             record_id = conn.insert_id()
@@ -238,21 +241,40 @@ def update_therapy_record(record_id, data):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            member_id = data.get("member_id")
+            therapy_id = data.get("therapy_id")
+            deduct_sessions = int(data.get("deduct_sessions", 1))
+
+            cursor.execute("SELECT deduct_sessions FROM therapy_record WHERE therapy_record_id = %s", (record_id,))
+            existing = cursor.fetchone()
+            current_deduct = int(existing.get("deduct_sessions", 0)) if existing else 0
+
+            sessions_before_use = get_remaining_sessions(member_id, therapy_id) + current_deduct
+            remaining_snapshot = sessions_before_use - deduct_sessions
+            if remaining_snapshot < 0:
+                raise ValueError("扣除堂數大於剩餘堂數")
+
             query = """
                 UPDATE therapy_record
-                SET member_id = %s, 
-                    store_id = %s, 
-                    staff_id = %s, 
-                    date = %s, 
-                    note = %s
+                SET member_id = %s,
+                    store_id = %s,
+                    staff_id = %s,
+                    date = %s,
+                    note = %s,
+                    therapy_id = %s,
+                    deduct_sessions = %s,
+                    remaining_sessions_at_time = %s
                 WHERE therapy_record_id = %s
             """
             values = (
-                data.get("member_id"),
+                member_id,
                 data.get("store_id"),
                 data.get("staff_id"),
                 data.get("date"),
                 data.get("note"),
+                therapy_id,
+                deduct_sessions,
+                remaining_snapshot,
                 record_id
             )
             cursor.execute(query, values)
