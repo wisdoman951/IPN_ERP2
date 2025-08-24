@@ -55,6 +55,18 @@ const AddSalesOrder: React.FC = () => {
             } catch (e) { console.error("解析已選品項失敗", e); }
             localStorage.removeItem('selectedSalesOrderItems');
         }
+        const preSale = localStorage.getItem('preSaleData');
+        if (preSale) {
+            try {
+                const parsed = JSON.parse(preSale);
+                if (parsed.orderDate) setOrderDate(parsed.orderDate);
+                if (parsed.saleUnit) setSaleUnit(parsed.saleUnit);
+                if (parsed.saleCategory) setSaleCategory(parsed.saleCategory);
+                if (parsed.buyer) setBuyer(parsed.buyer);
+                if (parsed.salesperson) setSalesperson(parsed.salesperson);
+            } catch (e) { console.error("解析 preSaleData 失敗", e); }
+            localStorage.removeItem('preSaleData');
+        }
     }, []); // 僅在初次載入時執行
      const openItemSelection = () => {
         // 在跳轉前，可以選擇性地將當前已選的項目存起來，以便選擇頁可以預選
