@@ -51,6 +51,16 @@ export const addSalesOrder = async (orderData: SalesOrderPayload): Promise<ApiRe
     }
 };
 
+export const updateSalesOrder = async (orderId: number, orderData: SalesOrderPayload): Promise<ApiResponse<any>> => {
+    try {
+        const response = await axios.put(`${API_URL}/${orderId}`, orderData);
+        return response.data;
+    } catch (error: any) {
+        console.error("更新銷售單失敗:", error.response?.data || error.message);
+        throw error.response?.data || new Error("更新銷售單時發生未知錯誤");
+    }
+};
+
 // ***** 新增：銷售單列表行的型別 *****
 export interface SalesOrderListRow {
     order_id: number;

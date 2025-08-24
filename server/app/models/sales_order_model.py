@@ -93,6 +93,79 @@ def create_sales_order(order_data: dict):
         if conn:
             conn.close()
 
+
+def update_sales_order(order_id: int, order_data: dict):
+    conn = None
+    try:
+        conn = connect_to_db()
+        conn.begin()
+        with conn.cursor() as cursor:
+            update_query = """
+                UPDATE sales_orders
+                SET
+                    order_date = %(order_date)s,
+                    member_id = %(member_id)s,
+                    staff_id = %(staff_id)s,
+                    store_id = %(store_id)s,
+                    subtotal = %(subtotal)s,
+                    total_discount = %(total_discount)s,
+                    grand_total = %(grand_total)s,
+                    sale_category = %(sale_category)s,
+                    note = %(note)s
+                WHERE order_id = %(order_id)s
+            """
+            order_main_data = {
+                "order_id": order_id,
+                "order_date": order_data.get("order_date"),
+                "member_id": order_data.get("member_id"),
+                "staff_id": order_data.get("staff_id"),
+                "store_id": order_data.get("store_id"),
+                "subtotal": order_data.get("subtotal"),
+                "total_discount": order_data.get("total_discount"),
+                "grand_total": order_data.get("grand_total"),
+                "sale_category": order_data.get("sale_category"),
+                "note": order_data.get("note"),
+            }
+            cursor.execute(update_query, order_main_data)
+
+            cursor.execute("DELETE FROM sales_order_items WHERE order_id = %s", (order_id,))
+            item_query = """
+                INSERT INTO sales_order_items (
+                    order_id, product_id, therapy_id, item_description, item_type,
+                    unit, unit_price, quantity, subtotal, category, note
+                ) VALUES (
+                    %(order_id)s, %(product_id)s, %(therapy_id)s, %(item_description)s, %(item_type)s,
+                    %(unit)s, %(unit_price)s, %(quantity)s, %(subtotal)s, %(category)s, %(note)s
+                )
+            """
+            for item in order_data.get("items", []):
+                item_for_sql = {
+                    "order_id": order_id,
+                    "product_id": item.get("product_id"),
+                    "therapy_id": item.get("therapy_id"),
+                    "item_description": item.get("item_description"),
+                    "item_type": item.get("item_type"),
+                    "unit": item.get("unit"),
+                    "unit_price": item.get("unit_price"),
+                    "quantity": item.get("quantity"),
+                    "subtotal": item.get("subtotal"),
+                    "category": item.get("category"),
+                    "note": item.get("note"),
+                }
+                cursor.execute(item_query, item_for_sql)
+
+        conn.commit()
+        return {"success": True, "order_id": order_id, "message": "銷售單更新成功"}
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"--- [MODEL] Error updating sales order {order_id} ---")
+        traceback.print_exc()
+        return {"success": False, "error": str(e)}
+    finally:
+        if conn:
+            conn.close()
+
 def get_all_sales_orders(keyword: str = None):
     """
     獲取所有銷售單列表，可選關鍵字搜尋。

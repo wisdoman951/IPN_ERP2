@@ -288,12 +288,14 @@ const AddTherapySell: React.FC = () => {
     if (success) {
       const itemsForOrder: SalesOrderItemData[] = therapyPackages.map(pkg => ({
         therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
-        item_description: pkg.TherapyContent || pkg.TherapyName || '',
+        item_code: pkg.TherapyCode || '',
+        item_description: pkg.TherapyName || '',
         item_type: 'Therapy',
         unit: '次',
         unit_price: pkg.TherapyPrice || 0,
         quantity: Number(pkg.userSessions) || 0,
         subtotal: (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0),
+        note: pkg.TherapyContent || '',
       }));
       localStorage.setItem('selectedSalesOrderItems', JSON.stringify(itemsForOrder));
       const staffName = staffList.find(s => s.id === Number(formData.staffId))?.name || '';

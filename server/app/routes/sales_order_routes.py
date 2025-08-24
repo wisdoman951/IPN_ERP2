@@ -4,7 +4,8 @@ from app.models.sales_order_model import (
     create_sales_order,
     get_all_sales_orders,
     delete_sales_orders_by_ids,
-    get_sales_order_by_id
+    get_sales_order_by_id,
+    update_sales_order
 )
 from datetime import datetime
 import traceback
@@ -77,3 +78,18 @@ def get_sales_order_detail_route(order_id):
     except Exception as e:
         print(f"Error in get_sales_order_detail_route: {e}")
         return jsonify({'error': '伺服器內部錯誤'}), 500
+
+
+@sales_order_bp.route('/<int:order_id>', methods=['PUT'])
+def update_sales_order_route(order_id):
+    order_data = request.json
+    if not order_data or not isinstance(order_data.get('items'), list):
+        return jsonify({"success": False, "error": "請求數據無效或缺少品項列表"}), 400
+    try:
+        result = update_sales_order(order_id, order_data)
+        status_code = 200 if result.get("success") else 400
+        return jsonify(result), status_code
+    except Exception as e:
+        tb_str = traceback.format_exc()
+        print(f"Error in update_sales_order_route: {e}\n{tb_str}")
+        return jsonify({"success": False, "error": "伺服器內部錯誤"}), 500
