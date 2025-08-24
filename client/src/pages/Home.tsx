@@ -64,7 +64,7 @@ const Home: React.FC = () => {
               <Button variant="outline-info" onClick={() => navigate("/member-management")}>
                 會員健康管理
               </Button>
-              <Button variant="outline-info" onClick={() => navigate("/products")}>
+              <Button variant="outline-info" onClick={() => navigate("/product-sell")}>
                 銷售產品
               </Button>
               <Button variant="outline-info" onClick={() => navigate("/inventory")}>
