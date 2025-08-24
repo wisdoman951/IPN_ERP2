@@ -15,6 +15,8 @@ import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData, TherapySellRow, updateTherapySell } from "../../services/TherapySellService";
+import { SalesOrderItemData } from "../../services/SalesOrderService";
+import { getStoreName } from "../../utils/authUtils";
 
 interface DropdownItem {
   id: number;
@@ -190,19 +192,17 @@ const AddTherapySell: React.FC = () => {
     navigate(-1);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const processSale = async (): Promise<boolean> => {
     setLoading(true);
     setError(null);
     try {
       if (therapyPackages.length === 0) {
         setError('請選擇至少一項療程');
         setLoading(false);
-        return;
+        return false;
       }
       const storeId = localStorage.getItem('store_id');
       const paymentMethod = paymentMethodDisplayMap[formData.paymentMethod] || formData.paymentMethod;
-
       const saleCategoryMap: { [key: string]: string } = {
         '銷售': 'Sell',
         '贈品': 'Gift',
@@ -235,7 +235,6 @@ const AddTherapySell: React.FC = () => {
           note: formData.note,
         };
         await updateTherapySell(editSale.Order_ID, payload);
-        alert('銷售紀錄修改成功！');
       } else {
         const payloads = therapyPackages.map(pkg => {
           const itemTotal = (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0);
@@ -261,19 +260,57 @@ const AddTherapySell: React.FC = () => {
           };
         });
         await addTherapySell(payloads);
-        alert('銷售紀錄新增成功！');
       }
       localStorage.removeItem('addTherapySellFormState');
       localStorage.removeItem('selectedTherapyPackages');
       localStorage.removeItem('selectedTherapyPackagesWithSessions');
-      navigate('/therapy-sell');
+      return true;
     } catch (err) {
       setError(isEditMode ? '修改失敗，請檢查所有欄位。' : '新增失敗，請檢查所有欄位。');
       console.error(err);
+      return false;
     } finally {
       setLoading(false);
     }
   };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const success = await processSale();
+    if (success) {
+      alert(isEditMode ? '銷售紀錄修改成功！' : '銷售紀錄新增成功！');
+      navigate('/therapy-sell');
+    }
+  };
+
+  const handlePrint = async () => {
+    const success = await processSale();
+    if (success) {
+      const itemsForOrder: SalesOrderItemData[] = therapyPackages.map(pkg => ({
+        therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
+        item_description: pkg.TherapyContent || pkg.TherapyName || '',
+        item_type: 'Therapy',
+        unit: '次',
+        unit_price: pkg.TherapyPrice || 0,
+        quantity: Number(pkg.userSessions) || 0,
+        subtotal: (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0),
+      }));
+      localStorage.setItem('selectedSalesOrderItems', JSON.stringify(itemsForOrder));
+      const staffName = staffList.find(s => s.id === Number(formData.staffId))?.name || '';
+      const preSaleData = {
+        orderDate: formData.date,
+        saleUnit: getStoreName() || '',
+        saleCategory: formData.saleCategory,
+        buyer: memberName,
+        buyerId: formData.memberId,
+        salesperson: staffName,
+        staffId: formData.staffId,
+      };
+      localStorage.setItem('preSaleData', JSON.stringify(preSaleData));
+      navigate('/finance/sales/add');
+    }
+  };
+
 
   const content = (
     <Container className="my-4">
@@ -406,7 +443,7 @@ const AddTherapySell: React.FC = () => {
                   <Button variant="info" type="button" className="text-white" onClick={handleCancel}>
                     取消
                   </Button>
-                  <Button variant="info" type="button" className="text-white" onClick={() => window.print()}>
+                  <Button variant="info" type="button" className="text-white" onClick={handlePrint}>
                     列印
                   </Button>
                 </div>
@@ -427,3 +464,4 @@ const AddTherapySell: React.FC = () => {
 };
 
 export default AddTherapySell;
+

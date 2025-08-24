@@ -1,10 +1,12 @@
 // client/src/pages/finance/AddSalesOrder.tsx (新檔案)
 import React, { useState, useEffect } from 'react';
 import { Container, Row, Col, Form, Button, Card, InputGroup, Alert, Spinner } from 'react-bootstrap';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
-import { SalesOrderItemData, SalesOrderPayload, addSalesOrder } from '../../services/SalesOrderService';
+import { SalesOrderItemData, SalesOrderPayload, addSalesOrder, getSalesOrderById, SalesOrderDetail } from '../../services/SalesOrderService';
+import { getAllMembers, Member } from '../../services/MemberService';
+import { getStaffMembers, StaffMember } from '../../services/TherapyDropdownService';
 // 假設您有獲取會員、員工、產品、療程的服務
 // import { searchMembers } from '../../services/MemberService';
 // import { getStaffMembers } from '../../services/StaffService';
@@ -13,6 +15,7 @@ import { SalesOrderItemData, SalesOrderPayload, addSalesOrder } from '../../serv
 
 const AddSalesOrder: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -20,8 +23,9 @@ const AddSalesOrder: React.FC = () => {
     const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
     const [saleUnit, setSaleUnit] = useState(""); // 銷售單位 (店家名稱)
     const [saleCategory, setSaleCategory] = useState(""); // 銷售列別
-    const [buyer, setBuyer] = useState(""); // 購買人
-    const [salesperson, setSalesperson] = useState(""); // 銷售人
+    const [members, setMembers] = useState<Member[]>([]);
+    const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
+    const [staffId, setStaffId] = useState(""); // 銷售人
     const [orderNumber, setOrderNumber] = useState(""); // 銷售單號
     const [memberId, setMemberId] = useState<string>("");
     const [note, setNote] = useState<string>("");
@@ -84,12 +88,52 @@ const AddSalesOrder: React.FC = () => {
                 if (parsed.orderDate) setOrderDate(parsed.orderDate);
                 if (parsed.saleUnit) setSaleUnit(parsed.saleUnit);
                 if (parsed.saleCategory) setSaleCategory(parsed.saleCategory);
-                if (parsed.buyer) setBuyer(parsed.buyer);
-                if (parsed.salesperson) setSalesperson(parsed.salesperson);
+                if (parsed.buyerId) setMemberId(String(parsed.buyerId));
+                if (parsed.staffId) setStaffId(String(parsed.staffId));
             } catch (e) { console.error("解析 preSaleData 失敗", e); }
             localStorage.removeItem('preSaleData');
         }
     }, []); // 僅在初次載入時執行
+
+    useEffect(() => {
+        const loadOptions = async () => {
+            try {
+                const memberList = await getAllMembers();
+                setMembers(memberList);
+                const staffList = await getStaffMembers(storeId ?? undefined);
+                setStaffMembers(staffList);
+            } catch (e) {
+                console.error('載入選項失敗', e);
+            }
+        };
+        loadOptions();
+    }, [storeId]);
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const oid = params.get('order_id');
+        if (oid) {
+            const fetchOrder = async () => {
+                try {
+                    const detail = await getSalesOrderById(Number(oid));
+                    setOrderNumber(detail.order_number);
+                    setOrderDate(detail.order_date);
+                    setMemberId(detail.member_id ? String(detail.member_id) : "");
+                    setStaffId(detail.staff_id ? String(detail.staff_id) : "");
+                    setStoreId(detail.store_id);
+                    setSaleCategory(detail.sale_category || "");
+                    setNote(detail.note || "");
+                    setItems(detail.items || [{}]);
+                    setSubtotal(detail.subtotal);
+                    setTotalDiscount(detail.total_discount);
+                    setGrandTotal(detail.grand_total);
+                } catch (e) {
+                    setError('載入銷售單失敗');
+                }
+            };
+            fetchOrder();
+        }
+    }, [location.search]);
      const openItemSelection = () => {
         // 在跳轉前，可以選擇性地將當前已選的項目存起來，以便選擇頁可以預選
         // localStorage.setItem('currentSalesOrderItems', JSON.stringify(items));
@@ -133,7 +177,7 @@ const AddSalesOrder: React.FC = () => {
                 order_number: orderNumber,
                 order_date: orderDate,
                 member_id: memberId ? parseInt(memberId) : null,
-                staff_id: salesperson ? parseInt(salesperson) : null,
+                staff_id: staffId ? parseInt(staffId) : null,
                 store_id: storeId ?? 0,
                 subtotal: subtotal,
                 total_discount: totalDiscount,
@@ -212,11 +256,11 @@ const AddSalesOrder: React.FC = () => {
                     <Row className="mt-3">
                         <Col md={6}>
                             <Form.Group as={Row} className="mb-2"><Form.Label column sm="3">金額(大寫)</Form.Label><Col sm="9"><Form.Control readOnly /></Col></Form.Group>
-                            <Form.Group as={Row}><Form.Label column sm="3">購買人</Form.Label><Col sm="9"><Form.Control value={buyer} onChange={e => setBuyer(e.target.value)} /></Col></Form.Group>
+                            <Form.Group as={Row}><Form.Label column sm="3">購買人</Form.Label><Col sm="9"><Form.Select value={memberId} onChange={e => setMemberId(e.target.value)}><option value="">請選擇</option>{members.map(m => (<option key={m.Member_ID} value={m.Member_ID}>{m.Name}</option>))}</Form.Select></Col></Form.Group>
                         </Col>
                         <Col md={6}>
                              <Form.Group as={Row} className="mb-2"><Form.Label column sm="3">金額(小寫)</Form.Label><Col sm="9"><Form.Control value={grandTotal.toLocaleString()} readOnly /></Col></Form.Group>
-                             <Form.Group as={Row}><Form.Label column sm="3">銷售人</Form.Label><Col sm="9"><Form.Control value={salesperson} onChange={e => setSalesperson(e.target.value)}/></Col></Form.Group>
+                             <Form.Group as={Row}><Form.Label column sm="3">銷售人</Form.Label><Col sm="9"><Form.Select value={staffId} onChange={e => setStaffId(e.target.value)}><option value="">請選擇</option>{staffMembers.map(s => (<option key={s.staff_id} value={s.staff_id}>{s.name}</option>))}</Form.Select></Col></Form.Group>
                         </Col>
                     </Row>
                 </Card.Body>
@@ -241,3 +285,4 @@ const AddSalesOrder: React.FC = () => {
 };
 
 export default AddSalesOrder;
+

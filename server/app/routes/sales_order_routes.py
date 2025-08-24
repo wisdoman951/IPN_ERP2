@@ -3,7 +3,8 @@ from flask import Blueprint, request, jsonify
 from app.models.sales_order_model import (
     create_sales_order,
     get_all_sales_orders,
-    delete_sales_orders_by_ids
+    delete_sales_orders_by_ids,
+    get_sales_order_by_id
 )
 from datetime import datetime
 import traceback
@@ -65,3 +66,14 @@ def delete_sales_orders_route():
     except Exception as e:
         print(f"Error in delete_sales_orders_route: {e}")
         return jsonify({"error": "伺服器內部錯誤"}), 500
+
+@sales_order_bp.route('/<int:order_id>', methods=['GET'])
+def get_sales_order_detail_route(order_id):
+    try:
+        order = get_sales_order_by_id(order_id)
+        if not order:
+            return jsonify({'error': '找不到銷售單'}), 404
+        return jsonify(order), 200
+    except Exception as e:
+        print(f"Error in get_sales_order_detail_route: {e}")
+        return jsonify({'error': '伺服器內部錯誤'}), 500

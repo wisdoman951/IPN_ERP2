@@ -158,3 +158,24 @@ def delete_sales_orders_by_ids(order_ids: list[int]):
         return {"success": False, "error": str(e)}
     finally:
         if conn: conn.close()
+
+def get_sales_order_by_id(order_id: int):
+    """取得單一銷售單與其項目"""
+    conn = None
+    try:
+        conn = connect_to_db()
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT * FROM sales_orders WHERE order_id = %s", (order_id,))
+            order = cursor.fetchone()
+            if not order:
+                return None
+            cursor.execute("SELECT * FROM sales_order_items WHERE order_id = %s", (order_id,))
+            items = cursor.fetchall()
+            order['items'] = items
+            return order
+    except Exception as e:
+        print(f"Error getting sales order {order_id}: {e}")
+        return None
+    finally:
+        if conn:
+            conn.close()
