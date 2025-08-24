@@ -283,7 +283,11 @@ const ProductSelection: React.FC = () => {
                 </Button>
               </td>
               <td className="align-middle">
-                {item.type === 'bundle' ? item.content : '-'}
+                {item.type === 'bundle' && item.content
+                  ? item.content.split(',').map((contentItem, idx) => (
+                      <div key={idx}>{contentItem}</div>
+                    ))
+                  : '-'}
               </td>
               <td className="align-middle text-end fw-bold">
                 {item.type === 'product' && item.stock_quantity !== undefined ? item.stock_quantity : '-'}
