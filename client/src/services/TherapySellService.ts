@@ -17,7 +17,9 @@ export interface StaffMember {
 }
 
 export interface TherapyPackage { // 這是基礎的 TherapyPackage 型別
-  therapy_id: number;
+  therapy_id?: number; // 個別療程 ID
+  bundle_id?: number;  // 若為組合則使用 bundle_id
+  type?: 'therapy' | 'bundle';
   TherapyCode: string;
   TherapyName?: string;
   TherapyContent: string;
@@ -44,8 +46,9 @@ export interface AddTherapySellPayload {
   storeId?: number;
   staffId: number;
   purchaseDate: string;
-  therapy_id?: number | null; // 療程套餐的實際 ID
-  amount: number;           // 對應堂數
+  therapy_id?: number | null; // 單一療程的 ID
+  bundle_id?: number | null;  // 若為組合則帶入 bundle_id
+  amount: number;           // 對應堂數或組合數量
   paymentMethod: string;    // 英文 ENUM 值
   saleCategory?: string;   // 英文 ENUM 值
   transferCode?: string;
@@ -77,10 +80,10 @@ export interface TherapySellRow {
 
 // 新增並導出 SelectedTherapyPackageUIData
 export interface SelectedTherapyPackageUIData extends TherapyPackage { // 直接繼承 TherapyPackage
-  userSessions: string; 
-  itemOriginalTotal?: number; 
-  calculatedItemDiscount?: number; 
-  calculatedItemFinalPrice?: number; 
+  userSessions: string; // 單堂數量或組合數量
+  itemOriginalTotal?: number;
+  calculatedItemDiscount?: number;
+  calculatedItemFinalPrice?: number;
 }
 // API 回應的通用結構
 interface ApiResponse<T> {

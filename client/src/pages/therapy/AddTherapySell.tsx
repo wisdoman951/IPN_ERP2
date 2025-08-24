@@ -92,6 +92,7 @@ const AddTherapySell: React.FC = () => {
         setTherapyPackages([
           {
             therapy_id: editSale.therapy_id,
+            type: 'therapy',
             TherapyName: editSale.PackageName,
             TherapyContent: editSale.PackageName,
             TherapyPrice: editSale.Price || 0,
@@ -220,7 +221,8 @@ const AddTherapySell: React.FC = () => {
         }
         const payload = {
           memberId: Number(formData.memberId),
-          therapy_id: pkg.therapy_id,
+          therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
+          bundle_id: pkg.type === 'bundle' ? pkg.bundle_id : undefined,
           staffId: Number(formData.staffId),
           purchaseDate: formData.date,
           amount: Number(pkg.userSessions),
@@ -244,7 +246,8 @@ const AddTherapySell: React.FC = () => {
           }
           return {
             memberId: Number(formData.memberId),
-            therapy_id: pkg.therapy_id,
+            therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
+            bundle_id: pkg.type === 'bundle' ? pkg.bundle_id : undefined,
             staffId: Number(formData.staffId),
             purchaseDate: formData.date,
             amount: Number(pkg.userSessions),
