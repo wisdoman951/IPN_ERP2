@@ -5,7 +5,7 @@ import { Button, Form, Row, Col, Container, Alert, Spinner } from "react-bootstr
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-import { createMember, checkMemberCodeExists } from "../../services/MemberService";
+import { createMember, checkMemberCodeExists, getNextMemberCode } from "../../services/MemberService";
 import { calculateAge } from "../../utils/memberUtils";
 import axios from "axios";
 
@@ -32,6 +32,23 @@ const AddMember: React.FC = () => {
     const [form, setForm] = useState(initialFormState);
     const [codeAvailable, setCodeAvailable] = useState(true);
 
+    const fetchNextCode = async () => {
+        try {
+            const result = await getNextMemberCode();
+            if (result.success && (result.next_code || result.data)) {
+                setForm(prev => ({ ...prev, member_code: result.next_code || result.data || "" }));
+            } else if (result.error) {
+                console.error("Failed to fetch next member code:", result.error);
+            }
+        } catch (err) {
+            console.error("Failed to fetch next member code:", err);
+        }
+    };
+
+    useEffect(() => {
+        fetchNextCode();
+    }, []);
+
     useEffect(() => {
         if (form.birthday) {
             const calculatedAge = calculateAge(form.birthday);
@@ -46,6 +63,9 @@ const AddMember: React.FC = () => {
         setForm({ ...form, [name]: value });
         if (name === 'member_code') {
             setCodeAvailable(true);
+        }
+        if (name === 'name' && !form.member_code) {
+            fetchNextCode();
         }
     };
 
@@ -65,128 +85,6 @@ const AddMember: React.FC = () => {
         } catch {
             setError("檢查會員代碼時發生錯誤。");
         }
-    };
-    const handlePrint = () => {
-        // 創建一個新的打印窗口
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            alert('請允許打開彈出窗口以列印');
-            return;
-        }
-
-        const age = form.age;
-        
-        // 添加基本的HTML結構和樣式
-        printWindow.document.write(`
-            <html>
-            <head>
-                <title>會員基本資料表</title>
-                <style>
-                    body {
-                        font-family: Arial, sans-serif;
-                        padding: 20px;
-                    }
-                    h1 {
-                        text-align: center;
-                        margin-bottom: 20px;
-                    }
-                    .form-row {
-                        display: flex;
-                        flex-wrap: wrap;
-                        margin-bottom: 15px;
-                    }
-                    .form-group {
-                        width: 50%;
-                        padding: 0 10px;
-                        box-sizing: border-box;
-                        margin-bottom: 15px;
-                    }
-                    .form-label {
-                        font-weight: bold;
-                        display: block;
-                        margin-bottom: 5px;
-                    }
-                    .form-value {
-                        border: 1px solid #ccc;
-                        padding: 8px;
-                        width: 100%;
-                        box-sizing: border-box;
-                    }
-                </style>
-            </head>
-            <body>
-                <h1>會員基本資料表</h1>
-                <div class="form-container">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <div class="form-label">姓名</div>
-                            <div class="form-value">${form.name || '&nbsp;'}</div>
-                        </div>
-                        <div class="form-group">
-                            <div class="form-label">生日</div>
-                            <div class="form-value">${form.birthday || '&nbsp;'}</div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <div class="form-label">年齡</div>
-                            <div class="form-value">${age ? `${age}歲` : '&nbsp;'}</div>
-                        </div>
-                        <div class="form-group">
-                            <div class="form-label">電話</div>
-                            <div class="form-value">${form.phone || '&nbsp;'}</div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <div class="form-label">住址</div>
-                            <div class="form-value">${form.address || '&nbsp;'}</div>
-                        </div>
-                        <div class="form-group">
-                            <div class="form-label">性別</div>
-                            <div class="form-value">${
-                                form.gender === 'Male' ? '男' : 
-                                form.gender === 'Female' ? '女' : 
-                                form.gender === 'Other' ? '不想透露' : '&nbsp;'
-                            }</div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <div class="form-label">血型</div>
-                            <div class="form-value">${form.bloodType || '&nbsp;'}</div>
-                        </div>
-                        <div class="form-group">
-                            <div class="form-label">Line ID</div>
-                            <div class="form-value">${form.lineId || '&nbsp;'}</div>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <div class="form-label">介紹人</div>
-                            <div class="form-value">${form.preferredTherapist || '&nbsp;'}</div>
-                        </div>
-                        <div class="form-group">
-                            <div class="form-label">備註</div>
-                            <div class="form-value">${form.specialRequests || '&nbsp;'}</div>
-                        </div>
-                    </div>
-                </div>
-            </body>
-            </html>
-        `);
-        
-        // 關閉文檔流
-        printWindow.document.close();
-        
-        // 等待資源加載完成後打印
-        printWindow.onload = function() {
-            printWindow.focus(); // 確保焦點在打印窗口
-            printWindow.print(); // 調用打印功能
-            
-            // 打印完成後關閉窗口（可選）
-            // printWindow.close();
-        };
     };
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
