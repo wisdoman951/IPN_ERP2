@@ -210,6 +210,7 @@ const TherapyRecord: React.FC = () => {
                             <th>療程日期</th>
                             <th>方案</th>
                             <th>使用療程內容</th>
+                            <th>用掉堂數</th>
                             <th>療程剩餘數</th>
                             <th>療癒師</th>
                             <th>備註</th>
@@ -218,7 +219,7 @@ const TherapyRecord: React.FC = () => {
                     tableBody={
                         loading ? (
                             <tr>
-                                <td colSpan={9} className="text-center py-5">
+                                <td colSpan={10} className="text-center py-5">
                                     <div className="spinner-border text-info" role="status">
                                         <span className="visually-hidden">Loading...</span>
                                     </div>
@@ -239,6 +240,7 @@ const TherapyRecord: React.FC = () => {
                                     <td className="align-middle">{formatDate(record.date)}</td>
                                     <td className="align-middle">{record.package_name || "-"}</td>
                                     <td className="align-middle">{record.therapy_content || "-"}</td>
+                                    <td className="align-middle">{formatNumber(record.deduct_sessions)}</td>
                                     <td className="align-middle">{formatNumber(record.remaining_sessions)}</td>
                                     <td className="align-middle">{record.staff_name || "-"}</td>
                                     <td className="align-middle">{record.note ? truncateText(record.note, 30) : "-"}</td>
@@ -246,7 +248,7 @@ const TherapyRecord: React.FC = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={9} className="text-center text-muted py-5">
+                                <td colSpan={10} className="text-center text-muted py-5">
                                     尚無資料
                                 </td>
                             </tr>

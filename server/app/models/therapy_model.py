@@ -44,6 +44,7 @@ def get_all_therapy_records():
                     tr.member_id, m.member_code, m.name AS member_name,
                     tr.therapy_id, t.name AS package_name, t.content AS therapy_content,
                     tr.staff_id, s.name AS staff_name,
+                    tr.deduct_sessions,
                     tr.remaining_sessions_at_time AS remaining_sessions
                 FROM therapy_record tr
                 LEFT JOIN member m ON tr.member_id = m.member_id
@@ -112,6 +113,7 @@ def search_therapy_records(filters):
                     tr.member_id, m.member_code, m.name AS member_name,
                     tr.therapy_id, t.name AS package_name, t.content AS therapy_content,
                     tr.staff_id, s.name AS staff_name,
+                    tr.deduct_sessions,
                     tr.remaining_sessions_at_time AS remaining_sessions
                 FROM therapy_record tr
                 LEFT JOIN member m ON tr.member_id = m.member_id
