@@ -63,6 +63,12 @@ const AddSalesOrder: React.FC = () => {
         switch (id) {
             case '2':
                 return 'TC';
+            case '3':
+                return 'TP';
+            case '4':
+                return 'PH';
+            case '5':
+                return 'TY';
             case '1':
             default:
                 return 'TP';
