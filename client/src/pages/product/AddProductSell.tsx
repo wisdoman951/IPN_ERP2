@@ -291,7 +291,9 @@ const AddProductSell: React.FC = () => {
         saleUnit: selectedStore,
         saleCategory,
         buyer: memberName,
+        buyerId: memberId,
         salesperson: staffName,
+        staffId: selectedStaffId,
       };
       localStorage.setItem('preSaleData', JSON.stringify(preSaleData));
       navigate('/finance/sales/add');

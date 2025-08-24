@@ -105,7 +105,7 @@ const SalesOrderList: React.FC = () => {
                 <Row className="justify-content-end g-2">
                     <Col xs="auto"><Button variant="info" className="text-white" disabled={true}>報表匯出</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleDelete} disabled={loading || selectedIds.length === 0}>刪除</Button></Col>
-                    <Col xs="auto"><Button variant="info" className="text-white" onClick={() => navigate(`/finance/sales/edit/${selectedIds[0]}`)} disabled={loading || selectedIds.length !== 1}>修改</Button></Col>
+                    <Col xs="auto"><Button variant="info" className="text-white" onClick={() => navigate(`/finance/sales/add?order_id=${selectedIds[0]}`)} disabled={loading || selectedIds.length !== 1}>修改</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={() => navigate("/finance")}>確認</Button></Col>
                 </Row>
             </Container>

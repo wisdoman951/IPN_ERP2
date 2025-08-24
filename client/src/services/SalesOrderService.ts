@@ -86,3 +86,27 @@ export const deleteSalesOrders = async (ids: number[]): Promise<{success: boolea
         throw new Error(error.response?.data?.error || "刪除銷售單時發生錯誤");
     }
 };
+export interface SalesOrderDetail {
+    order_id: number;
+    order_number: string;
+    order_date: string;
+    member_id: number | null;
+    staff_id: number | null;
+    store_id: number;
+    subtotal: number;
+    total_discount: number;
+    grand_total: number;
+    sale_category?: string;
+    note?: string;
+    items: SalesOrderItemData[];
+}
+
+export const getSalesOrderById = async (orderId: number): Promise<SalesOrderDetail> => {
+    try {
+        const response = await axios.get(`${API_URL}/${orderId}`);
+        return response.data;
+    } catch (error: any) {
+        console.error(`獲取銷售單 ${orderId} 失敗:`, error.response?.data || error.message);
+        throw new Error(error.response?.data?.error || '無法獲取銷售單');
+    }
+};
