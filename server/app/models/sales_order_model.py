@@ -59,9 +59,21 @@ def create_sales_order(order_data: dict):
                 )
             """
             for item in items_data:
-                item['order_id'] = order_id
-                # item_values_dict 的鍵名與 item_query 的佔位符匹配，這部分邏輯是正確的
-                cursor.execute(item_query, item)
+                # 確保所有必要的鍵都存在，即使其值為 None
+                item_for_sql = {
+                    "order_id": order_id,
+                    "product_id": item.get("product_id"),
+                    "therapy_id": item.get("therapy_id"),
+                    "item_description": item.get("item_description"),
+                    "item_type": item.get("item_type"),
+                    "unit": item.get("unit"),
+                    "unit_price": item.get("unit_price"),
+                    "quantity": item.get("quantity"),
+                    "subtotal": item.get("subtotal"),
+                    "category": item.get("category"),
+                    "note": item.get("note")
+                }
+                cursor.execute(item_query, item_for_sql)
         
         conn.commit()
         return {"success": True, "order_id": order_id, "message": "銷售單新增成功"}
