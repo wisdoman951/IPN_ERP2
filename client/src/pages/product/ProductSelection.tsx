@@ -4,62 +4,73 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import { getAllProducts, Product } from "../../services/ProductSellService";
+import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
 
 interface SelectedProduct {
-  product_id: number;
+  type?: 'product' | 'bundle';
+  product_id?: number;
+  bundle_id?: number;
   name: string;
   price: number;
   quantity: number;
-  inventory_id: number;
+  inventory_id?: number;
   stock_quantity?: number;
+  content?: string;
 }
 
 const ProductSelection: React.FC = () => {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
+  const [bundles, setBundles] = useState<Bundle[]>([]);
   const [selectedProducts, setSelectedProducts] = useState<SelectedProduct[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchKeyword, setSearchKeyword] = useState("");
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      setLoading(true);
+    const fetchData = async () => {
       setError(null);
       try {
-        const data = await getAllProducts();
-        setProducts(data);
+        const [productData, bundleData] = await Promise.all([
+          getAllProducts(),
+          fetchAllBundles()
+        ]);
+        setProducts(productData);
+        setBundles(bundleData);
       } catch (err) {
         console.error("載入產品資料失敗：", err);
         setError("載入產品資料失敗，請稍後再試。");
-      } finally {
-        setLoading(false);
       }
     };
 
-    fetchProducts();
+    fetchData();
 
     // --- 關鍵修正：進頁時還原 localStorage ---
     const selectedProductsData = localStorage.getItem('selectedProducts');
+    const emptyItem: SelectedProduct = {
+      type: undefined,
+      product_id: undefined,
+      bundle_id: undefined,
+      name: "",
+      price: 0,
+      quantity: 1,
+      inventory_id: undefined,
+      stock_quantity: undefined,
+      content: undefined
+    };
+
     if (selectedProductsData) {
       try {
-        const prods = JSON.parse(selectedProductsData);
+        const prods: SelectedProduct[] = JSON.parse(selectedProductsData);
         if (Array.isArray(prods) && prods.length > 0) {
-          setSelectedProducts(prods);
+          setSelectedProducts(prods.map((p) => ({ ...emptyItem, ...p })));
         } else {
-          setSelectedProducts([{
-            product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined
-          }]);
+          setSelectedProducts([emptyItem]);
         }
       } catch {
-        setSelectedProducts([{
-          product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined
-        }]);
+        setSelectedProducts([emptyItem]);
       }
     } else {
-      setSelectedProducts([{
-        product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined
-      }]);
+      setSelectedProducts([emptyItem]);
     }
   }, []);
 
@@ -70,7 +81,17 @@ const ProductSelection: React.FC = () => {
   };
 
   const addNewItem = () => {
-    setSelectedProducts([...selectedProducts, { product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined }]);
+    setSelectedProducts([...selectedProducts, {
+      type: undefined,
+      product_id: undefined,
+      bundle_id: undefined,
+      name: "",
+      price: 0,
+      quantity: 1,
+      inventory_id: undefined,
+      stock_quantity: undefined,
+      content: undefined
+    }]);
   };
 
   const removeItem = (index: number) => {
@@ -79,24 +100,60 @@ const ProductSelection: React.FC = () => {
     setSelectedProducts(newSelectedProducts);
   };
 
-  const updateSelectedProduct = (index: number, productId: number) => {
-    const product = products.find(p => p.product_id === productId);
+  const updateSelectedProduct = (index: number, value: string) => {
     const newSelectedProducts = [...selectedProducts];
 
-    if (!product) {
-      newSelectedProducts[index] = {
-        product_id: 0, name: "", price: 0, quantity: 1, inventory_id: 0, stock_quantity: undefined
-      };
+    const emptyItem: SelectedProduct = {
+      type: undefined,
+      product_id: undefined,
+      bundle_id: undefined,
+      name: "",
+      price: 0,
+      quantity: 1,
+      inventory_id: undefined,
+      stock_quantity: undefined,
+      content: undefined
+    };
+
+    if (!value) {
+      newSelectedProducts[index] = emptyItem;
     } else {
-      newSelectedProducts[index] = {
-        ...newSelectedProducts[index],
-        product_id: product.product_id,
-        name: product.product_name,
-        price: Number(product.product_price),
-        inventory_id: product.inventory_id,
-        stock_quantity: product.inventory_quantity
-      };
+      const [type, idStr] = value.split('-');
+      if (type === 'bundle') {
+        const bundle = bundles.find(b => b.bundle_id === Number(idStr));
+        if (bundle) {
+          newSelectedProducts[index] = {
+            ...newSelectedProducts[index],
+            type: 'bundle',
+            bundle_id: bundle.bundle_id,
+            product_id: undefined,
+            name: bundle.name,
+            price: Number(bundle.selling_price),
+            quantity: 1,
+            inventory_id: undefined,
+            stock_quantity: undefined,
+            content: bundle.bundle_contents
+          };
+        }
+      } else {
+        const product = products.find(p => p.product_id === Number(idStr));
+        if (product) {
+          newSelectedProducts[index] = {
+            ...newSelectedProducts[index],
+            type: 'product',
+            product_id: product.product_id,
+            bundle_id: undefined,
+            name: product.product_name,
+            price: Number(product.product_price),
+            quantity: 1,
+            inventory_id: product.inventory_id,
+            stock_quantity: product.inventory_quantity,
+            content: undefined
+          };
+        }
+      }
     }
+
     setSelectedProducts(newSelectedProducts);
   };
 
@@ -104,7 +161,7 @@ const ProductSelection: React.FC = () => {
     if (quantity < 1) return;
     const newSelectedProducts = [...selectedProducts];
     const product = newSelectedProducts[index];
-    if (product.stock_quantity !== undefined && quantity > product.stock_quantity) {
+    if (product.type === 'product' && product.stock_quantity !== undefined && quantity > product.stock_quantity) {
       quantity = product.stock_quantity;
     }
     newSelectedProducts[index] = { ...product, quantity };
@@ -112,12 +169,17 @@ const ProductSelection: React.FC = () => {
   };
 
   const confirmSelection = () => {
-    const validProducts = selectedProducts.filter(item => item.product_id !== 0 && item.quantity > 0);
+    const validProducts = selectedProducts.filter(item =>
+      (item.type === 'product' && item.product_id) ||
+      (item.type === 'bundle' && item.bundle_id)
+    );
     if (validProducts.length === 0) {
       setError("請選擇至少一項產品並設定數量。");
       return;
     }
-    const invalidStockItems = validProducts.filter(item => item.stock_quantity !== undefined && item.quantity > item.stock_quantity);
+    const invalidStockItems = validProducts.filter(item =>
+      item.type === 'product' && item.stock_quantity !== undefined && item.quantity > item.stock_quantity
+    );
     if (invalidStockItems.length > 0) {
       setError(`產品 "${invalidStockItems[0].name}" 的庫存不足 (剩餘: ${invalidStockItems[0].stock_quantity})。`);
       return;
@@ -125,6 +187,10 @@ const ProductSelection: React.FC = () => {
     localStorage.setItem('selectedProducts', JSON.stringify(validProducts));
     localStorage.setItem('productTotalAmount', calculateTotal().toString());
     navigate(-1); // 回到前一頁
+  };
+
+  const openInventorySearch = () => {
+    window.open('/inventory/inventory-search', '_blank', 'noopener,noreferrer,width=1200,height=800');
   };
   const content = (
     <Container className="my-4">
@@ -155,10 +221,11 @@ const ProductSelection: React.FC = () => {
       <Table bordered hover responsive className="mt-4">
         <thead className="table-light">
           <tr>
-            <th style={{width: "35%"}}>產品名稱</th>
+            <th style={{width: "25%"}}>產品名稱</th>
+            <th style={{width: "20%"}}>產品內容</th>
             <th style={{width: "15%"}} className="text-end">剩餘數量</th>
-            <th style={{width: "15%"}} className="text-end">單價</th>
-            <th style={{width: "15%"}}>購買數量</th>
+            <th style={{width: "10%"}} className="text-end">單價</th>
+            <th style={{width: "10%"}}>購買數量</th>
             <th style={{width: "15%"}} className="text-end">小計</th>
             <th style={{width: "5%"}} className="text-center">操作</th>
           </tr>
@@ -167,43 +234,74 @@ const ProductSelection: React.FC = () => {
           {selectedProducts.map((item, index) => (
             <tr key={index}>
               <td>
-                <Form.Select 
-                  value={item.product_id || ""}
-                  onChange={(e) => updateSelectedProduct(index, Number(e.target.value))}
+                <Form.Select
+                  value={
+                    item.type === 'bundle'
+                      ? `bundle-${item.bundle_id}`
+                      : item.type === 'product' && item.product_id
+                        ? `product-${item.product_id}`
+                        : ""
+                  }
+                  onChange={(e) => updateSelectedProduct(index, e.target.value)}
                 >
                   <option value="">請選擇產品</option>
-                  {products
-                    .filter(p => searchKeyword ? p.product_name.toLowerCase().includes(searchKeyword.toLowerCase()) : true)
-                    .map(product => (
-                      <option key={product.product_id} value={product.product_id}>
-                        {product.product_name}
-                      </option>
-                  ))}
+                  {bundles.filter(b => searchKeyword ? b.name.toLowerCase().includes(searchKeyword.toLowerCase()) : true).length > 0 && (
+                    <optgroup label="產品組合">
+                      {bundles
+                        .filter(b => searchKeyword ? b.name.toLowerCase().includes(searchKeyword.toLowerCase()) : true)
+                        .map(bundle => (
+                          <option key={`bundle-${bundle.bundle_id}`} value={`bundle-${bundle.bundle_id}`}>
+                            {bundle.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
+                  {products.filter(p => searchKeyword ? p.product_name.toLowerCase().includes(searchKeyword.toLowerCase()) : true).length > 0 && (
+                    <optgroup label="單品">
+                      {products
+                        .filter(p => searchKeyword ? p.product_name.toLowerCase().includes(searchKeyword.toLowerCase()) : true)
+                        .map(product => (
+                          <option key={`product-${product.product_id}`} value={`product-${product.product_id}`}>
+                            {product.product_name}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
                 </Form.Select>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  className="mt-2"
+                  onClick={openInventorySearch}
+                >
+                  庫存查詢
+                </Button>
+              </td>
+              <td className="align-middle">
+                {item.type === 'bundle' ? item.content : '-'}
               </td>
               <td className="align-middle text-end fw-bold">
-                {/* Display the fetched stock quantity */}
-                {item.stock_quantity !== undefined ? item.stock_quantity : "-"}
+                {item.type === 'product' && item.stock_quantity !== undefined ? item.stock_quantity : '-'}
               </td>
               <td className="align-middle text-end">
-                {item.price > 0 ? `NT$ ${item.price.toLocaleString()}` : "-"}
+                {item.price > 0 ? `NT$ ${item.price.toLocaleString()}` : '-'}
               </td>
               <td>
                 <Form.Control
                   type="number"
                   min="1"
-                  max={item.stock_quantity} // Optional: browser-level validation for max quantity
+                  max={item.type === 'product' ? item.stock_quantity : undefined}
                   value={item.quantity}
                   onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
-                  disabled={!item.product_id} // Disable if no product is selected
+                  disabled={!item.type}
                 />
               </td>
               <td className="align-middle text-end">
-                {item.price > 0 ? `NT$ ${(item.price * item.quantity).toLocaleString()}` : "-"}
+                {item.price > 0 ? `NT$ ${(item.price * item.quantity).toLocaleString()}` : '-'}
               </td>
               <td className="text-center align-middle">
-                <Button 
-                  variant="outline-danger" 
+                <Button
+                  variant="outline-danger"
                   size="sm"
                   onClick={() => removeItem(index)}
                   disabled={selectedProducts.length <= 1}
@@ -216,9 +314,9 @@ const ProductSelection: React.FC = () => {
         </tbody>
         <tfoot>
           <tr>
-            <td colSpan={6}>
-              <Button 
-                variant="outline-primary" 
+            <td colSpan={7}>
+              <Button
+                variant="outline-primary"
                 className="w-100"
                 onClick={addNewItem}
               >
@@ -228,7 +326,7 @@ const ProductSelection: React.FC = () => {
             </td>
           </tr>
           <tr>
-            <th colSpan={4} className="text-end fs-5">總計金額：</th>
+            <th colSpan={5} className="text-end fs-5">總計金額：</th>
             <th colSpan={2} className="text-end fs-5 text-danger">NT$ {calculateTotal().toLocaleString()}</th>
           </tr>
         </tfoot>
