@@ -281,7 +281,7 @@ export const checkMemberCodeExists = async (memberCode: string): Promise<boolean
  */
 export const getNextMemberCode = async (): Promise<ApiResponse<string>> => {
     try {
-        const response = await axios.get(`${API_URL}/next-code`);
+        const response = await authAxios.get('/next-code');
         return response.data;
     } catch (error: any) {
         console.error("獲取下一個會員編號失敗:", error);

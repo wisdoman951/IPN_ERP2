@@ -231,24 +231,54 @@ def check_member_code_exists(member_code: str):
     finally:
         conn.close()
 
-def get_next_member_code():
+def get_next_member_code(store_id: int):
+    """Generate the next member code based on the store's custom pattern."""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = "SELECT member_code FROM member ORDER BY member_id DESC LIMIT 1"
-            cursor.execute(query)
+            query = (
+                "SELECT member_code FROM member WHERE store_id = %s "
+                "ORDER BY member_id DESC LIMIT 1"
+            )
+            cursor.execute(query, (store_id,))
             last_member = cursor.fetchone()
-            if last_member and last_member.get('member_code'):
-                last_code = last_member['member_code']
-                match = re.match(r'([A-Za-z]*)(\d+)', last_code)
-                if match:
+            last_code = last_member.get('member_code') if last_member else None
+
+            # Store specific numbering rules
+            if store_id == 2:
+                # Format: M + 4 digit number (e.g. M0001)
+                if last_code and re.match(r'^M(\d{4})$', last_code):
+                    new_code = f"M{int(last_code[1:]) + 1:04d}"
+                else:
+                    new_code = "M0001"
+            elif store_id == 3:
+                # Numeric string starting with 10 (e.g. 101859)
+                if last_code and re.match(r'^10\d+$', last_code):
+                    new_code = str(int(last_code) + 1)
+                else:
+                    new_code = "100001"
+            elif store_id == 4:
+                # Leading zeros (e.g. 000557)
+                if last_code and last_code.isdigit():
+                    new_code = str(int(last_code) + 1).zfill(len(last_code))
+                else:
+                    new_code = "000001"
+            elif store_id == 5:
+                # Simple incremental numbers (1,2,3,...)
+                if last_code and last_code.isdigit():
+                    new_code = str(int(last_code) + 1)
+                else:
+                    new_code = "1"
+            else:
+                # Default behaviour: prefix letters followed by numbers
+                if last_code and re.match(r'([A-Za-z]*)(\d+)', last_code or ''):
+                    match = re.match(r'([A-Za-z]*)(\d+)', last_code)
                     prefix, number_part = match.groups()
                     next_number = int(number_part) + 1
                     new_code = f"{prefix}{str(next_number).zfill(len(number_part))}"
                 else:
-                    new_code = "M-ERROR"
-            else:
-                new_code = "M001"
+                    new_code = "M001"
+
             return {"success": True, "next_code": new_code}
     except Exception as e:
         traceback.print_exc()

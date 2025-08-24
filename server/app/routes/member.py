@@ -265,7 +265,8 @@ def check_member_code_route(member_code):
 def get_next_code_route():
     """提供下一個可用的會員編號"""
     try:
-        result = get_next_member_code()
+        user_store_id = request.store_id
+        result = get_next_member_code(user_store_id)
         if result.get("success"):
             return jsonify(result)
         else:
