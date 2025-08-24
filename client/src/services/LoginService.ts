@@ -100,9 +100,9 @@ export const login = async (account: string, password: string): Promise<LoginRes
     );
     
     const data = response.data;
-    if (data.token) {
-      // --- 核心修改區域 ---
-      // 2. 在您原本儲存 token 的邏輯後面，加上這一行
+   if (data.token) {
+     // --- 核心修改區域 ---
+     // 2. 在您原本儲存 token 的邏輯後面，加上這一行
       localStorage.setItem('token', data.token);
       setUserRole(data.token); // <--- 就是這一行！它會讀取 token 並設定 'userRole'
 
@@ -110,17 +110,26 @@ export const login = async (account: string, password: string): Promise<LoginRes
       localStorage.setItem('store_id', data.store_id.toString());
       localStorage.setItem('store_level', data.store_level);
       localStorage.setItem('store_name', data.store_name);
-      localStorage.setItem('permission', data.permission);
-      
-      const storeInfo = {
-        store_id: data.store_id,
-        store_name: data.store_name,
-        store_level: data.store_level,
-        permission: data.permission
-      };
-      localStorage.setItem('store_info', JSON.stringify(storeInfo));
+     localStorage.setItem('permission', data.permission);
+
+     const storeInfo = {
+       store_id: data.store_id,
+       store_name: data.store_name,
+       store_level: data.store_level,
+       permission: data.permission
+     };
+     localStorage.setItem('store_info', JSON.stringify(storeInfo));
+
+    // 清除與銷售單相關的暫存資料，避免跨店賬號間的残留
+    localStorage.removeItem('productSellFormState');
+    localStorage.removeItem('selectedProducts');
+    localStorage.removeItem('addTherapySellFormState');
+    localStorage.removeItem('selectedTherapyPackages');
+    localStorage.removeItem('selectedTherapyPackagesWithSessions');
+    localStorage.removeItem('selectedSalesOrderItems');
+    localStorage.removeItem('preSaleData');
       // --- 修改結束 ---
-    }
+   }
     
     return data;
   } catch (error) {

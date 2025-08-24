@@ -63,6 +63,7 @@ const AddProductSell: React.FC = () => {
   useEffect(() => {
     const init = async () => {
       const currentStoreId = getStoreId();
+      const currentStoreName = getStoreName();
       if (currentStoreId) setStoreId(currentStoreId);
       else setError("無法獲取當前門市資訊，請重新登入。");
 
@@ -86,8 +87,7 @@ const AddProductSell: React.FC = () => {
           setError("載入分店資料失敗");
         }
       } else {
-        const name = getStoreName();
-        if (name) setSelectedStore(name);
+        if (currentStoreName) setSelectedStore(currentStoreName);
       }
 
       const fetchStaffMembersData = async () => {
@@ -137,10 +137,13 @@ const AddProductSell: React.FC = () => {
           if (formState.saleCategory) setSaleCategory(formState.saleCategory);
           if (formState.note) setNote(formState.note);
           if (formState.selectedStaffId) setSelectedStaffId(formState.selectedStaffId);
-          if (formState.selectedStore) {
+          if (formState.selectedStore && formState.selectedStore === currentStoreName) {
             setSelectedStore(formState.selectedStore);
-            const id = nameToIdMap[formState.selectedStore];
+            const id = nameToIdMap[formState.selectedStore] || currentStoreId;
             if (id) setStoreId(id.toString());
+          } else {
+            if (currentStoreName) setSelectedStore(currentStoreName);
+            if (currentStoreId) setStoreId(currentStoreId);
           }
           if (typeof formState.discountAmount === 'number') {
             currentDiscAmount = formState.discountAmount;

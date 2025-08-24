@@ -4,7 +4,7 @@ import { Container, Row, Col, Form, Button, Card, InputGroup, Alert, Spinner } f
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
-import { SalesOrderItemData, SalesOrderPayload, addSalesOrder, getSalesOrderById, SalesOrderDetail } from '../../services/SalesOrderService';
+import { SalesOrderItemData, SalesOrderPayload, addSalesOrder, getSalesOrderById, SalesOrderDetail, updateSalesOrder } from '../../services/SalesOrderService';
 import { getAllMembers, Member } from '../../services/MemberService';
 import { getStaffMembers, StaffMember } from '../../services/TherapyDropdownService';
 // 假設您有獲取會員、員工、產品、療程的服務
@@ -18,6 +18,7 @@ const AddSalesOrder: React.FC = () => {
     const location = useLocation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [editingOrderId, setEditingOrderId] = useState<number | null>(null);
 
     // 訂單主體資訊
     const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
@@ -119,9 +120,11 @@ const AddSalesOrder: React.FC = () => {
         const params = new URLSearchParams(location.search);
         const oid = params.get('order_id');
         if (oid) {
+            const idNum = Number(oid);
+            setEditingOrderId(idNum);
             const fetchOrder = async () => {
                 try {
-                    const detail = await getSalesOrderById(Number(oid));
+                    const detail = await getSalesOrderById(idNum);
                     setOrderNumber(detail.order_number);
                     setOrderDate(detail.order_date);
                     setMemberId(detail.member_id ? String(detail.member_id) : "");
@@ -193,7 +196,9 @@ const AddSalesOrder: React.FC = () => {
                 items: sanitizedItems,
             };
             
-            const result = await addSalesOrder(orderPayload);
+            const result = editingOrderId
+                ? await updateSalesOrder(editingOrderId, orderPayload)
+                : await addSalesOrder(orderPayload);
             if (result.success) {
                 alert(result.message);
                 navigate('/finance'); // 假設返回帳務管理主頁
