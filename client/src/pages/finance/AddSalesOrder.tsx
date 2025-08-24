@@ -165,11 +165,27 @@ const AddSalesOrder: React.FC = () => {
 
 
     const handleSubmit = async () => {
+        // 必填欄位檢查
+        if (!orderDate) {
+            alert('請填寫銷售日期');
+            return;
+        }
+        if (!memberId) {
+            alert('請填寫購買人');
+            return;
+        }
+        if (!staffId) {
+            alert('請填寫銷售人');
+            return;
+        }
+        if (grandTotal === 0) {
+            alert('請填寫金額(小寫)');
+            return;
+        }
+
         setLoading(true);
         setError(null);
         try {
-            // 在這裡進行表單驗證...
-
             const sanitizedItems: SalesOrderItemData[] = items.map(({ item_code, ...rest }) => ({
                 product_id: rest.product_id ?? null,
                 therapy_id: rest.therapy_id ?? null,
