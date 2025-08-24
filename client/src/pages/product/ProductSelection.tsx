@@ -10,6 +10,7 @@ interface SelectedProduct {
   type?: 'product' | 'bundle';
   product_id?: number;
   bundle_id?: number;
+  code?: string;
   name: string;
   price: number;
   quantity: number;
@@ -50,6 +51,7 @@ const ProductSelection: React.FC = () => {
       type: undefined,
       product_id: undefined,
       bundle_id: undefined,
+      code: undefined,
       name: "",
       price: 0,
       quantity: 1,
@@ -85,6 +87,7 @@ const ProductSelection: React.FC = () => {
       type: undefined,
       product_id: undefined,
       bundle_id: undefined,
+      code: undefined,
       name: "",
       price: 0,
       quantity: 1,
@@ -127,6 +130,7 @@ const ProductSelection: React.FC = () => {
             type: 'bundle',
             bundle_id: bundle.bundle_id,
             product_id: undefined,
+            code: bundle.bundle_code,
             name: bundle.name,
             price: Number(bundle.selling_price),
             quantity: 1,
@@ -143,6 +147,7 @@ const ProductSelection: React.FC = () => {
             type: 'product',
             product_id: product.product_id,
             bundle_id: undefined,
+            code: product.product_code,
             name: product.product_name,
             price: Number(product.product_price),
             quantity: 1,

@@ -57,14 +57,13 @@ const ItemSelection: React.FC = () => {
             newItem = {
                 product_id: product.product_id,
                 therapy_id: null,
-                // ***** 關鍵修改：使用 product_name 和 product_price *****
-                item_description: product.product_name, // <-- 使用 product_name
+                item_description: product.product_name,
                 item_type: 'Product',
+                item_code: product.product_code,
                 unit: "個",
                 quantity: 1,
-                unit_price: product.product_price,      // <-- 使用 product_price
+                unit_price: product.product_price,
                 subtotal: product.product_price,
-                // ***** 結束修改 *****
             };
         } else { // type === 'Therapy'
             const therapy = item as TherapyPackage;
@@ -73,6 +72,7 @@ const ItemSelection: React.FC = () => {
                 therapy_id: therapy.therapy_id,
                 item_description: therapy.TherapyContent || therapy.TherapyName || "未知療程",
                 item_type: 'Therapy',
+                item_code: therapy.TherapyCode,
                 unit: "堂",
                 quantity: 1,
                 unit_price: therapy.TherapyPrice,

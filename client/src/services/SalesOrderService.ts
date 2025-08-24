@@ -10,6 +10,7 @@ export interface SalesOrderItemData {
     therapy_id?: number | null;
     item_description: string;
     item_type: 'Product' | 'Therapy';
+    item_code?: string;
     unit: string;
     unit_price: number;
     quantity: number;
@@ -20,6 +21,7 @@ export interface SalesOrderItemData {
 
 // 提交到後端的銷售單主體型別
 export interface SalesOrderPayload {
+    order_number?: string;
     order_date: string;
     member_id?: number | null;
     staff_id?: number | null;

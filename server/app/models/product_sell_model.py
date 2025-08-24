@@ -382,13 +382,14 @@ def get_all_products_with_inventory(store_id=None):
         base_query = """
             SELECT
                 p.product_id,
+                p.code AS product_code,
                 p.name AS product_name,
                 p.price AS product_price,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id
             FROM product p
             LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
-            GROUP BY p.product_id, p.name, p.price
+            GROUP BY p.product_id, p.code, p.name, p.price
             ORDER BY p.name
         """
 
@@ -418,6 +419,7 @@ def search_products_with_inventory(keyword, store_id=None):
         base_query = """
             SELECT
                 p.product_id,
+                p.code AS product_code,
                 p.name AS product_name,
                 p.price AS product_price,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
@@ -443,20 +445,10 @@ def search_products_with_inventory(keyword, store_id=None):
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " GROUP BY p.product_id, p.name, p.price ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.code, p.name, p.price ORDER BY p.name"
 
-        try:
-            cursor.execute(query, tuple(params))
-            result = cursor.fetchall()
-        except pymysql.err.ProgrammingError as e:
-            if "Unknown column 'p.code'" in str(e):
-                # 'code' 欄位不存在時的備用查詢
-                query = query.replace(" OR p.code LIKE %s", "")
-                params.pop(1) # 移除對應 p.code 的參數
-                cursor.execute(query, tuple(params))
-                result = cursor.fetchall()
-            else:
-                raise e
+        cursor.execute(query, tuple(params))
+        result = cursor.fetchall()
     conn.close()
     return result
 
