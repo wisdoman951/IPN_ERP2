@@ -8,26 +8,26 @@ import {
     getAllTherapyPackages as fetchAllTherapyPackagesService,
     searchTherapyPackages, // 假設您有此服務函數用於後端搜尋
     TherapyPackage as TherapyPackageBaseType,
-    fetchRemainingSessions,
     fetchRemainingSessionsBulk
 } from '../../services/TherapySellService';
+import { fetchAllBundles, Bundle } from '../../services/ProductBundleService';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
 export interface PackageInSelection extends TherapyPackageBaseType {
-  userSessions: string; 
+  userSessions: string; // 堂數或組合數量
 }
 
 const TherapyPackageSelection: React.FC = () => {
     const navigate = useNavigate();
     const [allPackages, setAllPackages] = useState<TherapyPackageBaseType[]>([]);
     const [displayedPackages, setDisplayedPackages] = useState<TherapyPackageBaseType[]>([]);
-    const [selectedPackagesMap, setSelectedPackagesMap] = useState<Map<number, PackageInSelection>>(new Map());
+    const [selectedPackagesMap, setSelectedPackagesMap] = useState<Map<string, PackageInSelection>>(new Map());
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [pageError, setPageError] = useState<string | null>(null); // 用於此頁面特定的錯誤，如堂數無效
     const [memberId, setMemberId] = useState<string>('');
-    const [remainingMap, setRemainingMap] = useState<Map<number, number>>(new Map());
+    const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
 
 
     useEffect(() => {
@@ -47,8 +47,11 @@ const TherapyPackageSelection: React.FC = () => {
         if (storedPkgs) {
             try {
                 const pkgs: PackageInSelection[] = JSON.parse(storedPkgs);
-                const map = new Map<number, PackageInSelection>();
-                pkgs.forEach(p => map.set(p.therapy_id, p));
+                const map = new Map<string, PackageInSelection>();
+                pkgs.forEach(p => {
+                    const key = p.type === 'bundle' ? `b-${p.bundle_id}` : `t-${p.therapy_id}`;
+                    map.set(key, p);
+                });
                 setSelectedPackagesMap(map);
             } catch (e) {
                 console.error('解析 selectedTherapyPackagesWithSessions 失敗', e);
@@ -57,18 +60,15 @@ const TherapyPackageSelection: React.FC = () => {
             try {
                 const formState = JSON.parse(formStateData);
                 if (Array.isArray(formState.selectedTherapyPackages)) {
-                    const initialMap = new Map<number, PackageInSelection>();
+                    const initialMap = new Map<string, PackageInSelection>();
                     formState.selectedTherapyPackages.forEach((pkgFromState: any) => {
-                        if (pkgFromState && pkgFromState.therapy_id !== undefined) {
-                            initialMap.set(pkgFromState.therapy_id, {
-                                therapy_id: pkgFromState.therapy_id,
-                                TherapyCode: pkgFromState.TherapyCode,
-                                TherapyName: pkgFromState.TherapyName,
-                                TherapyContent: pkgFromState.TherapyContent,
-                                TherapyPrice: pkgFromState.TherapyPrice,
-                                userSessions: String(pkgFromState.userSessions || '1')
-                            });
-                        }
+                        const key = pkgFromState.type === 'bundle'
+                            ? `b-${pkgFromState.bundle_id}`
+                            : `t-${pkgFromState.therapy_id}`;
+                        initialMap.set(key, {
+                            ...pkgFromState,
+                            userSessions: String(pkgFromState.userSessions || '1')
+                        });
                     });
                     setSelectedPackagesMap(initialMap);
                 }
@@ -81,15 +81,29 @@ const TherapyPackageSelection: React.FC = () => {
     const fetchPackages = async () => {
         setLoading(true); setPageError(null);
         try {
-            const response = await fetchAllTherapyPackagesService();
-            if (response.success && response.data) {
-                setAllPackages(response.data);
-                setDisplayedPackages(response.data);
-            } else {
-                setPageError(response.error || "無法載入療程套餐列表");
-                setAllPackages([]); setDisplayedPackages([]);
+            const [therapyRes, bundleData] = await Promise.all([
+                fetchAllTherapyPackagesService(),
+                fetchAllBundles()
+            ]);
+
+            let packages: TherapyPackageBaseType[] = [];
+            if (therapyRes.success && therapyRes.data) {
+                packages = therapyRes.data.map(p => ({ ...p, type: 'therapy' }));
             }
-        } catch (err: any) { 
+
+            const bundlePackages: TherapyPackageBaseType[] = bundleData.map((b: Bundle) => ({
+                bundle_id: b.bundle_id,
+                type: 'bundle',
+                TherapyCode: b.bundle_code,
+                TherapyName: b.name,
+                TherapyContent: b.bundle_contents,
+                TherapyPrice: Number(b.selling_price)
+            }));
+
+            const combined = [...packages, ...bundlePackages];
+            setAllPackages(combined);
+            setDisplayedPackages(combined);
+        } catch (err: any) {
             setPageError(err.message || "載入療程套餐時發生嚴重錯誤");
             setAllPackages([]); setDisplayedPackages([]);
         } finally { setLoading(false); }
@@ -104,13 +118,14 @@ const TherapyPackageSelection: React.FC = () => {
                 return;
             }
             try {
-                const therapyIds = allPackages.map(pkg => pkg.therapy_id);
+                const therapyIds = allPackages.filter(p => p.type !== 'bundle' && p.therapy_id)
+                    .map(p => p.therapy_id as number);
                 const res = await fetchRemainingSessionsBulk(memberId, therapyIds);
-                const map = new Map<number, number>();
+                const map = new Map<string, number>();
                 if (res && res.data) {
                     Object.entries(res.data).forEach(([id, remaining]) => {
                         if (remaining !== undefined) {
-                            map.set(Number(id), Number(remaining as any));
+                            map.set(`t-${id}`, Number(remaining as any));
                         }
                     });
                 }
@@ -137,27 +152,31 @@ const TherapyPackageSelection: React.FC = () => {
         }
     }, [searchTerm, allPackages]);
 
+    const getPkgKey = (pkg: TherapyPackageBaseType) =>
+        pkg.type === 'bundle' ? `b-${pkg.bundle_id}` : `t-${pkg.therapy_id}`;
+
     const handleTogglePackage = (pkg: TherapyPackageBaseType) => {
         setPageError(null);
+        const key = getPkgKey(pkg);
         setSelectedPackagesMap(prevMap => {
             const newMap = new Map(prevMap);
-            if (newMap.has(pkg.therapy_id)) {
-                newMap.delete(pkg.therapy_id);
+            if (newMap.has(key)) {
+                newMap.delete(key);
             } else {
-                newMap.set(pkg.therapy_id, { ...pkg, userSessions: "1" }); // 新增時預設堂數為 "1"
+                newMap.set(key, { ...pkg, userSessions: "1" });
             }
             return newMap;
         });
     };
 
-    const handleSessionChange = (therapy_id: number, sessions: string) => {
+    const handleSessionChange = (pkgKey: string, sessions: string) => {
         setPageError(null);
         setSelectedPackagesMap(prevMap => {
             const newMap = new Map(prevMap);
-            const existingPkg = newMap.get(therapy_id);
+            const existingPkg = newMap.get(pkgKey);
             if (existingPkg) {
                 const validSessions = sessions.trim() === "" ? "" : Math.max(1, parseInt(sessions) || 1).toString();
-                newMap.set(therapy_id, { ...existingPkg, userSessions: validSessions });
+                newMap.set(pkgKey, { ...existingPkg, userSessions: validSessions });
             }
             return newMap;
         });
@@ -213,22 +232,23 @@ const TherapyPackageSelection: React.FC = () => {
                     {!loading && displayedPackages.length > 0 && (
                         <ListGroup variant="flush" style={{maxHeight: 'calc(100vh - 380px)', overflowY: 'auto'}}>
                             {displayedPackages.map(pkg => {
-                                const currentSelection = selectedPackagesMap.get(pkg.therapy_id);
+                                const pkgKey = getPkgKey(pkg);
+                                const currentSelection = selectedPackagesMap.get(pkgKey);
                                 const isSelected = !!currentSelection;
                                 return (
-                                    <ListGroup.Item key={pkg.therapy_id || pkg.TherapyCode} className="py-2 px-2">
+                                    <ListGroup.Item key={pkgKey} className="py-2 px-2">
                                         <Row className="align-items-center gx-2">
                                             <Col xs={12} sm={5} md={5}>
-                                                <Form.Check 
+                                                <Form.Check
                                                     type="checkbox"
                                                     className="mb-2 mb-sm-0"
-                                                    id={`pkg-select-${pkg.therapy_id}`}
+                                                    id={`pkg-select-${pkgKey}`}
                                                     label={
                                                         <div style={{fontSize:'0.9rem'}}>
                                                             <strong>{pkg.TherapyContent || pkg.TherapyName}</strong>
                                                             <div><small className="text-muted">代碼: {pkg.TherapyCode} / 單價: NT$ {pkg.TherapyPrice.toLocaleString()}</small></div>
-                                                            {memberId && remainingMap.has(pkg.therapy_id) && (
-                                                                <div><small className="text-success">剩餘 {remainingMap.get(pkg.therapy_id)} 堂</small></div>
+                                                            {memberId && remainingMap.has(pkgKey) && (
+                                                                <div><small className="text-success">剩餘 {remainingMap.get(pkgKey)} 堂</small></div>
                                                             )}
                                                         </div>
                                                     }
@@ -244,7 +264,7 @@ const TherapyPackageSelection: React.FC = () => {
                                                             type="number"
                                                             min="1"
                                                             value={currentSelection.userSessions}
-                                                            onChange={(e) => handleSessionChange(pkg.therapy_id, e.target.value)}
+                                                            onChange={(e) => handleSessionChange(pkgKey, e.target.value)}
                                                             style={{ maxWidth: '70px', textAlign:'center' }}
                                                             onClick={(e) => e.stopPropagation()} // 避免點擊輸入框觸發 ListGroup.Item 的 onClick
                                                         />

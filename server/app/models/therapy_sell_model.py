@@ -174,44 +174,76 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
         conn.begin()
 
         with conn.cursor() as cursor:
+            error_msg = "Each sale item must be a dictionary."
+            insert_query = (
+                """
+                    INSERT INTO therapy_sell (
+                        therapy_id, member_id, store_id, staff_id, date,
+                        amount, discount, payment_method, sale_category, note
+                    ) VALUES (
+                        %(therapy_id)s, %(member_id)s, %(store_id)s, %(staff_id)s, %(date)s,
+                        %(amount)s, %(discount)s, %(payment_method)s, %(sale_category)s, %(note)s
+                    )
+                """
+            )
             for index, data_item in enumerate(sales_data_list):
 
                 if not isinstance(data_item, dict):
                     logging.error(f"--- [MODEL] {error_msg} ---")
                     raise TypeError(error_msg)
 
-                # 檢查 data_item 是否真的有 .get 方法
                 if not hasattr(data_item, 'get'):
                     logging.error(f"--- [MODEL] {error_msg} ---")
                     raise AttributeError(error_msg)
 
-                # 從 data_item (字典) 中安全地獲取值
-                # 確保前端傳來的 key (例如 'memberId') 與這裡 get 的 key 一致
+                # 若為組合 (bundle)，需拆解為多筆療程紀錄
+                bundle_id = data_item.get("bundle_id")
+                if bundle_id:
+                    bundle_qty = int(data_item.get("amount", 1))
+                    cursor.execute(
+                        "SELECT item_id, quantity FROM product_bundle_items WHERE bundle_id = %s AND item_type = 'Therapy'",
+                        (bundle_id,)
+                    )
+                    bundle_items = cursor.fetchall()
+                    total_qty = sum(item.get('quantity', 0) for item in bundle_items) or 1
+                    for item in bundle_items:
+                        item_values = {
+                            "therapy_id": item.get("item_id"),
+                            "member_id": data_item.get("memberId"),
+                            "store_id": data_item.get("storeId"),
+                            "staff_id": data_item.get("staffId"),
+                            "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
+                            "amount": int(item.get("quantity", 0)) * bundle_qty,
+                            "discount": (data_item.get("discount", 0) * (item.get("quantity", 0) / total_qty)),
+                            "payment_method": data_item.get("paymentMethod"),
+                            "sale_category": data_item.get("saleCategory"),
+                            "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]"
+                        }
+                        logging.debug(
+                            f"--- [MODEL] Values for SQL for bundle item {index + 1}: {item_values}"
+                        )
+                        cursor.execute(insert_query, item_values)
+                        created_ids.append(cursor.lastrowid)
+                        logging.debug(
+                            f"--- [MODEL] Bundle item inserted. ID: {cursor.lastrowid}"
+                        )
+                    continue
+
+                # 一般單一療程資料
                 values_dict = {
                     "therapy_id": data_item.get("therapy_id"),
-                    "member_id": data_item.get("memberId"), 
+                    "member_id": data_item.get("memberId"),
                     "store_id": data_item.get("storeId"),
                     "staff_id": data_item.get("staffId"),
                     "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
-                    "amount": data_item.get("amount"), 
-                    "discount": data_item.get("discount", 0), 
-                    "payment_method": data_item.get("paymentMethod"), 
-                    "sale_category": data_item.get("saleCategory"),   
+                    "amount": data_item.get("amount"),
+                    "discount": data_item.get("discount", 0),
+                    "payment_method": data_item.get("paymentMethod"),
+                    "sale_category": data_item.get("saleCategory"),
                     "note": data_item.get("note", "")
                 }
                 logging.debug(f"--- [MODEL] Values for SQL for item {index + 1}: {values_dict}")
-
-                # 您的 INSERT 語句，確保欄位列表與 therapy_sell 表定義匹配
-                query = """
-                    INSERT INTO therapy_sell (
-                        therapy_id, member_id, store_id, staff_id, date, 
-                        amount, discount, payment_method, sale_category, note
-                    ) VALUES (
-                        %(therapy_id)s, %(member_id)s, %(store_id)s, %(staff_id)s, %(date)s, 
-                        %(amount)s, %(discount)s, %(payment_method)s, %(sale_category)s, %(note)s
-                    )
-                """
-                cursor.execute(query, values_dict)
+                cursor.execute(insert_query, values_dict)
                 created_ids.append(cursor.lastrowid)
                 logging.debug(f"--- [MODEL] Item {index + 1} inserted. ID: {cursor.lastrowid}")
                 
