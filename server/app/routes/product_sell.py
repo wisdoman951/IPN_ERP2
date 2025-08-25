@@ -71,14 +71,29 @@ def search_sales():
 @product_sell_bp.route("/add", methods=["POST"])
 @auth_required
 def add_sale():
-    data = request.json
+    data = request.json or {}
     try:
         user = get_user_from_token(request)
         if user and user.get("store_id") and not data.get("store_id"):
             data["store_id"] = user.get("store_id")
         if user and user.get("staff_id") and not data.get("staff_id"):
-             data["staff_id"] = user.get("staff_id")
-        
+            data["staff_id"] = user.get("staff_id")
+
+        # 驗證必要欄位
+        required_fields = [
+            "member_id",
+            "store_id",
+            "quantity",
+            "unit_price",
+            "discount_amount",
+            "final_price",
+            "payment_method",
+            "sale_category",
+        ]
+        missing = [field for field in required_fields if data.get(field) is None]
+        if missing:
+            return jsonify({"error": f"缺少必要欄位: {', '.join(missing)}"}), 400
+
         sale_id = insert_product_sell(data)
         return jsonify({"message": "產品銷售記錄新增成功", "id": sale_id}), 201
     except Exception as e:
