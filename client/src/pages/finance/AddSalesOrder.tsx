@@ -7,6 +7,7 @@ import DynamicContainer from '../../components/DynamicContainer';
 import { SalesOrderItemData, SalesOrderPayload, addSalesOrder, getSalesOrderById, SalesOrderDetail, updateSalesOrder } from '../../services/SalesOrderService';
 import { getAllMembers, Member } from '../../services/MemberService';
 import { getStaffMembers, StaffMember } from '../../services/TherapyDropdownService';
+import { getStoreName } from '../../services/AuthUtils';
 // 假設您有獲取會員、員工、產品、療程的服務
 // import { searchMembers } from '../../services/MemberService';
 // import { getStaffMembers } from '../../services/StaffService';
@@ -23,7 +24,7 @@ const AddSalesOrder: React.FC = () => {
     // 訂單主體資訊
     const [orderDate, setOrderDate] = useState(new Date().toISOString().split('T')[0]);
     const [saleUnit, setSaleUnit] = useState(""); // 銷售單位 (店家名稱)
-    const [saleCategory, setSaleCategory] = useState(""); // 銷售列別
+    const [saleCategory, setSaleCategory] = useState(""); // 銷售類別
     const [members, setMembers] = useState<Member[]>([]);
     const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
     const [staffId, setStaffId] = useState(""); // 銷售人
@@ -80,6 +81,7 @@ const AddSalesOrder: React.FC = () => {
         const id = localStorage.getItem('store_id');
         setStoreId(id ? parseInt(id) : null);
         setOrderNumber(generateOrderNumber(getStorePrefix(id)));
+        setSaleUnit(getStoreName() || "");
         const storedItems = localStorage.getItem('selectedSalesOrderItems');
         if (storedItems) {
             try {
@@ -93,7 +95,6 @@ const AddSalesOrder: React.FC = () => {
             try {
                 const parsed = JSON.parse(preSale);
                 if (parsed.orderDate) setOrderDate(parsed.orderDate);
-                if (parsed.saleUnit) setSaleUnit(parsed.saleUnit);
                 if (parsed.saleCategory) setSaleCategory(parsed.saleCategory);
                 if (parsed.buyerId) setMemberId(String(parsed.buyerId));
                 if (parsed.staffId) setStaffId(String(parsed.staffId));
@@ -244,8 +245,8 @@ const AddSalesOrder: React.FC = () => {
                 <Card.Body>
                     <Row className="mb-3">
                         <Col md={3}><Form.Group><Form.Label>銷售單號</Form.Label><Form.Control value={orderNumber} readOnly /></Form.Group></Col>
-                        <Col md={3}><Form.Group><Form.Label>銷售單位</Form.Label><Form.Control value={saleUnit} onChange={e => setSaleUnit(e.target.value)}/></Form.Group></Col>
-                        <Col md={3}><Form.Group><Form.Label>銷售列別</Form.Label><Form.Control value={saleCategory} onChange={e => setSaleCategory(e.target.value)}/></Form.Group></Col>
+                        <Col md={3}><Form.Group><Form.Label>銷售單位</Form.Label><Form.Control value={saleUnit} readOnly disabled /></Form.Group></Col>
+                        <Col md={3}><Form.Group><Form.Label>銷售類別</Form.Label><Form.Control value={saleCategory} onChange={e => setSaleCategory(e.target.value)}/></Form.Group></Col>
                         <Col md={3}><Form.Group><Form.Label>銷售日期</Form.Label><Form.Control type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)}/></Form.Group></Col>
                     </Row>
                     
