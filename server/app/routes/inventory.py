@@ -84,6 +84,7 @@ def get_inventory_records():
     end_date = request.args.get("end_date")
     sale_staff = request.args.get("sale_staff")
     buyer = request.args.get("buyer")
+    product_id = request.args.get("product_id")
     try:
         user_store_level = request.store_level
         user_store_id = request.store_id
@@ -92,7 +93,7 @@ def get_inventory_records():
 
         target_store = store_id_param if is_admin else user_store_id
 
-        records = get_inventory_history(target_store, start_date, end_date, sale_staff, buyer)
+        records = get_inventory_history(target_store, start_date, end_date, sale_staff, buyer, product_id)
         return jsonify(records)
     except Exception as e:
         print(e)
@@ -219,11 +220,12 @@ def export_inventory():
         sale_staff = request.args.get('sale_staff')
         buyer = request.args.get('buyer')
         detail = request.args.get('detail')
+        product_id = request.args.get('product_id')
 
         target_store = None if is_admin and not store_id_param else (store_id_param or user_store_id)
 
         if detail:
-            inventory_data = get_inventory_history(target_store, start_date, end_date, sale_staff, buyer)
+            inventory_data = get_inventory_history(target_store, start_date, end_date, sale_staff, buyer, product_id)
         else:
             inventory_data = export_inventory_data(target_store)
         

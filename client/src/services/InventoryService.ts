@@ -61,6 +61,7 @@ export const getInventoryRecords = async (params?: {
     end_date?: string;
     sale_staff?: string;
     buyer?: string;
+    productId?: number;
 }) => {
     const level = localStorage.getItem('store_level');
     const perm = localStorage.getItem('permission');
@@ -71,6 +72,7 @@ export const getInventoryRecords = async (params?: {
     if (params?.end_date) query.end_date = params.end_date;
     if (params?.sale_staff) query.sale_staff = params.sale_staff;
     if (params?.buyer) query.buyer = params.buyer;
+    if (params?.productId) query.product_id = params.productId;
     if (!isAdmin && params?.storeId !== undefined) {
         query.store_id = params.storeId;
     } else if (isAdmin && params?.storeId !== undefined) {
@@ -141,6 +143,7 @@ export const exportInventory = async (params?: {
     sale_staff?: string;
     buyer?: string;
     detail?: boolean;
+    productId?: number;
 }): Promise<Blob> => {
     const level = localStorage.getItem('store_level');
     const perm = localStorage.getItem('permission');
@@ -152,6 +155,7 @@ export const exportInventory = async (params?: {
     if (params?.sale_staff) query.sale_staff = params.sale_staff;
     if (params?.buyer) query.buyer = params.buyer;
     if (params?.detail) query.detail = params.detail;
+    if (params?.productId) query.product_id = params.productId;
 
     if (!isAdmin && params?.storeId !== undefined) {
         query.store_id = params.storeId;
