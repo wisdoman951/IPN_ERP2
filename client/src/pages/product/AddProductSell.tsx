@@ -256,9 +256,10 @@ const AddProductSell: React.FC = () => {
       localStorage.removeItem('productSellFormState');
       localStorage.removeItem('selectedProducts');
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("新增產品銷售失敗:", err);
-      setError(err.response?.data?.error || err.message || "新增產品銷售失敗，請檢查輸入並重試。");
+      const error = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(error.response?.data?.error || error.message || "新增產品銷售失敗，請檢查輸入並重試。");
       return false;
     } finally {
       setLoading(false);
@@ -299,6 +300,7 @@ const AddProductSell: React.FC = () => {
         staffId: selectedStaffId,
       };
       localStorage.setItem('preSaleData', JSON.stringify(preSaleData));
+      alert("銷售資料已儲存，跳轉至列印頁面。");
       navigate('/finance/sales/add');
     }
   };
