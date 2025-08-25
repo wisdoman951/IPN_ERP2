@@ -117,14 +117,21 @@ def update_inventory_quantity(product_id: int, store_id: int, quantity_change: i
         return True # 數量未變，無需更新
 
     # 根據您的 inventory 表結構，這個 UPDATE 語句可能需要調整
-    # 特別是 WHERE 子句如何精確定位到要更新的庫存記錄
+    # 特別是 WHERE 子句如何精確定位到要更新的庫存記錄。
+    #
+    # 之前的實作僅使用 product_id 與 store_id 作為條件，
+    # 導致若同一產品在同一店家有多筆庫存記錄，所有紀錄都會被同時更新，
+    # 造成一次銷售扣除多次庫存的錯誤。
+    #
+    # 為了確保只調整最新的一筆庫存紀錄，加入 `ORDER BY inventory_id DESC LIMIT 1`，
+    # 只更新庫存表中最新的那一筆資料。
     update_query = """
-        UPDATE inventory SET quantity = quantity + (%s) WHERE product_id = %s AND store_id = %s
+        UPDATE inventory
+        SET quantity = quantity + (%s)
+        WHERE product_id = %s AND store_id = %s
+        ORDER BY inventory_id DESC
+        LIMIT 1
     """
-    # 為了更安全，如果您的 inventory 表 (product_id, store_id) 不是唯一鍵，
-    # 且您確實想更新最新的那條，再取消 ORDER BY ... LIMIT 1 的註解，
-    # 否則，如果有多條符合 product_id 和 store_id 的記錄，它們都會被更新，這可能不是預期的。
-    # 這裡我們先假設 (product_id, store_id) 能大致定位到要更新的庫存。
     
     try:
         print(f"Attempting to update inventory: product_id={product_id}, store_id={store_id}, change={quantity_change}")
