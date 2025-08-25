@@ -3,11 +3,18 @@ import { base_url } from "./BASE_URL";
 
 const API_URL = `${base_url}/inventory`;
 
+// 取得後端回傳的陣列資料
+const extractArray = (data: any) => {
+    if (Array.isArray(data)) return data;
+    if (Array.isArray(data?.data)) return data.data;
+    return [];
+};
+
 // 獲取所有庫存記錄
 export const getAllInventory = async (storeId?: number) => {
-    const level = localStorage.getItem('store_level');
-    const perm = localStorage.getItem('permission');
-    const isAdmin = level === '總店' || perm === 'admin';
+    const level = localStorage.getItem("store_level");
+    const perm = localStorage.getItem("permission");
+    const isAdmin = level === "總店" || perm === "admin";
 
     const params: any = {};
     if (!isAdmin && storeId !== undefined) {
@@ -17,14 +24,14 @@ export const getAllInventory = async (storeId?: number) => {
     }
 
     const response = await axios.get(`${API_URL}/list`, { params });
-    return response.data;
+    return extractArray(response.data);
 };
 
 // 搜尋庫存記錄
 export const searchInventory = async (keyword: string, storeId?: number) => {
-    const level = localStorage.getItem('store_level');
-    const perm = localStorage.getItem('permission');
-    const isAdmin = level === '總店' || perm === 'admin';
+    const level = localStorage.getItem("store_level");
+    const perm = localStorage.getItem("permission");
+    const isAdmin = level === "總店" || perm === "admin";
 
     const params: any = { keyword };
     if (!isAdmin && storeId !== undefined) {
@@ -34,7 +41,7 @@ export const searchInventory = async (keyword: string, storeId?: number) => {
     }
 
     const response = await axios.get(`${API_URL}/search`, { params });
-    return response.data;
+    return extractArray(response.data);
 };
 
 // 獲取庫存記錄詳情
@@ -71,7 +78,7 @@ export const getInventoryRecords = async (params?: {
     }
 
     const response = await axios.get(`${API_URL}/records`, { params: query });
-    return response.data;
+    return extractArray(response.data);
 };
 
 // 更新庫存記錄
@@ -117,13 +124,13 @@ export const getLowStockItems = async (storeId?: number) => {
     }
 
     const response = await axios.get(`${API_URL}/low-stock`, { params });
-    return response.data;
+    return extractArray(response.data);
 };
 
 // 獲取所有產品(用於新增庫存)
 export const getAllProducts = async () => {
     const response = await axios.get(`${API_URL}/products`);
-    return response.data;
+    return extractArray(response.data);
 };
 
 // 匯出庫存數據
