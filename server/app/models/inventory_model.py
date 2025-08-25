@@ -16,7 +16,7 @@ def get_all_inventory(store_id=None):
                     MAX(i.inventory_id) AS Inventory_ID,
                     p.product_id AS Product_ID,
                     p.name AS ProductName,
-                    p.code AS ProductCode, 
+                    p.code AS ProductCode,
                     SUM(i.quantity) AS StockQuantity,
                     SUM(IFNULL(i.stock_in, 0)) AS StockIn,
                     SUM(IFNULL(i.stock_out, 0)) AS StockOut,
@@ -25,16 +25,21 @@ def get_all_inventory(store_id=None):
                     st.store_name AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
                     COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
+                    MAX(sales.last_sold) AS LastSoldTime,
                     MAX(i.date) AS StockInTime
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
                 LEFT JOIN (
-                    SELECT product_id AS item_id, store_id, SUM(quantity) AS total_sold
+                    SELECT product_id AS item_id, store_id,
+                           SUM(quantity) AS total_sold,
+                           MAX(date) AS last_sold
                     FROM product_sell
                     GROUP BY product_id, store_id
                     UNION ALL
-                    SELECT therapy_id AS item_id, store_id, SUM(amount) AS total_sold
+                    SELECT therapy_id AS item_id, store_id,
+                           SUM(amount) AS total_sold,
+                           MAX(date) AS last_sold
                     FROM therapy_sell
                     GROUP BY therapy_id, store_id
                 ) sales ON sales.item_id = i.product_id AND sales.store_id = i.store_id
@@ -52,6 +57,11 @@ def get_all_inventory(store_id=None):
                 stock_in = row.get('StockIn') or 0
                 stock_qty = row.get('StockQuantity') or 0
                 row['StockOut'] = stock_in - stock_qty
+                last_sold = row.get('LastSoldTime') or row.get('StockInTime')
+                if isinstance(last_sold, datetime):
+                    row['UnsoldDays'] = (datetime.now() - last_sold).days
+                else:
+                    row['UnsoldDays'] = None
             return result
     except Exception as e:
         print(f"獲取庫存記錄錯誤: {e}")
@@ -68,8 +78,8 @@ def search_inventory(keyword, store_id=None):
                 SELECT
                     MAX(i.inventory_id) AS Inventory_ID,
                     p.product_id AS Product_ID,
-                    p.name AS ProductName, 
-                    p.code AS ProductCode, 
+                    p.name AS ProductName,
+                    p.code AS ProductCode,
                     SUM(i.quantity) AS StockQuantity,
                     SUM(IFNULL(i.stock_in, 0)) AS StockIn,
                     SUM(IFNULL(i.stock_out, 0)) AS StockOut,
@@ -78,16 +88,21 @@ def search_inventory(keyword, store_id=None):
                     st.store_name AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
                     COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
+                    MAX(sales.last_sold) AS LastSoldTime,
                     MAX(i.date) AS StockInTime
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
                 LEFT JOIN (
-                    SELECT product_id AS item_id, store_id, SUM(quantity) AS total_sold
+                    SELECT product_id AS item_id, store_id,
+                           SUM(quantity) AS total_sold,
+                           MAX(date) AS last_sold
                     FROM product_sell
                     GROUP BY product_id, store_id
                     UNION ALL
-                    SELECT therapy_id AS item_id, store_id, SUM(amount) AS total_sold
+                    SELECT therapy_id AS item_id, store_id,
+                           SUM(amount) AS total_sold,
+                           MAX(date) AS last_sold
                     FROM therapy_sell
                     GROUP BY therapy_id, store_id
                 ) sales ON sales.item_id = i.product_id AND sales.store_id = i.store_id
@@ -106,6 +121,11 @@ def search_inventory(keyword, store_id=None):
                 stock_in = row.get('StockIn') or 0
                 stock_qty = row.get('StockQuantity') or 0
                 row['StockOut'] = stock_in - stock_qty
+                last_sold = row.get('LastSoldTime') or row.get('StockInTime')
+                if isinstance(last_sold, datetime):
+                    row['UnsoldDays'] = (datetime.now() - last_sold).days
+                else:
+                    row['UnsoldDays'] = None
             return result
     except Exception as e:
         print(f"搜尋庫存記錄錯誤: {e}")

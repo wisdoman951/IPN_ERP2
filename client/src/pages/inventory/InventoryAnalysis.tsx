@@ -18,6 +18,7 @@ interface InventoryItem {
   StockQuantity: number;
   StockThreshold: number;
   SoldQuantity: number;
+  UnsoldDays?: number;
 }
 
 const InventoryAnalysis: React.FC = () => {
@@ -163,42 +164,52 @@ const InventoryAnalysis: React.FC = () => {
               </td>
             </tr>
           ) : items.length > 0 ? (
-            items.map((item) => (
-              <tr
-                key={item.Inventory_ID}
-                className={
-                  item.StockQuantity === 0
-                    ? "table-danger"
-                    : item.StockQuantity <= (thresholdMap[item.Inventory_ID] ?? 0)
-                    ? "table-warning"
-                    : ""
-                }
-              >
-                <td>{item.ProductName}</td>
-                <td className="text-end">{item.StockQuantity}</td>
-                <td>
-                  <div className="d-flex align-items-center">
-                    <Form.Control
-                      type="number"
-                      size="sm"
-                      style={{ maxWidth: "80px" }}
-                      value={thresholdMap[item.Inventory_ID] ?? 0}
-                      onChange={(e) => handleThresholdChange(item.Inventory_ID, e.target.value)}
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="ms-2"
-                      onClick={() => saveThreshold(item.Inventory_ID)}
-                    >
-                      保存
-                    </Button>
-                  </div>
-                </td>
-                <td className="text-end">{item.SoldQuantity ?? 0}</td>
-                <td></td>
-              </tr>
-            ))
+            items.map((item) => {
+              const unsold = item.UnsoldDays ?? 0;
+              const status =
+                unsold > 90
+                  ? { cls: "bg-danger text-white", text: `超過${unsold}天未銷售` }
+                  : unsold >= 30
+                  ? { cls: "bg-warning", text: `超過${unsold}天未銷售` }
+                  : { cls: "bg-success text-white", text: "30天內有銷售" };
+
+              return (
+                <tr
+                  key={item.Inventory_ID}
+                  className={
+                    item.StockQuantity === 0
+                      ? "table-danger"
+                      : item.StockQuantity <= (thresholdMap[item.Inventory_ID] ?? 0)
+                      ? "table-warning"
+                      : ""
+                  }
+                >
+                  <td>{item.ProductName}</td>
+                  <td className="text-end">{item.StockQuantity}</td>
+                  <td>
+                    <div className="d-flex align-items-center">
+                      <Form.Control
+                        type="number"
+                        size="sm"
+                        style={{ maxWidth: "80px" }}
+                        value={thresholdMap[item.Inventory_ID] ?? 0}
+                        onChange={(e) => handleThresholdChange(item.Inventory_ID, e.target.value)}
+                      />
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="ms-2"
+                        onClick={() => saveThreshold(item.Inventory_ID)}
+                      >
+                        保存
+                      </Button>
+                    </div>
+                  </td>
+                  <td className="text-end">{item.SoldQuantity ?? 0}</td>
+                  <td className={status.cls}>{status.text}</td>
+                </tr>
+              );
+            })
           ) : (
             <tr>
               <td colSpan={5} className="text-center text-muted py-5">
