@@ -27,6 +27,7 @@ export interface TherapySellRow { // 更改 interface 名稱以避免與組件�
     StaffName: string;      // 銷售人員
     SaleCategory?: string;  // 銷售類別 (有些 API 可能返回 sale_category)
     Note?: string;          // 備註 - API 需返回此欄位
+    UnitPrice?: number;     // 單價
     therapy_id?: number;    // 對應的療程 ID
 }
 

@@ -54,6 +54,7 @@ export interface AddTherapySellPayload {
   transferCode?: string;
   cardNumber?: string;
   discount?: number;       // 折扣百分比 (針對此療程項目，或整筆訂單的，需與後端協調)
+  finalPrice?: number;     // 最終價格
   note?: string;
 }
 
@@ -73,6 +74,7 @@ export interface TherapySellRow {
     // 以下是後端 get_all_therapy_sells 返回的其他欄位，按需加入
     TherapyCode?: string;
     Staff_ID?: number;
+    UnitPrice?: number;
     store_name?: string;
     store_id?: number;
     therapy_id?: number;

@@ -219,6 +219,7 @@ const AddTherapySell: React.FC = () => {
         if (packagesOriginalTotal > 0 && formData.discountAmount > 0) {
           itemDiscount = parseFloat((formData.discountAmount).toFixed(2));
         }
+        const itemFinalPrice = itemTotal - itemDiscount;
         const payload = {
           memberId: Number(formData.memberId),
           therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
@@ -232,6 +233,7 @@ const AddTherapySell: React.FC = () => {
           transferCode: formData.paymentMethod === '轉帳' ? formData.transferCode : undefined,
           cardNumber: formData.paymentMethod === '信用卡' ? formData.cardNumber : undefined,
           discount: itemDiscount,
+          finalPrice: itemFinalPrice,
           note: formData.note,
         };
         await updateTherapySell(editSale.Order_ID, payload);
@@ -243,6 +245,7 @@ const AddTherapySell: React.FC = () => {
             const proportion = itemTotal / packagesOriginalTotal;
             itemDiscount = parseFloat((formData.discountAmount * proportion).toFixed(2));
           }
+          const itemFinalPrice = itemTotal - itemDiscount;
           return {
             memberId: Number(formData.memberId),
             therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
@@ -256,6 +259,7 @@ const AddTherapySell: React.FC = () => {
             transferCode: formData.paymentMethod === '轉帳' ? formData.transferCode : undefined,
             cardNumber: formData.paymentMethod === '信用卡' ? formData.cardNumber : undefined,
             discount: itemDiscount,
+            finalPrice: itemFinalPrice,
             note: formData.note,
           };
         });

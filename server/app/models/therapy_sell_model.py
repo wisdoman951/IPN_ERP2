@@ -56,17 +56,18 @@ def get_all_therapy_sells(store_id=None):
         with conn.cursor() as cursor:
             # 這段 SQL 查詢是您檔案中原有的，我們保持不變
             query = """
-                SELECT ts.therapy_sell_id as Order_ID, 
-                       m.member_id as Member_ID, 
-                       m.name as MemberName, 
+                SELECT ts.therapy_sell_id as Order_ID,
+                       m.member_id as Member_ID,
+                       m.name as MemberName,
                        ts.date as PurchaseDate,
-                       t.name as PackageName, 
-                       t.code as TherapyCode, 
+                       t.name as PackageName,
+                       t.code as TherapyCode,
                        ts.amount as Sessions,
+                       ts.final_price as Price,
                        ts.payment_method as PaymentMethod,
                        s.name as StaffName,
                        ts.sale_category as SaleCategory,
-                       t.price as Price,
+                       t.price as UnitPrice,
                        ts.note as Note,
                        ts.staff_id as Staff_ID,
                        st.store_name as store_name,
@@ -116,10 +117,11 @@ def search_therapy_sells(keyword, store_id=None):
                        t.name as PackageName,
                        t.code as TherapyCode,
                        ts.amount as Sessions,
+                       ts.final_price as Price,
                        ts.payment_method as PaymentMethod,
                        s.name as StaffName,
                        ts.sale_category as SaleCategory,
-                       t.price as Price,
+                       t.price as UnitPrice,
                        ts.staff_id as Staff_ID,
                        st.store_name as store_name,
                        ts.store_id as store_id,
@@ -179,10 +181,10 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                 """
                     INSERT INTO therapy_sell (
                         therapy_id, member_id, store_id, staff_id, date,
-                        amount, discount, payment_method, sale_category, note
+                        amount, discount, final_price, payment_method, sale_category, note
                     ) VALUES (
                         %(therapy_id)s, %(member_id)s, %(store_id)s, %(staff_id)s, %(date)s,
-                        %(amount)s, %(discount)s, %(payment_method)s, %(sale_category)s, %(note)s
+                        %(amount)s, %(discount)s, %(final_price)s, %(payment_method)s, %(sale_category)s, %(note)s
                     )
                 """
             )
@@ -219,6 +221,10 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "sale_category": data_item.get("saleCategory"),
                             "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]"
                         }
+                        cursor.execute("SELECT price FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
+                        price_row = cursor.fetchone()
+                        unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
+                        item_values["final_price"] = unit_price * item_values["amount"] - item_values["discount"]
                         logging.debug(
                             f"--- [MODEL] Values for SQL for bundle item {index + 1}: {item_values}"
                         )
@@ -242,6 +248,10 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     "sale_category": data_item.get("saleCategory"),
                     "note": data_item.get("note", "")
                 }
+                cursor.execute("SELECT price FROM therapy WHERE therapy_id = %s", (values_dict["therapy_id"],))
+                price_row = cursor.fetchone()
+                unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
+                values_dict["final_price"] = unit_price * values_dict["amount"] - values_dict["discount"]
                 logging.debug(f"--- [MODEL] Values for SQL for item {index + 1}: {values_dict}")
                 cursor.execute(insert_query, values_dict)
                 created_ids.append(cursor.lastrowid)
@@ -351,10 +361,15 @@ def update_therapy_sell(sale_id, data):
                 else:
                     note = f"療程代碼: {data.get('therapyPackageId')} (未找到對應療程), " + note
                     
+            cursor.execute("SELECT price FROM therapy WHERE therapy_id = %s", (therapy_id,))
+            price_row = cursor.fetchone()
+            unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
+            final_price = unit_price * sessions - discount
+
             query = """
                 UPDATE therapy_sell
                 SET member_id = %s, store_id = %s, staff_id = %s,
-                    date = %s, amount = %s, discount = %s, 
+                    date = %s, amount = %s, discount = %s, final_price = %s,
                     payment_method = %s, sale_category = %s, therapy_id = %s, note = %s
                 WHERE therapy_sell_id = %s
             """
@@ -365,6 +380,7 @@ def update_therapy_sell(sale_id, data):
                 purchase_date,
                 sessions,
                 discount,
+                final_price,
                 payment_method,
                 sale_category,
                 therapy_id,

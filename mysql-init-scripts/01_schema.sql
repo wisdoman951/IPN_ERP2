@@ -560,6 +560,7 @@ CREATE TABLE `therapy_sell` (
   `date` date DEFAULT NULL,
   `amount` int DEFAULT NULL,
   `discount` decimal(10,2) DEFAULT NULL,
+  `final_price` decimal(10,2) NOT NULL DEFAULT '0.00',
   `payment_method` enum('Cash','CreditCard','Transfer','Pending','MobilePayment','Others') COLLATE utf8mb4_unicode_ci DEFAULT 'Cash',
   `sale_category` enum('Sell','Gift','Discount','Ticket') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `note` text COLLATE utf8mb4_unicode_ci,

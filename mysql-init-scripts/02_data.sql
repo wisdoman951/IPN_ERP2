@@ -178,17 +178,17 @@ INSERT INTO `inventory` (`product_id`, `staff_id`, `date`, `quantity`, `stock_in
 (9, 9, '2023-05-01', 40, 9, 3, 0, 9, 30),
 (10, 10, '2023-05-15', 15, 1, 0, 0, 10, 5);
 
-INSERT INTO `therapy_sell` (`therapy_id`, `member_id`, `store_id`, `staff_id`, `date`, `amount`, `discount`, `payment_method`, `sale_category`, `note`) VALUES
-(1, 1, 1, 1, '2023-01-15', 20, 0, 'Cash', 'Sell', ''),
-(2, 2, 2, 2, '2023-01-20', 20, 300, 'CreditCard', 'Sell', ''),
-(3, 3, 3, 3, '2023-02-05', 20, 0, 'Cash', 'Sell', ''),
-(4, 4, 4, 4, '2023-02-10', 20, 200, 'Cash', 'Sell', ''),
-(5, 5, 5, 5, '2023-03-01', 20, 500, 'Cash', 'Sell', ''),
-(6, 6, 6, 6, '2023-03-20', 20, 0, 'Cash', 'Sell', ''),
-(7, 7, 7, 7, '2023-04-05', 20, 300, 'Cash', 'Sell', ''),
-(8, 8, 8, 8, '2023-04-15', 20, 400, 'Cash', 'Sell', ''),
-(9, 9, 9, 9, '2023-05-01', 20, 600, 'Cash', 'Sell', ''),
-(10, 10, 10, 10, '2023-05-15', 20, 0, 'Cash', 'Sell', '');
+INSERT INTO `therapy_sell` (`therapy_id`, `member_id`, `store_id`, `staff_id`, `date`, `amount`, `discount`, `final_price`, `payment_method`, `sale_category`, `note`) VALUES
+(1, 1, 1, 1, '2023-01-15', 20, 0, 56000.00, 'Cash', 'Sell', ''),
+(2, 2, 2, 2, '2023-01-20', 20, 300, 35700.00, 'CreditCard', 'Sell', ''),
+(3, 3, 3, 3, '2023-02-05', 20, 0, 30000.00, 'Cash', 'Sell', ''),
+(4, 4, 4, 4, '2023-02-10', 20, 200, 49800.00, 'Cash', 'Sell', ''),
+(5, 5, 5, 5, '2023-03-01', 20, 500, 63500.00, 'Cash', 'Sell', ''),
+(6, 6, 6, 6, '2023-03-20', 20, 0, 70000.00, 'Cash', 'Sell', ''),
+(7, 7, 7, 7, '2023-04-05', 20, 300, 23700.00, 'Cash', 'Sell', ''),
+(8, 8, 8, 8, '2023-04-15', 20, 400, 31600.00, 'Cash', 'Sell', ''),
+(9, 9, 9, 9, '2023-05-01', 20, 600, 43400.00, 'Cash', 'Sell', ''),
+(10, 10, 10, 10, '2023-05-15', 20, 0, 40000.00, 'Cash', 'Sell', '');
 
 INSERT INTO `therapy_record` (`therapy_id`, `member_id`, `store_id`, `staff_id`, `date`, `note`, `deduct_sessions`, `remaining_sessions_at_time`) VALUES
 (1, 1, 1, 1, '2023-01-20', '客戶反應良好，肩頸壓力明顯舒緩', 1, 19),
