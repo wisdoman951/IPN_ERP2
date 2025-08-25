@@ -24,7 +24,7 @@ def get_all_inventory(store_id=None):
                     MAX(i.store_id) AS Store_ID,
                     st.store_name AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
-                    COALESCE(sales.total_sold, 0) AS SoldQuantity,
+                    COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
                     MAX(i.date) AS StockInTime
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
@@ -77,7 +77,7 @@ def search_inventory(keyword, store_id=None):
                     MAX(i.store_id) AS Store_ID,
                     st.store_name AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
-                    COALESCE(sales.total_sold, 0) AS SoldQuantity,
+                    COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
                     MAX(i.date) AS StockInTime
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
@@ -191,7 +191,7 @@ def get_low_stock_inventory(store_id=None):
                     MAX(i.store_id) AS Store_ID,
                     st.store_name AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
-                    COALESCE(sales.total_sold, 0) AS SoldQuantity,
+                    COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
                     MAX(i.date) AS StockInTime
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
