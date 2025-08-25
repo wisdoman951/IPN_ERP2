@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Button, Container, Row, Col, Form, Alert, Spinner } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import ScrollableTable from "../../components/ScrollableTable";
@@ -27,6 +27,7 @@ interface InventoryItem {
 
 const InventorySearch: React.FC = () => {
     const navigate = useNavigate();
+    const location = useLocation();
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [keyword, setKeyword] = useState("");
@@ -58,7 +59,7 @@ const InventorySearch: React.FC = () => {
     // 載入庫存資料
     useEffect(() => {
         fetchInventoryData();
-    }, []);
+    }, [location.key]);
 
     // 獲取所有庫存資料
     const fetchInventoryData = async () => {
