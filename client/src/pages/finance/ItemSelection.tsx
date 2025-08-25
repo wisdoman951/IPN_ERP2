@@ -137,8 +137,8 @@ const ItemSelection: React.FC = () => {
                 </Col>
             </Row>
             <div className="d-flex justify-content-end mt-3 gap-2">
-                <Button variant="secondary" onClick={() => navigate('/finance/sales/add')}>取消</Button>
-                <Button variant="primary" onClick={handleConfirm} disabled={selectedItems.length === 0}>確認選取</Button>
+                <Button variant="info" className="text-white" onClick={() => navigate('/finance/sales/add')}>取消</Button>
+                <Button variant="info" className="text-white" onClick={handleConfirm} disabled={selectedItems.length === 0}>確認選取</Button>
             </div>
         </Container>
     );
