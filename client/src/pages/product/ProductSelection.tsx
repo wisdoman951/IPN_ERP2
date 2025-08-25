@@ -274,9 +274,9 @@ const ProductSelection: React.FC = () => {
                   )}
                 </Form.Select>
                 <Button
-                  variant="secondary"
+                  variant="info"
                   size="sm"
-                  className="mt-2"
+                  className="text-white"
                   onClick={openInventorySearch}
                 >
                   庫存查詢
