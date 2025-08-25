@@ -17,6 +17,7 @@ interface InventoryItem {
   ProductName: string;
   StockQuantity: number;
   StockThreshold: number;
+  SoldQuantity: number;
 }
 
 const InventoryAnalysis: React.FC = () => {
@@ -194,7 +195,7 @@ const InventoryAnalysis: React.FC = () => {
                     </Button>
                   </div>
                 </td>
-                <td></td>
+                <td className="text-end">{item.SoldQuantity ?? 0}</td>
                 <td></td>
               </tr>
             ))
