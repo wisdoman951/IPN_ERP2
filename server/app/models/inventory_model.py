@@ -24,16 +24,20 @@ def get_all_inventory(store_id=None):
                     MAX(i.store_id) AS Store_ID,
                     st.store_name AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
-                    COALESCE(ps.total_sold, 0) AS SoldQuantity,
+                    COALESCE(sales.total_sold, 0) AS SoldQuantity,
                     MAX(i.date) AS StockInTime
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
                 LEFT JOIN (
-                    SELECT product_id, store_id, SUM(quantity) AS total_sold
+                    SELECT product_id AS item_id, store_id, SUM(quantity) AS total_sold
                     FROM product_sell
                     GROUP BY product_id, store_id
-                ) ps ON ps.product_id = i.product_id AND ps.store_id = i.store_id
+                    UNION ALL
+                    SELECT therapy_id AS item_id, store_id, SUM(amount) AS total_sold
+                    FROM therapy_sell
+                    GROUP BY therapy_id, store_id
+                ) sales ON sales.item_id = i.product_id AND sales.store_id = i.store_id
             """
             params = []
             if store_id:
@@ -73,16 +77,20 @@ def search_inventory(keyword, store_id=None):
                     MAX(i.store_id) AS Store_ID,
                     st.store_name AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
-                    COALESCE(ps.total_sold, 0) AS SoldQuantity,
+                    COALESCE(sales.total_sold, 0) AS SoldQuantity,
                     MAX(i.date) AS StockInTime
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
                 LEFT JOIN (
-                    SELECT product_id, store_id, SUM(quantity) AS total_sold
+                    SELECT product_id AS item_id, store_id, SUM(quantity) AS total_sold
                     FROM product_sell
                     GROUP BY product_id, store_id
-                ) ps ON ps.product_id = i.product_id AND ps.store_id = i.store_id
+                    UNION ALL
+                    SELECT therapy_id AS item_id, store_id, SUM(amount) AS total_sold
+                    FROM therapy_sell
+                    GROUP BY therapy_id, store_id
+                ) sales ON sales.item_id = i.product_id AND sales.store_id = i.store_id
                 WHERE (p.name LIKE %s OR p.code LIKE %s)
             """
             params = [f"%{keyword}%", f"%{keyword}%"]
@@ -183,16 +191,20 @@ def get_low_stock_inventory(store_id=None):
                     MAX(i.store_id) AS Store_ID,
                     st.store_name AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
-                    COALESCE(ps.total_sold, 0) AS SoldQuantity,
+                    COALESCE(sales.total_sold, 0) AS SoldQuantity,
                     MAX(i.date) AS StockInTime
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
                 LEFT JOIN (
-                    SELECT product_id, store_id, SUM(quantity) AS total_sold
+                    SELECT product_id AS item_id, store_id, SUM(quantity) AS total_sold
                     FROM product_sell
                     GROUP BY product_id, store_id
-                ) ps ON ps.product_id = i.product_id AND ps.store_id = i.store_id
+                    UNION ALL
+                    SELECT therapy_id AS item_id, store_id, SUM(amount) AS total_sold
+                    FROM therapy_sell
+                    GROUP BY therapy_id, store_id
+                ) sales ON sales.item_id = i.product_id AND sales.store_id = i.store_id
             """
             params = []
             if store_id:
@@ -241,11 +253,6 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None, sale_st
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN staff s ON i.staff_id = s.staff_id
                 LEFT JOIN store st ON i.store_id = st.store_id
-                LEFT JOIN (
-                    SELECT product_id, store_id, SUM(quantity) AS total_sold
-                    FROM product_sell
-                    GROUP BY product_id, store_id
-                ) ps ON ps.product_id = i.product_id AND ps.store_id = i.store_id
             """
             params = []
             conditions = []
