@@ -263,12 +263,13 @@ const InventorySearch: React.FC = () => {
                                 <th className="text-end">庫存量</th>
                                 <th className="text-end">庫存預警值</th>
                                 <th>入庫時間</th>
+                                <th>詳細</th>
                             </tr>
                         }
                         tableBody={
                             loading ? (
                                 <tr>
-                                    <td colSpan={9} className="text-center py-4">
+                                    <td colSpan={10} className="text-center py-4">
                                         <Spinner animation="border" variant="info" />
                                         <p>載入中...</p>
                                     </td>
@@ -291,11 +292,20 @@ const InventorySearch: React.FC = () => {
                                         <td className="text-end">{item.StockQuantity}</td>
                                         <td className="text-end">{item.StockThreshold}</td>
                                         <td>{formatDate(item.StockInTime)}</td>
+                                        <td>
+                                            <Button
+                                                variant="link"
+                                                className="p-0"
+                                                onClick={() => navigate(`/inventory/inventory-detail?productId=${item.Product_ID}&productName=${encodeURIComponent(item.ProductName)}`)}
+                                            >
+                                                查看詳細入庫資訊
+                                            </Button>
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={9} className="text-center text-muted py-5">
+                                    <td colSpan={10} className="text-center text-muted py-5">
                                         尚無資料
                                     </td>
                                 </tr>

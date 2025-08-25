@@ -4,7 +4,7 @@ import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import { getInventoryRecords, exportInventory } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 const formatDate = (d: string) => {
   const dt = new Date(d);
@@ -30,6 +30,9 @@ interface RecordRow {
 
 const InventoryDetail: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const productId = searchParams.get("productId");
+  const productName = searchParams.get("productName");
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [startDate, setStartDate] = useState("");
@@ -43,6 +46,7 @@ const InventoryDetail: React.FC = () => {
       end_date: endDate || undefined,
       sale_staff: saleStaff || undefined,
       buyer: buyer || undefined,
+      productId: productId ? Number(productId) : undefined,
     }).then((res) => setRecords(res));
   };
 
@@ -54,6 +58,7 @@ const InventoryDetail: React.FC = () => {
         sale_staff: saleStaff || undefined,
         buyer: buyer || undefined,
         detail: true,
+        productId: productId ? Number(productId) : undefined,
       });
       downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
@@ -64,11 +69,11 @@ const InventoryDetail: React.FC = () => {
 
   useEffect(() => {
     handleSearch();
-  }, []);
+  }, [productId]);
 
   const content = (
     <Container fluid className="p-4">
-      <h5 className="text-danger mb-3">資料連動總部出貨、分店銷售</h5>
+      <h5 className="text-danger mb-3">{productName ? `${productName} 詳細入庫資訊` : "資料連動總部出貨、分店銷售"}</h5>
 
       {/* 搜尋列 */}
       <Row className="align-items-center mb-3 g-2">

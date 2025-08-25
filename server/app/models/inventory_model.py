@@ -222,8 +222,9 @@ def get_low_stock_inventory(store_id=None):
     finally:
         conn.close()
 
-def get_inventory_history(store_id=None, start_date=None, end_date=None, sale_staff=None, buyer=None):
-    """獲取庫存進出明細，可依店鋪、日期區間、銷售人與購買人篩選。
+def get_inventory_history(store_id=None, start_date=None, end_date=None,
+                          sale_staff=None, buyer=None, product_id=None):
+    """獲取庫存進出明細，可依店鋪、日期區間、銷售人、購買人與產品篩選。
     為了同時呈現銷售(產品與療程)造成的庫存變化，
     此函式會合併 inventory、product_sell 以及 therapy_sell 的紀錄。"""
     conn = connect_to_db()
@@ -265,6 +266,9 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None, sale_st
             if end_date:
                 conditions.append("i.date <= %s")
                 params.append(end_date)
+            if product_id:
+                conditions.append("i.product_id = %s")
+                params.append(product_id)
             if conditions:
                 base_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(base_q, params)
@@ -310,6 +314,9 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None, sale_st
             if buyer:
                 conditions.append("mb.name LIKE %s")
                 params.append(f"%{buyer}%")
+            if product_id:
+                conditions.append("ps.product_id = %s")
+                params.append(product_id)
             if conditions:
                 prod_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(prod_q, params)
@@ -355,6 +362,9 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None, sale_st
             if buyer:
                 conditions.append("mb.name LIKE %s")
                 params.append(f"%{buyer}%")
+            if product_id:
+                conditions.append("ts.therapy_id = %s")
+                params.append(product_id)
             if conditions:
                 therapy_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(therapy_q, params)
