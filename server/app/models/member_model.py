@@ -236,10 +236,27 @@ def get_next_member_code(store_id: int):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = (
-                "SELECT member_code FROM member WHERE store_id = %s "
-                "ORDER BY member_id DESC LIMIT 1"
-            )
+            if store_id == 2:
+                # Only consider codes like M0001, M0002... and order by numeric part
+                query = (
+                    "SELECT member_code FROM member WHERE store_id = %s "
+                    "AND member_code REGEXP '^M[0-9]{4}$' "
+                    "ORDER BY CAST(SUBSTRING(member_code, 2) AS UNSIGNED) DESC LIMIT 1"
+                )
+            elif store_id in (3, 4, 5):
+                # Pure numeric codes (some with leading zeros). Order numerically.
+                query = (
+                    "SELECT member_code FROM member WHERE store_id = %s "
+                    "AND member_code REGEXP '^[0-9]+$' "
+                    "ORDER BY CAST(member_code AS UNSIGNED) DESC LIMIT 1"
+                )
+            else:
+                # Default ordering by code string
+                query = (
+                    "SELECT member_code FROM member WHERE store_id = %s "
+                    "ORDER BY member_code DESC LIMIT 1"
+                )
+
             cursor.execute(query, (store_id,))
             last_member = cursor.fetchone()
             last_code = last_member.get('member_code') if last_member else None
