@@ -44,6 +44,10 @@ def get_all_inventory(store_id=None):
 
             cursor.execute(query, params)
             result = cursor.fetchall()
+            for row in result:
+                stock_in = row.get('StockIn') or 0
+                stock_qty = row.get('StockQuantity') or 0
+                row['StockOut'] = stock_in - stock_qty
             return result
     except Exception as e:
         print(f"獲取庫存記錄錯誤: {e}")
@@ -90,6 +94,10 @@ def search_inventory(keyword, store_id=None):
 
             cursor.execute(query, params)
             result = cursor.fetchall()
+            for row in result:
+                stock_in = row.get('StockIn') or 0
+                stock_qty = row.get('StockQuantity') or 0
+                row['StockOut'] = stock_in - stock_qty
             return result
     except Exception as e:
         print(f"搜尋庫存記錄錯誤: {e}")
