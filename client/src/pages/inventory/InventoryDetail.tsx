@@ -186,7 +186,7 @@ const InventoryDetail: React.FC = () => {
                 return;
               }
               if (selectedId >= 1000000) {
-                alert('銷售資料無法做更動\n銷售資料要做更動請至銷售產品/銷售療程做修改');
+                alert('銷售資料無法更動，更動請至銷售產品/銷售療程進行修改。');
                 return;
               }
               navigate(`/inventory/inventory-update?id=${selectedId}`);
