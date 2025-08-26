@@ -166,9 +166,6 @@ const ProductSelection: React.FC = () => {
     if (quantity < 1) return;
     const newSelectedProducts = [...selectedProducts];
     const product = newSelectedProducts[index];
-    if (product.type === 'product' && product.stock_quantity !== undefined && quantity > product.stock_quantity) {
-      quantity = product.stock_quantity;
-    }
     newSelectedProducts[index] = { ...product, quantity };
     setSelectedProducts(newSelectedProducts);
   };
@@ -180,13 +177,6 @@ const ProductSelection: React.FC = () => {
     );
     if (validProducts.length === 0) {
       setError("請選擇至少一項產品並設定數量。");
-      return;
-    }
-    const invalidStockItems = validProducts.filter(item =>
-      item.type === 'product' && item.stock_quantity !== undefined && item.quantity > item.stock_quantity
-    );
-    if (invalidStockItems.length > 0) {
-      setError(`產品 "${invalidStockItems[0].name}" 的庫存不足 (剩餘: ${invalidStockItems[0].stock_quantity})。`);
       return;
     }
     localStorage.setItem('selectedProducts', JSON.stringify(validProducts));
@@ -299,7 +289,6 @@ const ProductSelection: React.FC = () => {
                 <Form.Control
                   type="number"
                   min="1"
-                  max={item.type === 'product' ? item.stock_quantity : undefined}
                   value={item.quantity}
                   onChange={(e) => updateQuantity(index, parseInt(e.target.value) || 1)}
                   disabled={!item.type}
