@@ -7,6 +7,7 @@ import { addInventoryItem, getInventoryById, updateInventoryItem, exportInventor
 import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
+import { getStoreName } from "../../services/AuthUtils";
 
 const InventoryEntryForm = () => {
   const navigate = useNavigate();
@@ -25,7 +26,7 @@ const InventoryEntryForm = () => {
     supplier: "",
     buyer_id: "",
     voucher: "",
-    store_name: "",
+    store_name: getStoreName() || "",
     note: ""
   });
 
@@ -45,7 +46,7 @@ const InventoryEntryForm = () => {
             supplier: data.Supplier || "",
             buyer_id: data.Buyer_ID ? String(data.Buyer_ID) : "",
             voucher: data.Voucher || "",
-            store_name: data.StoreName || "",
+            store_name: data.StoreName || getStoreName() || "",
             note: data.note ?? "",
           });
         }
