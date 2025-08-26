@@ -181,11 +181,15 @@ const InventoryDetail: React.FC = () => {
             variant="info"
             className="text-white px-4"
             onClick={() => {
-              if (selectedId) {
-                navigate(`/inventory/inventory-update?id=${selectedId}`);
-              } else {
+              if (!selectedId) {
                 alert('請先勾選要修改的資料');
+                return;
               }
+              if (selectedId >= 1000000) {
+                alert('銷售資料無法做更動\n銷售資料要做更動請至銷售產品/銷售療程做修改');
+                return;
+              }
+              navigate(`/inventory/inventory-update?id=${selectedId}`);
             }}
           >
             修改
