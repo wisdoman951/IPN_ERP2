@@ -8,6 +8,7 @@ import { SalesOrderItemData, SalesOrderPayload, addSalesOrder, getSalesOrderById
 import { getAllMembers, Member } from '../../services/MemberService';
 import { getStaffMembers, StaffMember } from '../../services/TherapyDropdownService';
 import { getStoreName } from '../../services/AuthUtils';
+import './printStyles.css';
 // 假設您有獲取會員、員工、產品、療程的服務
 // import { searchMembers } from '../../services/MemberService';
 // import { getStaffMembers } from '../../services/StaffService';
@@ -252,10 +253,10 @@ const AddSalesOrder: React.FC = () => {
                     
                     {/* 表格化項目輸入 */}
                     <div className="table-responsive">
-                        <table className="table table-bordered">
+                        <table className="table table-bordered print-table">
                             <thead>
                                 <tr>
-                                    <th>序號</th><th>編號</th><th>產品名稱/規格型號</th><th>單位</th><th>單價</th><th>數量</th><th>小計</th><th>分類</th><th>備註</th><th>操作</th>
+                                    <th>序號</th><th>編號</th><th>產品名稱/規格型號</th><th>單位</th><th>單價</th><th>數量</th><th>小計</th><th>分類</th><th>備註</th><th className="no-print">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -270,7 +271,7 @@ const AddSalesOrder: React.FC = () => {
                                         <td><Form.Control size="sm" value={item.subtotal || ""} readOnly disabled /></td>
                                         <td><Form.Control size="sm" /></td>
                                         <td><Form.Control size="sm" /></td>
-                                        <td><Button variant="outline-danger" size="sm" onClick={() => removeItem(index)}>X</Button></td>
+                                        <td className="no-print"><Button variant="outline-danger" size="sm" onClick={() => removeItem(index)}>X</Button></td>
                                     </tr>
                                 ))}
                             </tbody>
