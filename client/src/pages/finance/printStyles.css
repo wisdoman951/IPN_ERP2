@@ -1,0 +1,18 @@
+@media print {
+  /* Ensure table uses full width and wraps text */
+  .print-table {
+    width: 100%;
+    table-layout: fixed;
+  }
+  .print-table th,
+  .print-table td {
+    white-space: normal !important;
+    word-break: break-all !important;
+    padding: 4px;
+  }
+  /* Wider column for product description */
+  .print-table th:nth-child(3),
+  .print-table td:nth-child(3) {
+    width: 25%;
+  }
+}
