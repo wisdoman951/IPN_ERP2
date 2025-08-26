@@ -71,15 +71,16 @@ const AddProductSell: React.FC = () => {
       if (userRole === 'admin') {
         try {
           const data = await fetchAllStores();
-          setStores(data);
+          const uniqueStores = Array.from(new Map(data.map(s => [s.store_name, s])).values());
+          setStores(uniqueStores);
           const map: { [name: string]: number } = {};
-          data.forEach(s => { map[s.store_name] = s.store_id; });
+          uniqueStores.forEach(s => { map[s.store_name] = s.store_id; });
           nameToIdMap = map;
           setStoreNameToId(map);
           if (!localStorage.getItem('productSellFormState')) {
-            if (data.length > 0) {
-              setSelectedStore(data[0].store_name);
-              setStoreId(data[0].store_id.toString());
+            if (uniqueStores.length > 0) {
+              setSelectedStore(uniqueStores[0].store_name);
+              setStoreId(uniqueStores[0].store_id.toString());
             }
           }
         } catch (err) {

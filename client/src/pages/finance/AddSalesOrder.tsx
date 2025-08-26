@@ -229,9 +229,9 @@ const AddSalesOrder: React.FC = () => {
         }
     };
 
-    // 列印功能尚未實作，點擊僅顯示提示
+    // 列印銷售單內容
     const handlePrint = () => {
-        alert('列印功能待實現');
+        window.print();
     };
     
     // --- JSX 部分 ---
@@ -292,7 +292,7 @@ const AddSalesOrder: React.FC = () => {
                         </Col>
                     </Row>
                 </Card.Body>
-                <Card.Footer className="text-center">
+                <Card.Footer className="text-center no-print">
                     <Button variant="info" className="mx-1 text-white" onClick={handlePrint}>列印</Button>
                     <Button variant="info" className="mx-1 text-white" onClick={() => setItems([{}])}>刪除</Button>
                     <Button variant="info" className="mx-1 text-white">修改</Button>
@@ -307,7 +307,7 @@ const AddSalesOrder: React.FC = () => {
     return (
         <div className="d-flex flex-column min-vh-100 bg-light">
             <Header />
-            <DynamicContainer content={content} />
+            <DynamicContainer content={content} className="print-container" />
         </div>
     );
 };
