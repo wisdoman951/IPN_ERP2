@@ -153,7 +153,7 @@ const InventoryDetail: React.FC = () => {
                 <td></td>
                 <td>{r.Price ?? ''}</td>
                 <td>{r.quantity}</td>
-                <td>{r.Price ? r.Price * r.quantity : ''}</td>
+                <td>{r.Price ? Math.abs(r.Price * r.quantity) : ''}</td>
                 <td></td>
                 <td></td>
                 <td>{formatDate(r.Date)}</td>
