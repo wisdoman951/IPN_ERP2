@@ -25,7 +25,7 @@ interface RecordRow {
   SaleStaff?: string;
   Buyer?: string;
   Voucher?: string;
-  price?: number;
+  Price?: number;
 }
 
 const InventoryDetail: React.FC = () => {
@@ -151,9 +151,9 @@ const InventoryDetail: React.FC = () => {
                 <td>{r.Inventory_ID}</td>
                 <td>{r.Name}</td>
                 <td></td>
-                <td>{r.price ?? ''}</td>
+                <td>{r.Price ?? ''}</td>
                 <td>{r.quantity}</td>
-                <td>{r.price ? r.price * r.quantity : ''}</td>
+                <td>{r.Price ? r.Price * r.quantity : ''}</td>
                 <td></td>
                 <td></td>
                 <td>{formatDate(r.Date)}</td>
