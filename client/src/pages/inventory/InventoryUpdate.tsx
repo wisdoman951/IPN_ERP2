@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
 import { getAllStaffs, Staff } from "../../services/StaffService";
+import { getAllMembers, Member } from "../../services/MemberService";
 import { addInventoryItem, getInventoryById, updateInventoryItem, exportInventory } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -14,18 +15,24 @@ const InventoryEntryForm = () => {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [staffs, setStaffs] = useState<Staff[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
 
   const [formData, setFormData] = useState({
     product_id: "",
     quantity: "",
     date: "",
     staff_id: "",
+    supplier: "",
+    buyer_id: "",
+    voucher: "",
+    store_name: "",
     note: ""
   });
 
   useEffect(() => {
     getAllProducts().then((res) => setProducts(res));
     getAllStaffs().then((res) => setStaffs(res));
+    getAllMembers().then((res) => setMembers(res));
 
     if (editingId) {
       getInventoryById(Number(editingId)).then((data) => {
@@ -35,6 +42,10 @@ const InventoryEntryForm = () => {
             quantity: String(data.ItemQuantity ?? ""),
             date: data.StockInTime ? data.StockInTime.split("T")[0] : "",
             staff_id: String(data.Staff_ID ?? ""),
+            supplier: data.Supplier || "",
+            buyer_id: data.Buyer_ID ? String(data.Buyer_ID) : "",
+            voucher: data.Voucher || "",
+            store_name: data.StoreName || "",
             note: data.note ?? "",
           });
         }
@@ -50,7 +61,7 @@ const InventoryEntryForm = () => {
   const handleSubmit = async () => {
     try {
       if (!formData.staff_id) {
-        alert("請選擇進貨人");
+        alert("請選擇銷售人");
         return;
       }
 
@@ -60,8 +71,11 @@ const InventoryEntryForm = () => {
         stockIn: Number(formData.quantity),
         date: formData.date,
         staffId: Number(formData.staff_id),
+        supplier: formData.supplier || undefined,
+        buyerId: formData.buyer_id ? Number(formData.buyer_id) : undefined,
+        voucher: formData.voucher || undefined,
         note: formData.note
-      };
+      } as any;
 
       if (editingId) {
         await updateInventoryItem(Number(editingId), {
@@ -72,7 +86,10 @@ const InventoryEntryForm = () => {
           stock_threshold: 5,
           staff_id: Number(formData.staff_id),
           date: formData.date,
-        });
+          supplier: formData.supplier || undefined,
+          buyer_id: formData.buyer_id ? Number(formData.buyer_id) : undefined,
+          voucher: formData.voucher || undefined,
+        } as any);
         alert("更新成功");
       } else {
         await addInventoryItem(payload);
@@ -129,7 +146,7 @@ const InventoryEntryForm = () => {
             </Col>
             <Col xs={12} md={6}>
               <Form.Group controlId="quantity">
-                <Form.Label>進貨數量</Form.Label>
+                <Form.Label>數量</Form.Label>
                 <Form.Control
                   type="number"
                   name="quantity"
@@ -143,7 +160,7 @@ const InventoryEntryForm = () => {
           <Row className="mb-3">
             <Col xs={12} md={6} className="mb-3 mb-md-0">
               <Form.Group controlId="date">
-                <Form.Label>進貨日期</Form.Label>
+                <Form.Label>進出日期</Form.Label>
                 <Form.Control
                   type="date"
                   name="date"
@@ -154,13 +171,13 @@ const InventoryEntryForm = () => {
             </Col>
             <Col xs={12} md={6}>
               <Form.Group controlId="staff_id">
-                <Form.Label>進貨人</Form.Label>
+                <Form.Label>銷售人</Form.Label>
                 <Form.Select
                   name="staff_id"
                   value={formData.staff_id}
                   onChange={handleChange}
                 >
-                  <option value="">-- 選擇進貨人 --</option>
+                  <option value="">-- 選擇銷售人 --</option>
                   {Array.isArray(staffs) && staffs.map((s, index) => {
                     const key = (s as any)?.staff_id ? `staff-${(s as any).staff_id}` : `staff-fallback-${index}`;
                     const value = (s as any)?.staff_id ?? "";
@@ -172,6 +189,62 @@ const InventoryEntryForm = () => {
                     );
                   })}
                 </Form.Select>
+              </Form.Group>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col xs={12} md={6} className="mb-3 mb-md-0">
+              <Form.Group controlId="supplier">
+                <Form.Label>供貨人</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="supplier"
+                  value={formData.supplier}
+                  onChange={handleChange}
+                />
+              </Form.Group>
+            </Col>
+            <Col xs={12} md={6}>
+              <Form.Group controlId="store_name">
+                <Form.Label>出貨單位</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="store_name"
+                  value={formData.store_name}
+                  readOnly
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col xs={12} md={6} className="mb-3 mb-md-0">
+              <Form.Group controlId="buyer_id">
+                <Form.Label>購買人</Form.Label>
+                <Form.Select
+                  name="buyer_id"
+                  value={formData.buyer_id}
+                  onChange={handleChange}
+                >
+                  <option value="">-- 選擇購買人 --</option>
+                  {members.map((m) => (
+                    <option key={m.Member_ID} value={m.Member_ID}>
+                      {m.Name}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col xs={12} md={6}>
+              <Form.Group controlId="voucher">
+                <Form.Label>憑證單號</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="voucher"
+                  value={formData.voucher}
+                  onChange={handleChange}
+                />
               </Form.Group>
             </Col>
           </Row>
