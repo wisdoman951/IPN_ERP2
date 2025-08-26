@@ -104,6 +104,9 @@ def get_inventory_records():
 def get_inventory_item(inventory_id):
     """根據ID獲取庫存記錄"""
     try:
+        if inventory_id >= 1000000:
+            return jsonify({"error": "銷售資料無法做更動，銷售資料要做更動請至銷售產品/銷售療程做修改"}), 400
+
         inventory_item = get_inventory_by_id(inventory_id)
         if not inventory_item:
             return jsonify({"error": "找不到該庫存記錄"}), 404
@@ -125,6 +128,9 @@ def update_inventory(inventory_id):
     """更新庫存記錄"""
     data = request.json
     try:
+        if inventory_id >= 1000000:
+            return jsonify({"error": "銷售資料無法做更動，銷售資料要做更動請至銷售產品/銷售療程做修改"}), 400
+
         existing = get_inventory_by_id(inventory_id)
         if not existing:
             return jsonify({"error": "找不到該庫存記錄"}), 404
