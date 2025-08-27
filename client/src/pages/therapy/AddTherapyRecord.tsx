@@ -231,7 +231,7 @@ const AddTherapyRecord: React.FC = () => {
                     <Form.Group as={Col} controlId="formTherapist">
                         <Form.Label>療癒師</Form.Label>
                         <Form.Select name="staff_id" value={formData.staff_id} onChange={handleChange} required disabled={loading}>
-                            <option value="" disabled>{loading ? '載入中...' : '請選擇療程師'}</option>
+                            <option value="" disabled>{loading ? '載入中...' : '請選擇療癒師'}</option>
                             {staffList.map((staff) => (
                                 <option key={staff.staff_id} value={staff.staff_id?.toString()}>
                                     {staff.name}
