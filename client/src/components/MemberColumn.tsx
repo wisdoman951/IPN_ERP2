@@ -53,7 +53,7 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
                     // 找到會員，呼叫 onMemberChange 更新父元件的表單
                     onMemberChange(memberCode, member.name, member);
                 } else {
-                    if (onError) onError(`會員代碼 ${memberCode} 不存在`);
+                    if (onError) onError(`會員編號 ${memberCode} 不存在`);
                     onMemberChange(memberCode, "未找到會員", null);
                 }
             } catch (err) {
@@ -76,7 +76,7 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
         <Row>
             <Col md={6}>
                 <Form.Group className="mb-3">
-                    <Form.Label>會員代碼</Form.Label>
+                    <Form.Label>會員編號</Form.Label>
                     <Form.Control
                         type="text"
                         name="memberCode"
@@ -89,7 +89,7 @@ const MemberColumn: React.FC<MemberColumnProps> = ({
                         disabled={isEditMode}
                     />
                     <Form.Control.Feedback type="invalid">
-                        請輸入會員代碼
+                        請輸入會員編號
                     </Form.Control.Feedback>
                 </Form.Group>
             </Col>

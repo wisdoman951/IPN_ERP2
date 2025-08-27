@@ -241,6 +241,7 @@ const AddPureMedicalRecord: React.FC = () => {
             <MemberColumn
                 memberCode={formData.會員代碼}
                 name={formData.姓名}
+                isEditMode={false}
                 onMemberChange={handleMemberChange}
                 onError={handleError}
             />
