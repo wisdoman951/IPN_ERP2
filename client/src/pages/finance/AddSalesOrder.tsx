@@ -257,7 +257,16 @@ const AddSalesOrder: React.FC = () => {
                         <table className="table table-bordered print-table">
                             <thead>
                                 <tr>
-                                    <th>序號</th><th>編號</th><th>產品名稱/規格型號</th><th>單位</th><th>單價</th><th>數量</th><th>小計</th><th>分類</th><th>備註</th><th className="no-print">操作</th>
+                                    <th>序號</th>
+                                    <th>編號</th>
+                                    <th style={{ minWidth: '300px' }}>產品名稱/規格型號</th>
+                                    <th>單位</th>
+                                    <th>單價</th>
+                                    <th>數量</th>
+                                    <th>小計</th>
+                                    <th>分類</th>
+                                    <th>備註</th>
+                                    <th className="no-print">操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -265,12 +274,11 @@ const AddSalesOrder: React.FC = () => {
                                     <tr key={index}>
                                         <td>{index + 1}</td>
                                         <td><Form.Control size="sm" value={item.item_code || ""} readOnly /></td>
-                                        <td>
+                                        <td style={{ minWidth: '300px' }}>
                                             <Form.Control
                                                 size="sm"
                                                 value={item.item_description || ''}
                                                 onChange={e => handleItemChange(index, 'item_description', e.target.value)}
-                                                style={{ width: `${Math.max(item.item_description?.length ?? 0, 10)}ch` }}
                                             />
                                         </td>
                                         <td><Form.Control size="sm" value={item.unit || ""} onChange={e => handleItemChange(index, 'unit', e.target.value)} /></td>
