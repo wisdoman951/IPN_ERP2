@@ -58,6 +58,7 @@ def get_all_therapy_sells(store_id=None):
             query = """
                 SELECT ts.therapy_sell_id as Order_ID,
                        m.member_id as Member_ID,
+                       m.member_code as MemberCode,
                        m.name as MemberName,
                        ts.date as PurchaseDate,
                        t.name as PackageName,
@@ -112,6 +113,7 @@ def search_therapy_sells(keyword, store_id=None):
             query = """
                 SELECT ts.therapy_sell_id as Order_ID,
                        m.member_id as Member_ID,
+                       m.member_code as MemberCode,
                        m.name as MemberName,
                        ts.date as PurchaseDate,
                        t.name as PackageName,
@@ -132,7 +134,7 @@ def search_therapy_sells(keyword, store_id=None):
                 LEFT JOIN staff s ON ts.staff_id = s.staff_id
                 LEFT JOIN store st ON ts.store_id = st.store_id
                 LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
-                WHERE (m.name LIKE %s OR m.member_id LIKE %s OR s.name LIKE %s)
+                WHERE (m.name LIKE %s OR m.member_code LIKE %s OR s.name LIKE %s)
             """
             
             # 如果指定了店鋪ID，則只搜尋該店鋪的銷售記錄

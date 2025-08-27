@@ -17,7 +17,8 @@ import { formatCurrency } from "../../utils/productSellUtils"; // 借用金額�
 // 更新 interface 以符合 Figma 需求
 export interface TherapySellRow { // 更改 interface 名稱以避免與組件名衝突
     Order_ID: number;       // 內部使用 ID
-    Member_ID: number;      // 會員編號
+    Member_ID: number;      // 會員ID
+    MemberCode?: string;    // 會員編號
     MemberName: string;     // 購買人
     PurchaseDate: string;   // 購買日期
     PackageName: string;    // 購買品項 (療程名稱)
@@ -208,7 +209,7 @@ const TherapySell: React.FC = () => {
                         onChange={() => handleCheckboxChange(sale.Order_ID)}
                     />
                 </td>
-                <td className="align-middle">{sale.Member_ID || "-"}</td>
+                <td className="align-middle">{sale.MemberCode || "-"}</td>
                 <td className="align-middle">{sale.MemberName || "-"}</td>
                 <td className="align-middle">{formatDateToChinese(sale.PurchaseDate) || "-"}</td>
                 <td className="align-middle">{sale.PackageName || "-"}</td>
