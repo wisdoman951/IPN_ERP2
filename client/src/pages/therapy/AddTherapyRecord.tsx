@@ -12,7 +12,9 @@ import {
     addTherapyRecord,
     updateTherapyRecord,
 } from '../../services/TherapyService';
-import { getAllMembers, Member } from '../../services/MemberService';
+import MemberColumn from '../../components/MemberColumn';
+import { MemberData } from '../../types/medicalTypes';
+import { getMemberById } from '../../services/MedicalService';
 import { fetchRemainingSessions, fetchRemainingSessionsBulk } from '../../services/TherapySellService';
 
 interface DropdownItem {
@@ -29,6 +31,8 @@ const AddTherapyRecord: React.FC = () => {
     const recordId = locationState?.recordId;
     const [formData, setFormData] = useState({
         member_id: presetMemberId,
+        member_code: '',
+        name: '',
         staff_id: '',
         therapy_id: '',
         deduct_sessions: '1',
@@ -37,7 +41,6 @@ const AddTherapyRecord: React.FC = () => {
     });
     const [memberLocked] = useState(Boolean(presetMemberId || recordId));
 
-    const [members, setMembers] = useState<Member[]>([]);
     const [staffList, setStaffList] = useState<DropdownItem[]>([]);
     const [allTherapyList, setAllTherapyList] = useState<DropdownItem[]>([]);
     const [therapyList, setTherapyList] = useState<DropdownItem[]>([]);
@@ -56,26 +59,34 @@ const AddTherapyRecord: React.FC = () => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [membersData, staffData, therapyData] = await Promise.all([
-                    getAllMembers(),
+                const [staffData, therapyData] = await Promise.all([
                     getAllStaffForDropdown(),
                     getAllTherapiesForDropdown(),
                 ]);
 
-                setMembers(Array.isArray(membersData) ? membersData : []);
                 setStaffList(Array.isArray(staffData) ? staffData : []);
                 setAllTherapyList(Array.isArray(therapyData) ? therapyData : []);
 
                 if (recordId) {
                     const record = await getTherapyRecordById(recordId);
+                    const member = await getMemberById(record.member_id.toString());
                     setFormData({
                         member_id: record.member_id.toString(),
+                        member_code: member?.member_code || '',
+                        name: member?.name || '',
                         staff_id: record.staff_id?.toString() || '',
                         therapy_id: record.therapy_id?.toString() || '',
                         deduct_sessions: record.deduct_sessions?.toString() || '1',
                         date: record.date.split('T')[0],
                         note: record.note || '',
                     });
+                } else if (presetMemberId) {
+                    const member = await getMemberById(presetMemberId);
+                    setFormData(prev => ({
+                        ...prev,
+                        member_code: member?.member_code || '',
+                        name: member?.name || '',
+                    }));
                 }
             } catch (err) {
                 setError('載入初始資料失敗');
@@ -155,9 +166,25 @@ const AddTherapyRecord: React.FC = () => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
+    const handleMemberChange = (memberCode: string, name: string, data: MemberData | null) => {
+        setFormData(prev => ({
+            ...prev,
+            member_code: memberCode,
+            name,
+            member_id: data?.member_id ? data.member_id.toString() : '',
+        }));
+        if (error) setError('');
+    };
+
+    const handleMemberError = (msg: string) => setError(msg);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         const deduct = Number(formData.deduct_sessions);
+        if (!formData.member_id) {
+            setError('請先輸入會員編號並確認姓名');
+            return;
+        }
         if (!recordId && remainingSessions !== null && remainingSessions < deduct) {
             setError('扣除堂數大於剩餘堂數，無法新增紀錄。');
             return;
@@ -193,23 +220,13 @@ const AddTherapyRecord: React.FC = () => {
         <Container>
             {error && <Alert variant="danger">{error}</Alert>}
             <Form onSubmit={handleSubmit}>
-                <Row className="mb-3">
-                    <Form.Group as={Col} controlId="formMember">
-                        <Form.Label>會員姓名</Form.Label>
-                        <Form.Select name="member_id" value={formData.member_id} onChange={handleChange} required disabled={loading || memberLocked}>
-                            <option value="" disabled>{loading ? '載入中...' : '請選擇會員'}</option>
-                            {members.map((member) => (
-                                <option key={member.Member_ID} value={member.Member_ID}>{member.Name}</option>
-                            ))}
-                        </Form.Select>
-                    </Form.Group>
-                </Row>
-                <Row className="mb-3">
-                    <Form.Group as={Col} controlId="formMemberId">
-                        <Form.Label>會員編號</Form.Label>
-                        <Form.Control type="text" value={formData.member_id} disabled readOnly />
-                    </Form.Group>
-                </Row>
+                <MemberColumn
+                    memberCode={formData.member_code}
+                    name={formData.name}
+                    isEditMode={memberLocked}
+                    onMemberChange={handleMemberChange}
+                    onError={handleMemberError}
+                />
                 <Row className="mb-3">
                     <Form.Group as={Col} controlId="formTherapist">
                         <Form.Label>療癒師</Form.Label>

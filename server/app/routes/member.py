@@ -66,9 +66,9 @@ def create_member_route():
 
         member_code = data.get("member_code")
         if not member_code:
-            return jsonify({"error": "會員代碼為必填欄位。"}), 400
+            return jsonify({"error": "會員編號為必填欄位。"}), 400
         if check_member_code_exists(member_code):
-            return jsonify({"error": "會員代碼已存在，請使用其他代碼。"}), 400
+            return jsonify({"error": "會員編號已存在，請使用其他編號。"}), 400
 
         # --- 介紹人 ID 的驗證邏輯 ---
         inferrer_id = data.get("inferrer_id")
@@ -168,7 +168,7 @@ def export_members():
         df = pd.DataFrame(members)
         
         column_mapping = {
-            'member_id': '會員編號', 'member_code': '會員代碼', 'name': '姓名',
+            'member_id': '會員編號', 'member_code': '會員編號', 'name': '姓名',
             'birthday': '生日', 'address': '地址', 'phone': '電話', 'gender': '性別',
             'blood_type': '血型', 'line_id': 'Line ID', 'inferrer_id': '推薦人編號',
             'occupation': '職業', 'note': '備註', 'store_id': '所屬分店ID'
@@ -253,7 +253,7 @@ def check_member_exists_route(member_id):
 @member_bp.route('/check-code/<string:member_code>', methods=['GET'])
 @auth_required  # 加上認證，避免被惡意查詢
 def check_member_code_route(member_code):
-    """檢查會員代碼是否存在"""
+    """檢查會員編號是否存在"""
     try:
         exists = check_member_code_exists(member_code)
         return jsonify({"exists": exists})

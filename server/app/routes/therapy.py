@@ -162,7 +162,7 @@ def export_records():
         # 過濾和重命名欄位以適合匯出
         export_data = [{
             '療程記錄ID': r.get('therapy_record_id'),
-            '會員代碼': r.get('member_code'),
+            '會員編號': r.get('member_code'),
             '會員姓名': r.get('member_name'),
             '商店名稱': r.get('store_name'),
             '服務人員': r.get('staff_name'),
