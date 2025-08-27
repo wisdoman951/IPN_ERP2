@@ -86,6 +86,7 @@ export const addProductSell = async (data: ProductSellData) => {
 };
 
 export interface ProductSell extends ProductSellData {
+  member_code?: string;
   member_name?: string;
   store_name?: string;
   product_name?: string;

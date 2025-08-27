@@ -11,8 +11,9 @@ def get_all_product_sells(store_id=None):
     conn = connect_to_db()
     with conn.cursor() as cursor:
         query = """
-            SELECT 
-                ps.product_sell_id, ps.member_id, m.name as member_name, ps.store_id,
+            SELECT
+                ps.product_sell_id, ps.member_id, m.member_code AS member_code,
+                m.name as member_name, ps.store_id,
                 st.store_name as store_name, ps.product_id, p.name as product_name,
                 ps.quantity, ps.unit_price, ps.discount_amount, ps.final_price,
                 ps.payment_method, sf.name as staff_name, ps.sale_category, ps.date, ps.note
@@ -40,8 +41,9 @@ def get_product_sell_by_id(sell_id: int):
         # The query here is for a single record, so it doesn't need store_id filtering at this level.
         # The route handler is responsible for checking if the user has permission to view this record.
         query = """
-            SELECT 
-                ps.*, m.name AS member_name, st.store_name, p.name AS product_name, sf.name AS staff_name
+            SELECT
+                ps.*, m.member_code AS member_code, m.name AS member_name,
+                st.store_name, p.name AS product_name, sf.name AS staff_name
             FROM product_sell ps
             LEFT JOIN member m ON ps.member_id = m.member_id
             LEFT JOIN store st ON ps.store_id = st.store_id
@@ -61,10 +63,13 @@ def insert_product_sell(data: dict):
         with conn.cursor() as cursor:
             # 庫存更新應在同一個 transaction 中
             # 1. 新增銷售紀錄
+            if 'product_id' not in data:
+                data['product_id'] = None
+
             query = """
                 INSERT INTO product_sell (
-                    member_id, staff_id, store_id, product_id, date, quantity, 
-                    unit_price, discount_amount, final_price, payment_method, 
+                    member_id, staff_id, store_id, product_id, date, quantity,
+                    unit_price, discount_amount, final_price, payment_method,
                     sale_category, note
                 ) VALUES (
                     %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(date)s, %(quantity)s,
@@ -73,10 +78,11 @@ def insert_product_sell(data: dict):
                 )
             """
             cursor.execute(query, data)
-            
+
             # 2. 更新庫存
-            quantity_change = -int(data['quantity'])
-            update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
+            if data.get('product_id') is not None:
+                quantity_change = -int(data['quantity'])
+                update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
 
         conn.commit()
         return conn.insert_id()
@@ -465,10 +471,11 @@ def export_product_sells(store_id=None):
     conn = connect_to_db()
     with conn.cursor() as cursor:
         query = """
-            SELECT 
-                ps.product_sell_id, ps.member_id, m.name as member_name, ps.store_id,
-                st.store_name, ps.product_id, p.name as product_name, ps.quantity, 
-                ps.unit_price, ps.discount_amount, ps.final_price, ps.payment_method, 
+            SELECT
+                ps.product_sell_id, ps.member_id, m.member_code AS member_code,
+                m.name as member_name, ps.store_id,
+                st.store_name, ps.product_id, p.name as product_name, ps.quantity,
+                ps.unit_price, ps.discount_amount, ps.final_price, ps.payment_method,
                 sf.name as staff_name, ps.sale_category, DATE_FORMAT(ps.date, '%%Y-%%m-%%d') as date, ps.note
             FROM product_sell ps
             LEFT JOIN member m ON ps.member_id = m.member_id
@@ -493,10 +500,11 @@ def search_product_sells(keyword, store_id=None):
     with conn.cursor() as cursor:
         like_keyword = f"%{keyword}%"
         query = """
-            SELECT 
-                ps.product_sell_id, ps.member_id, m.name as member_name, ps.store_id,
-                st.store_name, ps.product_id, p.name as product_name, ps.quantity, 
-                ps.unit_price, ps.discount_amount, ps.final_price, ps.payment_method, 
+            SELECT
+                ps.product_sell_id, ps.member_id, m.member_code AS member_code,
+                m.name as member_name, ps.store_id,
+                st.store_name, ps.product_id, p.name as product_name, ps.quantity,
+                ps.unit_price, ps.discount_amount, ps.final_price, ps.payment_method,
                 sf.name as staff_name, ps.sale_category, DATE_FORMAT(ps.date, '%%Y-%%m-%%d') as date, ps.note
             FROM product_sell ps
             LEFT JOIN member m ON ps.member_id = m.member_id
@@ -510,8 +518,8 @@ def search_product_sells(keyword, store_id=None):
 
         if keyword:
             keyword_conditions = [
-                "m.name LIKE %s", 
-                "CAST(ps.member_id AS CHAR) LIKE %s", 
+                "m.name LIKE %s",
+                "m.member_code LIKE %s",
                 "p.name LIKE %s",
                 "ps.note LIKE %s"
             ]

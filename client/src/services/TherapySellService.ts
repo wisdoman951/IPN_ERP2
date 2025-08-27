@@ -62,6 +62,7 @@ export interface AddTherapySellPayload {
 export interface TherapySellRow {
     Order_ID: number;       // therapy_sell_id
     Member_ID: number;
+    MemberCode?: string;
     MemberName: string;
     PurchaseDate: string;   // 後端應返回 YYYY-MM-DD 格式字串
     PackageName: string;    // therapy.name
