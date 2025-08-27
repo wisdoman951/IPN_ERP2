@@ -60,6 +60,13 @@ const StressTestForm: React.FC = () => {
                 ? data.test_date.slice(0, 10)
                 : "");
             setAnswers(data.answers || {});
+            if (fetchedMemberId) {
+              return getMemberById(fetchedMemberId);
+            }
+            return null;
+          })
+          .then((member) => {
+            if (member) setMemberName(member.Name);
           })
           .catch(() => setError("載入失敗"))
           .finally(() => setLoading(false));
