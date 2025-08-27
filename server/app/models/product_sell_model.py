@@ -78,11 +78,9 @@ def insert_product_sell(data: dict):
                 )
             """
             cursor.execute(query, data)
-
             # 更新庫存
             quantity_change = -int(data['quantity'])
             update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
-
         conn.commit()
         return conn.insert_id()
     except Exception as e:
