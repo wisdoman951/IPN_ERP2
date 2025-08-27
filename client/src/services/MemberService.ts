@@ -168,6 +168,19 @@ export const getMemberById = async (memberId: string): Promise<Member | null> =>
 };
 
 /**
+ * Get a single member by member_code
+ */
+export const getMemberByCode = async (memberCode: string): Promise<Member | null> => {
+  try {
+    const response = await authAxios.get(`/code/${memberCode}`);
+    return transformBackendToFrontend(response.data);
+  } catch (error) {
+    console.error("Failed to get member by code:", error);
+    return null;
+  }
+};
+
+/**
  * Add a new member
  */
 export const addMember = async (memberData: Omit<Member, 'Member_ID'>) => {
