@@ -80,7 +80,7 @@ const TherapyRecord: React.FC = () => {
                 <Row className="align-items-center mb-3">
                     <Col md={6}>
                         <Form.Group>
-                            <Form.Label>姓名/電話/會員代碼</Form.Label>
+                            <Form.Label>姓名/電話/會員編號</Form.Label>
                             <Form.Control
                                 type="text"
                                 value={keyword}
@@ -206,7 +206,7 @@ const TherapyRecord: React.FC = () => {
                         <tr>
                             <th style={{ width: '50px' }}>勾選</th>
                             <th>姓名</th>
-                            <th>會員代碼</th>
+                            <th>會員編號</th>
                             <th>療程日期</th>
                             <th>方案</th>
                             <th>使用療程內容</th>
