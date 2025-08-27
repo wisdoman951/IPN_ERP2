@@ -4,7 +4,7 @@ import { Button, Col, Form, Row, Card, Alert } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../../components/Header";
 import DynamicContainer from "../../../components/DynamicContainer";
-import { getAllMembers, Member } from '../../../services/MemberService';
+import { getMemberById } from '../../../services/MemberService';
 import { getStressTestByIdWithAnswers, addStressTestWithAnswers, updateStressTestWithAnswers } from '../../../services/StressTestService';
 
 // 問卷題目（1-20題）
@@ -37,17 +37,12 @@ const StressTestForm: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>(); // id 有值就是編輯，沒值就是新增
     const isEditMode = !!id;
-    const [members, setMembers] = useState([]);
     const [memberId, setMemberId] = useState("");
+    const [memberName, setMemberName] = useState("");
     const [testDate, setTestDate] = useState("");
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
-  
-    // 取會員
-    useEffect(() => {
-      getAllMembers().then(setMembers).catch(() => setMembers([]));
-    }, []);
   
     // 編輯模式：自動帶入舊資料
     useEffect(() => {
@@ -55,17 +50,35 @@ const StressTestForm: React.FC = () => {
         setLoading(true);
         getStressTestByIdWithAnswers(id)
           .then((data) => {
+            const fetchedMemberId = data.member_id?.toString() || "";
+            setMemberId(fetchedMemberId);
             setTestDate((typeof data.test_date === "string" && data.test_date.length >= 10)
                 ? data.test_date.slice(0, 10)
                 : "");
-            setMemberId(data.member_id?.toString() || "");
-            setTestDate(data.test_date || "");
             setAnswers(data.answers || {});
+            if (fetchedMemberId) {
+              return getMemberById(fetchedMemberId);
+            }
+            return null;
+          })
+          .then((member) => {
+            if (member) setMemberName(member.Name);
           })
           .catch(() => setError("載入失敗"))
           .finally(() => setLoading(false));
       }
     }, [isEditMode, id]);
+
+    // 根據會員編號自動取得姓名
+    useEffect(() => {
+      if (!memberId) {
+        setMemberName("");
+        return;
+      }
+      getMemberById(memberId)
+        .then(member => setMemberName(member?.Name || ""))
+        .catch(() => setMemberName(""));
+    }, [memberId]);
   
     // 填答
     const handleAnswerChange = (qid: string, val: string) => {
@@ -79,7 +92,7 @@ const StressTestForm: React.FC = () => {
       setError("");
       try {
         if (!memberId || !testDate) {
-          setError("請選擇會員並填寫檢測日期！");
+          setError("請輸入會員編號並填寫檢測日期！");
           setLoading(false);
           return;
         }
@@ -112,24 +125,24 @@ const StressTestForm: React.FC = () => {
                 </Card.Header>
                 <Card.Body>
                   <Row className="g-3">
-                    <Col md={6}>
+                    <Col md={4}>
                       <Form.Group>
-                        <Form.Label>選擇會員</Form.Label>
-                        <Form.Select
+                        <Form.Label>會員編號</Form.Label>
+                        <Form.Control
+                          type="text"
                           value={memberId}
                           onChange={e => setMemberId(e.target.value)}
                           disabled={isEditMode}
-                        >
-                          <option value="" disabled>請選擇一位會員</option>
-                          {members.map((m: any) => (
-                            <option key={m.Member_ID} value={m.Member_ID}>
-                              {m.Name} (ID: {m.Member_ID})
-                            </option>
-                          ))}
-                        </Form.Select>
+                        />
                       </Form.Group>
                     </Col>
-                    <Col md={6}>
+                    <Col md={4}>
+                      <Form.Group>
+                        <Form.Label>姓名</Form.Label>
+                        <Form.Control type="text" value={memberName} disabled />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
                       <Form.Group>
                         <Form.Label>檢測日期</Form.Label>
                         <Form.Control
