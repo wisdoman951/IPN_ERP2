@@ -9,8 +9,8 @@ import { SalesOrderItemData } from '../../services/SalesOrderService';
 import { Product, getAllProducts } from '../../services/ProductSellService'; // 假設從 ProductSellService 獲取
 import { TherapyPackage, getAllTherapyPackages } from '../../services/TherapySellService'; // 假設從 TherapySellService 獲取
 export const formatCurrency = (amount: number | undefined): string => {
-  if (amount === undefined || isNaN(amount)) return 'N/A';
-  return amount.toLocaleString('zh-TW', { style: 'currency', currency: 'TWD' });
+    if (amount === undefined || isNaN(amount)) return 'N/A';
+    return amount.toLocaleString('zh-TW', { style: 'currency', currency: 'TWD' });
 };
 const ItemSelection: React.FC = () => {
     const navigate = useNavigate();
@@ -62,8 +62,8 @@ const ItemSelection: React.FC = () => {
                 item_code: product.product_code,
                 unit: "個",
                 quantity: 1,
-                unit_price: product.product_price,
-                subtotal: product.product_price,
+                unit_price: Number(product.product_price),
+                subtotal: Number(product.product_price),
             };
         } else { // type === 'Therapy'
             const therapy = item as TherapyPackage;
@@ -75,8 +75,8 @@ const ItemSelection: React.FC = () => {
                 item_code: therapy.TherapyCode,
                 unit: "堂",
                 quantity: 1,
-                unit_price: therapy.TherapyPrice,
-                subtotal: therapy.TherapyPrice,
+                unit_price: Number(therapy.TherapyPrice),
+                subtotal: Number(therapy.TherapyPrice),
             };
         }
 
@@ -90,7 +90,18 @@ const ItemSelection: React.FC = () => {
 
     // 確認選擇
     const handleConfirm = () => {
-        localStorage.setItem('selectedSalesOrderItems', JSON.stringify(selectedItems));
+        let merged = [...selectedItems];
+        const prev = localStorage.getItem('currentSalesOrderItems');
+        if (prev) {
+            try {
+                const parsed = JSON.parse(prev);
+                merged = [...parsed, ...selectedItems];
+            } catch (e) {
+                console.error('解析暫存品項失敗', e);
+            }
+            localStorage.removeItem('currentSalesOrderItems');
+        }
+        localStorage.setItem('selectedSalesOrderItems', JSON.stringify(merged));
         navigate('/finance/sales/add');
     };
 
