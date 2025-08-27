@@ -39,6 +39,14 @@ const AddSalesOrder: React.FC = () => {
         {} // 初始顯示一個空行
     ]);
 
+    const normalizeItems = (arr: any[]): Partial<SalesOrderItemData>[] =>
+        arr.map(item => ({
+            ...item,
+            unit_price: Number(item.unit_price) || 0,
+            quantity: Number(item.quantity) || 0,
+            subtotal: Number(item.subtotal) || 0,
+        }));
+
     // 金額計算
     const [subtotal, setSubtotal] = useState(0);
     const [totalDiscount, setTotalDiscount] = useState(0); // 總折價
@@ -87,7 +95,7 @@ const AddSalesOrder: React.FC = () => {
         const storedCurrent = localStorage.getItem('currentSalesOrderItems');
         if (storedSelected) {
             try {
-                const parsed = JSON.parse(storedSelected);
+                const parsed = normalizeItems(JSON.parse(storedSelected));
                 setItems(parsed);
             } catch (e) {
                 console.error("解析已選品項失敗", e);
@@ -95,7 +103,7 @@ const AddSalesOrder: React.FC = () => {
         } else if (storedCurrent) {
             // 若從品項選擇頁取消返回，恢復先前暫存的項目
             try {
-                const parsed = JSON.parse(storedCurrent);
+                const parsed = normalizeItems(JSON.parse(storedCurrent));
                 setItems(parsed);
             } catch (e) {
                 console.error("解析暫存品項失敗", e);
@@ -173,7 +181,10 @@ const AddSalesOrder: React.FC = () => {
 
     // 計算總金額
     useEffect(() => {
-        const newSubtotal = items.reduce((sum, item) => sum + (item.subtotal || 0), 0);
+        const newSubtotal = items.reduce(
+            (sum, item) => sum + (Number(item.subtotal) || 0),
+            0
+        );
         setSubtotal(newSubtotal);
         setGrandTotal(newSubtotal - totalDiscount);
     }, [items, totalDiscount]);
