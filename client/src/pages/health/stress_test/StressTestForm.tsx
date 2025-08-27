@@ -4,7 +4,7 @@ import { Button, Col, Form, Row, Card, Alert } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../../components/Header";
 import DynamicContainer from "../../../components/DynamicContainer";
-import { getMemberById } from '../../../services/MemberService';
+import { getMemberByCode } from '../../../services/MemberService';
 import { getStressTestByIdWithAnswers, addStressTestWithAnswers, updateStressTestWithAnswers } from '../../../services/StressTestService';
 
 // 問卷題目（1-20題）
@@ -37,6 +37,7 @@ const StressTestForm: React.FC = () => {
     const navigate = useNavigate();
     const { id } = useParams<{ id: string }>(); // id 有值就是編輯，沒值就是新增
     const isEditMode = !!id;
+    const [memberCode, setMemberCode] = useState("");
     const [memberId, setMemberId] = useState("");
     const [memberName, setMemberName] = useState("");
     const [testDate, setTestDate] = useState("");
@@ -51,7 +52,10 @@ const StressTestForm: React.FC = () => {
         getStressTestByIdWithAnswers(id)
           .then((data) => {
             const fetchedMemberId = data.member_id?.toString() || "";
+            const fetchedMemberCode = data.member_code?.toString() || "";
             setMemberId(fetchedMemberId);
+            setMemberCode(fetchedMemberCode);
+            setMemberName(data.name || "");
             setTestDate((typeof data.test_date === "string" && data.test_date.length >= 10)
                 ? data.test_date.slice(0, 10)
                 : "");
@@ -69,16 +73,23 @@ const StressTestForm: React.FC = () => {
       }
     }, [isEditMode, id]);
 
-    // 根據會員編號自動取得姓名
+    // 根據會員代碼自動取得會員資訊
     useEffect(() => {
-      if (!memberId) {
+      if (!memberCode) {
         setMemberName("");
+        setMemberId("");
         return;
       }
-      getMemberById(memberId)
-        .then(member => setMemberName(member?.Name || ""))
-        .catch(() => setMemberName(""));
-    }, [memberId]);
+      getMemberByCode(memberCode)
+        .then(member => {
+          setMemberName(member?.Name || "");
+          setMemberId(member?.Member_ID || "");
+        })
+        .catch(() => {
+          setMemberName("");
+          setMemberId("");
+        });
+    }, [memberCode]);
   
     // 填答
     const handleAnswerChange = (qid: string, val: string) => {
@@ -130,8 +141,8 @@ const StressTestForm: React.FC = () => {
                         <Form.Label>會員編號</Form.Label>
                         <Form.Control
                           type="text"
-                          value={memberId}
-                          onChange={e => setMemberId(e.target.value)}
+                          value={memberCode}
+                          onChange={e => setMemberCode(e.target.value)}
                           disabled={isEditMode}
                         />
                       </Form.Group>
