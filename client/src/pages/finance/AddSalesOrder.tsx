@@ -1,10 +1,10 @@
 // client/src/pages/finance/AddSalesOrder.tsx (新檔案)
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Form, Button, Card, InputGroup, Alert, Spinner } from 'react-bootstrap';
+import { Container, Row, Col, Form, Button, Card, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate, useLocation } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
-import { SalesOrderItemData, SalesOrderPayload, addSalesOrder, getSalesOrderById, SalesOrderDetail, updateSalesOrder } from '../../services/SalesOrderService';
+import { SalesOrderItemData, SalesOrderPayload, addSalesOrder, getSalesOrderById, updateSalesOrder } from '../../services/SalesOrderService';
 import { getAllMembers, Member } from '../../services/MemberService';
 import { getStaffMembers, StaffMember } from '../../services/TherapyDropdownService';
 import { getStoreName } from '../../services/AuthUtils';
@@ -45,7 +45,7 @@ const AddSalesOrder: React.FC = () => {
     const [grandTotal, setGrandTotal] = useState(0);
 
     // 動態更新項目
-    const handleItemChange = (index: number, field: keyof SalesOrderItemData, value: any) => {
+    const handleItemChange = (index: number, field: keyof SalesOrderItemData, value: string | number) => {
         const newItems = [...items];
         const item = { ...newItems[index], [field]: value };
 
@@ -138,7 +138,7 @@ const AddSalesOrder: React.FC = () => {
                     setSubtotal(detail.subtotal);
                     setTotalDiscount(detail.total_discount);
                     setGrandTotal(detail.grand_total);
-                } catch (e) {
+                } catch {
                     setError('載入銷售單失敗');
                 }
             };
@@ -150,10 +150,6 @@ const AddSalesOrder: React.FC = () => {
         // localStorage.setItem('currentSalesOrderItems', JSON.stringify(items));
         navigate('/finance/item-selection'); // 跳轉到品項選擇頁
     };
-    const addItem = () => {
-        setItems([...items, {}]);
-    };
-
     const removeItem = (index: number) => {
         setItems(items.filter((_, i) => i !== index));
     };
@@ -188,17 +184,17 @@ const AddSalesOrder: React.FC = () => {
         setLoading(true);
         setError(null);
         try {
-            const sanitizedItems: SalesOrderItemData[] = items.map(({ item_code, ...rest }) => ({
-                product_id: rest.product_id ?? null,
-                therapy_id: rest.therapy_id ?? null,
-                item_description: rest.item_description || '',
-                item_type: rest.item_type as 'Product' | 'Therapy',
-                unit: rest.unit || '',
-                unit_price: Number(rest.unit_price) || 0,
-                quantity: Number(rest.quantity) || 0,
-                subtotal: Number(rest.subtotal) || 0,
-                category: rest.category || '',
-                note: rest.note || ''
+            const sanitizedItems: SalesOrderItemData[] = items.map(item => ({
+                product_id: item.product_id ?? null,
+                therapy_id: item.therapy_id ?? null,
+                item_description: item.item_description || '',
+                item_type: item.item_type as 'Product' | 'Therapy',
+                unit: item.unit || '',
+                unit_price: Number(item.unit_price) || 0,
+                quantity: Number(item.quantity) || 0,
+                subtotal: Number(item.subtotal) || 0,
+                category: item.category || '',
+                note: item.note || ''
             }));
             const orderPayload: SalesOrderPayload = {
                 order_number: orderNumber,
@@ -223,8 +219,12 @@ const AddSalesOrder: React.FC = () => {
             } else {
                 setError(result.error || "新增失敗");
             }
-        } catch (err: any) {
-            setError(err.error || "提交時發生錯誤");
+            } catch (err: unknown) {
+                if (err && typeof err === 'object' && 'error' in err) {
+                    setError((err as { error: string }).error);
+                } else {
+                    setError('提交時發生錯誤');
+                }
         } finally {
             setLoading(false);
         }
@@ -244,6 +244,7 @@ const AddSalesOrder: React.FC = () => {
                     <h3>銷售單</h3>
                 </Card.Header>
                 <Card.Body>
+                    {error && <Alert variant="danger">{error}</Alert>}
                     <Row className="mb-3">
                         <Col md={3}><Form.Group><Form.Label>銷售單號</Form.Label><Form.Control value={orderNumber} readOnly /></Form.Group></Col>
                         <Col md={3}><Form.Group><Form.Label>銷售單位</Form.Label><Form.Control value={saleUnit} readOnly disabled /></Form.Group></Col>
@@ -264,7 +265,14 @@ const AddSalesOrder: React.FC = () => {
                                     <tr key={index}>
                                         <td>{index + 1}</td>
                                         <td><Form.Control size="sm" value={item.item_code || ""} readOnly /></td>
-                                        <td><Form.Control size="sm" value={item.item_description || ""} onChange={e => handleItemChange(index, 'item_description', e.target.value)} /></td>
+                                        <td>
+                                            <Form.Control
+                                                size="sm"
+                                                value={item.item_description || ''}
+                                                onChange={e => handleItemChange(index, 'item_description', e.target.value)}
+                                                style={{ width: `${Math.max(item.item_description?.length ?? 0, 10)}ch` }}
+                                            />
+                                        </td>
                                         <td><Form.Control size="sm" value={item.unit || ""} onChange={e => handleItemChange(index, 'unit', e.target.value)} /></td>
                                         <td><Form.Control type="number" size="sm" value={item.unit_price || ""} onChange={e => handleItemChange(index, 'unit_price', Number(e.target.value))} /></td>
                                         <td><Form.Control type="number" size="sm" value={item.quantity || ""} onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} /></td>
