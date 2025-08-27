@@ -83,14 +83,26 @@ const AddSalesOrder: React.FC = () => {
         setStoreId(id ? parseInt(id) : null);
         setOrderNumber(generateOrderNumber(getStorePrefix(id)));
         setSaleUnit(getStoreName() || "");
-        const storedItems = localStorage.getItem('selectedSalesOrderItems');
-        if (storedItems) {
+        const storedSelected = localStorage.getItem('selectedSalesOrderItems');
+        const storedCurrent = localStorage.getItem('currentSalesOrderItems');
+        if (storedSelected) {
             try {
-                const parsedItems = JSON.parse(storedItems);
-                setItems(parsedItems);
-            } catch (e) { console.error("解析已選品項失敗", e); }
-            localStorage.removeItem('selectedSalesOrderItems');
+                const parsed = JSON.parse(storedSelected);
+                setItems(parsed);
+            } catch (e) {
+                console.error("解析已選品項失敗", e);
+            }
+        } else if (storedCurrent) {
+            // 若從品項選擇頁取消返回，恢復先前暫存的項目
+            try {
+                const parsed = JSON.parse(storedCurrent);
+                setItems(parsed);
+            } catch (e) {
+                console.error("解析暫存品項失敗", e);
+            }
         }
+        localStorage.removeItem('selectedSalesOrderItems');
+        localStorage.removeItem('currentSalesOrderItems');
         const preSale = localStorage.getItem('preSaleData');
         if (preSale) {
             try {
@@ -145,9 +157,14 @@ const AddSalesOrder: React.FC = () => {
             fetchOrder();
         }
     }, [location.search]);
-     const openItemSelection = () => {
-        // 在跳轉前，可以選擇性地將當前已選的項目存起來，以便選擇頁可以預選
-        // localStorage.setItem('currentSalesOrderItems', JSON.stringify(items));
+    const openItemSelection = () => {
+        // 將目前已填寫的項目（排除空白行）暫存，讓品項選擇頁或返回時能夠保留
+        const filled = items.filter(i => i.item_description);
+        if (filled.length > 0) {
+            localStorage.setItem('currentSalesOrderItems', JSON.stringify(filled));
+        } else {
+            localStorage.removeItem('currentSalesOrderItems');
+        }
         navigate('/finance/item-selection'); // 跳轉到品項選擇頁
     };
     const removeItem = (index: number) => {

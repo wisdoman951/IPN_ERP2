@@ -90,7 +90,18 @@ const ItemSelection: React.FC = () => {
 
     // 確認選擇
     const handleConfirm = () => {
-        localStorage.setItem('selectedSalesOrderItems', JSON.stringify(selectedItems));
+        let merged = [...selectedItems];
+        const prev = localStorage.getItem('currentSalesOrderItems');
+        if (prev) {
+            try {
+                const parsed = JSON.parse(prev);
+                merged = [...parsed, ...selectedItems];
+            } catch (e) {
+                console.error('解析暫存品項失敗', e);
+            }
+            localStorage.removeItem('currentSalesOrderItems');
+        }
+        localStorage.setItem('selectedSalesOrderItems', JSON.stringify(merged));
         navigate('/finance/sales/add');
     };
 
