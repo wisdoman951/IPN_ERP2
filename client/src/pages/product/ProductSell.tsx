@@ -58,7 +58,7 @@ const ProductSell: React.FC = () => {
                         onChange={(e) => handleCheckboxChange(sale.product_sell_id, e.target.checked)}
                     />
                 </td>
-                <td className="align-middle">{sale.member_id || "-"}</td>
+                <td className="align-middle">{sale.member_code || "-"}</td>
                 <td className="align-middle">{sale.member_name || "-"}</td>
                 <td className="align-middle">{formatDateToChinese(sale.date) || "-"}</td>
                 <td className="align-middle">{sale.product_name || "-"}</td>
