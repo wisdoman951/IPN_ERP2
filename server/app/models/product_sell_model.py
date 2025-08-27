@@ -58,14 +58,14 @@ def get_product_sell_by_id(sell_id: int):
 
 def insert_product_sell(data: dict):
     """新增產品銷售紀錄"""
+    # 如果沒有提供 product_id，先跳過新增避免資料庫錯誤
+    if not data.get('product_id'):
+        print("Skipping product_sell insertion due to missing product_id.")
+        return None
+
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            # 庫存更新應在同一個 transaction 中
-            # 1. 新增銷售紀錄
-            if 'product_id' not in data:
-                data['product_id'] = None
-
             query = """
                 INSERT INTO product_sell (
                     member_id, staff_id, store_id, product_id, date, quantity,
@@ -78,12 +78,9 @@ def insert_product_sell(data: dict):
                 )
             """
             cursor.execute(query, data)
-
-            # 2. 更新庫存
-            if data.get('product_id') is not None:
-                quantity_change = -int(data['quantity'])
-                update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
-
+            # 更新庫存
+            quantity_change = -int(data['quantity'])
+            update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
         conn.commit()
         return conn.insert_id()
     except Exception as e:
