@@ -259,7 +259,7 @@ const AddSalesOrder: React.FC = () => {
                                 <tr>
                                     <th>序號</th>
                                     <th>編號</th>
-                                    <th style={{ minWidth: '300px' }}>產品名稱/規格型號</th>
+                                    <th style={{ minWidth: '600px' }}>產品名稱/規格型號</th>
                                     <th>單位</th>
                                     <th>單價</th>
                                     <th>數量</th>
