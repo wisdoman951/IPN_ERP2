@@ -229,6 +229,7 @@ def delete_stress_test(stress_id):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM ipn_stress_answer WHERE ipn_stress_id = %s", (stress_id,))
             cursor.execute("DELETE FROM ipn_stress WHERE ipn_stress_id = %s", (stress_id,))
         conn.commit()
         return True
