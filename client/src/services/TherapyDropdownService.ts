@@ -1,5 +1,6 @@
 import axios from "axios";
 import { base_url } from "./BASE_URL";
+import { getAuthHeaders } from "./AuthUtils";
 
 const API_URL = `${base_url}/therapy-sell`;
 
@@ -55,7 +56,7 @@ export const getStaffMembers = async (storeId?: number): Promise<StaffMember[]> 
             const resolvedStoreId = storeId ?? Number(localStorage.getItem('store_id'));
             params = resolvedStoreId ? { store_id: resolvedStoreId } : undefined;
         }
-        const response = await axios.get(`${API_URL}/staff`, { params });
+        const response = await axios.get(`${API_URL}/staff`, { params, headers: getAuthHeaders() });
 
         // 處理返回數據，確保與預期格式一致
         if (response.data && Array.isArray(response.data)) {
