@@ -1,10 +1,8 @@
 import { useState, useEffect } from "react";
-import { downloadBlob } from '../utils/downloadBlob';
 import {
   getAllTherapyRecords,
   searchTherapyRecords,
   deleteTherapyRecord,
-  exportTherapyRecords,
   TherapyRecord
 } from "../services/TherapyService";
 
@@ -110,20 +108,6 @@ export const useTherapyRecord = () => {
     }
   };
 
-  // 處理匯出
-  const handleExport = async () => {
-    try {
-      setLoading(true);
-      const blob = await exportTherapyRecords();
-      downloadBlob(blob, "療程紀錄.xlsx");
-    } catch (err) {
-      console.error("匯出失敗：", err);
-      setError("匯出報表失敗");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return {
     records,
     loading,
@@ -134,7 +118,6 @@ export const useTherapyRecord = () => {
     handleCheckboxChange,
     handleSearch,
     handleDelete,
-    handleExport,
     fetchAllRecords,
   };
-}; 
+};

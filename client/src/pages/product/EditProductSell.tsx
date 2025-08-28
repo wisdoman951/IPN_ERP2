@@ -453,13 +453,13 @@ const EditProductSell: React.FC = () => {
 
         <Row className="mt-4">
           <Col className="d-flex justify-content-end gap-2">
-            <Button variant="primary" type="submit" disabled={loading || fetchLoading}>
+            <Button variant="info" className="text-white" type="submit" disabled={loading || fetchLoading}>
               {loading ? "更新中..." : "確認"}
             </Button>
-            <Button variant="secondary" onClick={() => navigate('/product-sell')} disabled={loading || fetchLoading}>
+            <Button variant="info" className="text-white" onClick={() => navigate('/product-sell')} disabled={loading || fetchLoading}>
               取消
             </Button>
-            <Button variant="outline-secondary" onClick={handlePrint} disabled={loading || fetchLoading}>
+            <Button variant="info" className="text-white" onClick={handlePrint} disabled={loading || fetchLoading}>
               列印
             </Button>
           </Col>

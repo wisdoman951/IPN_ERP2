@@ -265,12 +265,11 @@ const InventoryEntryForm = () => {
             </Col>
           </Row>
 
-          <Row className="text-center g-2">
+          <Row className="justify-content-end text-center g-2 mt-3">
             <Col xs={12} className="mb-2 d-flex align-items-center justify-content-center">
-              <Form.Check type="checkbox" id="custom-check" className="me-2" />
-              <Form.Label htmlFor="custom-check" className="mb-0">勾選</Form.Label>
             </Col>
-            <Col xs={6} md={2}>
+          
+            {/* <Col xs={6} md={2}>
               <Button
                 variant="info"
                 className="w-100 text-white"
@@ -279,19 +278,34 @@ const InventoryEntryForm = () => {
                 新增
               </Button>
             </Col>
+          
             <Col xs={6} md={2}>
               <Button variant="info" className="w-100 text-white" onClick={handleExport}>報表匯出</Button>
             </Col>
+          
             <Col xs={6} md={2}>
               <Button variant="info" className="w-100 text-white">刪除</Button>
             </Col>
+          
             <Col xs={6} md={2}>
               <Button variant="info" className="w-100 text-white">修改</Button>
-            </Col>
-            <Col xs={12} md={2}>
+            </Col> */}
+          
+            <Col xs={6} md={2}>
               <Button variant="info" className="w-100 text-white" onClick={handleSubmit}>確認</Button>
             </Col>
+          
+            <Col xs={6} md={2}>
+              <Button
+                variant="info"
+                className="w-100 text-white"
+                onClick={() => navigate(-1)}
+              >
+                返回
+              </Button>
+            </Col>
           </Row>
+
         </Form>
       </Container>
     </>
