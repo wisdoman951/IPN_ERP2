@@ -96,6 +96,11 @@ export const deleteSalesOrders = async (ids: number[]): Promise<{success: boolea
         throw new Error(error.response?.data?.error || "刪除銷售單時發生錯誤");
     }
 };
+
+export const exportSalesOrders = async (): Promise<Blob> => {
+    const response = await axios.get(`${API_URL}/export`, { responseType: 'blob' });
+    return response.data;
+};
 export interface SalesOrderDetail {
     order_id: number;
     order_number: string;
