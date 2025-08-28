@@ -320,7 +320,9 @@ def export_therapy_records(store_id=None):
                            s.store_name as store_name,
                            st.name as staff_name,
                            tr.date,
-                           tr.note
+                           tr.note,
+                           tr.deduct_sessions,
+                           tr.remaining_sessions_at_time AS remaining_sessions
                     FROM therapy_record tr
                     LEFT JOIN member m ON tr.member_id = m.member_id
                     LEFT JOIN store s ON tr.store_id = s.store_id
@@ -338,7 +340,9 @@ def export_therapy_records(store_id=None):
                            s.store_name as store_name,
                            st.name as staff_name,
                            tr.date,
-                           tr.note
+                           tr.note,
+                           tr.deduct_sessions,
+                           tr.remaining_sessions_at_time AS remaining_sessions
                     FROM therapy_record tr
                     LEFT JOIN member m ON tr.member_id = m.member_id
                     LEFT JOIN store s ON tr.store_id = s.store_id

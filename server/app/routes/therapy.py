@@ -167,11 +167,13 @@ def export_records():
             '商店名稱': r.get('store_name'),
             '服務人員': r.get('staff_name'),
             '日期': r.get('date'),
-            '備註': r.get('note')
+            '備註': r.get('note'),
+            '扣除堂數': r.get('deduct_sessions'),
+            '療程剩餘數': r.get('remaining_sessions')
         } for r in records]
-        
+
         # 使用pandas創建DataFrame，確保即使沒有資料也保留欄位
-        columns = ['療程記錄ID', '會員編號', '會員姓名', '商店名稱', '服務人員', '日期', '備註']
+        columns = ['療程記錄ID', '會員編號', '會員姓名', '商店名稱', '服務人員', '日期', '備註', '扣除堂數', '療程剩餘數']
         df = pd.DataFrame(export_data, columns=columns)
         
         # 創建Excel文件
