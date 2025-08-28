@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
 import { getAllStaffs, Staff } from "../../services/StaffService";
-import { getAllMembers, Member } from "../../services/MemberService";
 import { addInventoryItem, getInventoryById, updateInventoryItem, exportInventory } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -16,7 +15,6 @@ const InventoryEntryForm = () => {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [staffs, setStaffs] = useState<Staff[]>([]);
-  const [members, setMembers] = useState<Member[]>([]);
 
   const [formData, setFormData] = useState({
     product_id: "",
@@ -24,7 +22,7 @@ const InventoryEntryForm = () => {
     date: "",
     staff_id: "",
     supplier: "",
-    buyer_id: "",
+    buyer: "",
     voucher: "",
     store_name: getStoreName() || "",
     note: ""
@@ -33,7 +31,6 @@ const InventoryEntryForm = () => {
   useEffect(() => {
     getAllProducts().then((res) => setProducts(res));
     getAllStaffs().then((res) => setStaffs(res));
-    getAllMembers().then((res) => setMembers(res));
 
     if (editingId) {
       getInventoryById(Number(editingId)).then((data) => {
@@ -44,7 +41,7 @@ const InventoryEntryForm = () => {
             date: data.StockInTime ? data.StockInTime.split("T")[0] : "",
             staff_id: String(data.Staff_ID ?? ""),
             supplier: data.Supplier || "",
-            buyer_id: data.Buyer_ID ? String(data.Buyer_ID) : "",
+            buyer: data.Buyer || "",
             voucher: data.Voucher || "",
             store_name: data.StoreName || getStoreName() || "",
             note: data.note ?? "",
@@ -73,7 +70,7 @@ const InventoryEntryForm = () => {
         date: formData.date,
         staffId: Number(formData.staff_id),
         supplier: formData.supplier || undefined,
-        buyerId: formData.buyer_id ? Number(formData.buyer_id) : undefined,
+        buyer: formData.buyer || undefined,
         voucher: formData.voucher || undefined,
         note: formData.note
       } as any;
@@ -88,7 +85,7 @@ const InventoryEntryForm = () => {
           staff_id: Number(formData.staff_id),
           date: formData.date,
           supplier: formData.supplier || undefined,
-          buyer_id: formData.buyer_id ? Number(formData.buyer_id) : undefined,
+          buyer: formData.buyer || undefined,
           voucher: formData.voucher || undefined,
         } as any);
         alert("更新成功");
@@ -221,20 +218,15 @@ const InventoryEntryForm = () => {
 
           <Row className="mb-3">
             <Col xs={12} md={6} className="mb-3 mb-md-0">
-              <Form.Group controlId="buyer_id">
+              <Form.Group controlId="buyer">
                 <Form.Label>購買人</Form.Label>
-                <Form.Select
-                  name="buyer_id"
-                  value={formData.buyer_id}
+                <Form.Control
+                  type="text"
+                  name="buyer"
+                  value={formData.buyer}
                   onChange={handleChange}
-                >
-                  <option value="">-- 選擇購買人 --</option>
-                  {members.map((m) => (
-                    <option key={m.Member_ID} value={m.Member_ID}>
-                      {m.Name}
-                    </option>
-                  ))}
-                </Form.Select>
+                  placeholder="輸入購買人"
+                />
               </Form.Group>
             </Col>
             <Col xs={12} md={6}>

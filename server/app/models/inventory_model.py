@@ -154,7 +154,11 @@ def get_inventory_by_id(inventory_id):
                     st.store_name AS StoreName,
                     i.date AS StockInTime,
                     s.name AS StaffName,
-                    i.staff_id AS Staff_ID
+                    i.staff_id AS Staff_ID,
+                    i.supplier AS Supplier,
+                    i.buyer AS Buyer,
+                    i.voucher AS Voucher,
+                    i.note AS note
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN staff s ON i.staff_id = s.staff_id
@@ -266,10 +270,11 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     i.stock_threshold AS StockThreshold,
                     i.date AS Date,
                     s.name AS StaffName,
+                    i.supplier AS Supplier,
                     st.store_name AS StoreName,
                     '' AS SaleStaff,
-                    '' AS Buyer,
-                    '' AS Voucher
+                    i.buyer AS Buyer,
+                    i.voucher AS Voucher
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN staff s ON i.staff_id = s.staff_id
@@ -289,6 +294,9 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
             if product_id:
                 conditions.append("i.product_id = %s")
                 params.append(product_id)
+            if buyer:
+                conditions.append("i.buyer LIKE %s")
+                params.append(f"%{buyer}%")
             if conditions:
                 base_q += " WHERE " + " AND ".join(conditions)
             cursor.execute(base_q, params)
@@ -307,6 +315,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     0 AS stock_loan,
                     ps.date AS Date,
                     '' AS StaffName,
+                    '' AS Supplier,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
@@ -355,6 +364,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     0 AS stock_loan,
                     ts.date AS Date,
                     '' AS StaffName,
+                    '' AS Supplier,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
@@ -413,14 +423,14 @@ def update_inventory_item(inventory_id, data):
             query_get = "SELECT * FROM inventory WHERE inventory_id = %s"
             cursor.execute(query_get, (inventory_id,))
             existing = cursor.fetchone()
-            
+
             if not existing:
                 return False
-                
+
             # 更新庫存記錄
             query = """
-                UPDATE inventory 
-                SET 
+                UPDATE inventory
+                SET
                     quantity = %s,
                     stock_in = %s,
                     stock_out = %s,
@@ -428,10 +438,14 @@ def update_inventory_item(inventory_id, data):
                     stock_threshold = %s,
                     store_id = %s,
                     staff_id = %s,
-                    date = %s
+                    date = %s,
+                    supplier = %s,
+                    buyer = %s,
+                    voucher = %s,
+                    note = %s
                 WHERE inventory_id = %s
             """
-            
+
             values = (
                 data.get('quantity', existing['quantity']),
                 data.get('stock_in', existing['stock_in']),
@@ -441,11 +455,15 @@ def update_inventory_item(inventory_id, data):
                 data.get('store_id', existing['store_id']),
                 data.get('staff_id', existing['staff_id']),
                 data.get('date', existing['date']),
-                inventory_id
+                data.get('supplier', existing.get('supplier')),
+                data.get('buyer', existing.get('buyer')),
+                data.get('voucher', existing.get('voucher')),
+                data.get('note', existing.get('note')),
+                inventory_id,
             )
-            
+
             cursor.execute(query, values)
-            
+
         conn.commit()
         return True
     except Exception as e:
@@ -454,7 +472,6 @@ def update_inventory_item(inventory_id, data):
         return False
     finally:
         conn.close()
-
 def add_inventory_item(data):
     """新增庫存記錄"""
     conn = connect_to_db()
@@ -462,10 +479,11 @@ def add_inventory_item(data):
         with conn.cursor() as cursor:
             query = """
                 INSERT INTO inventory (
-                    product_id, staff_id, date, quantity, 
-                    stock_in, stock_out, stock_loan, 
-                    stock_threshold, store_id
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    product_id, staff_id, date, quantity,
+                    stock_in, stock_out, stock_loan,
+                    stock_threshold, store_id,
+                    supplier, buyer, voucher, note
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             
             # 從請求中擷取數據
@@ -482,11 +500,17 @@ def add_inventory_item(data):
             # 其他欄位
             stock_threshold = data.get('stockThreshold', 5)
             store_id = data.get('storeId', 1)  # 預設店鋪 ID
-            
+
+            supplier = data.get('supplier')
+            buyer = data.get('buyer')
+            voucher = data.get('voucher')
+            note = data.get('note')
+
             values = (
-                product_id, staff_id, date, quantity, 
-                stock_in, stock_out, stock_loan, 
-                stock_threshold, store_id
+                product_id, staff_id, date, quantity,
+                stock_in, stock_out, stock_loan,
+                stock_threshold, store_id,
+                supplier, buyer, voucher, note
             )
             
             cursor.execute(query, values)
