@@ -335,7 +335,7 @@ const InventorySearch: React.FC = () => {
                         </Button>
                         <Button 
                             variant="info" 
-                            className="text-white px-4 me-2"
+                            className="text-white px-4 me-2 btn btn-info"
                             onClick={handleEdit}
                             disabled={loading || selectedItems.length !== 1}
                         >
@@ -343,7 +343,7 @@ const InventorySearch: React.FC = () => {
                         </Button>
                         <Button 
                             variant="info" 
-                            className="text-white px-4"
+                            className="text-white px-4 me-2 btn btn-info"
                             onClick={() => {}}
                         >
                             確認
