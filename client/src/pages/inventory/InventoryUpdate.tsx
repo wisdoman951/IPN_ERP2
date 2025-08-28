@@ -265,7 +265,7 @@ const InventoryEntryForm = () => {
             </Col>
           </Row>
 
-          <Row className="text-center g-2">
+          <Row className="justify-content-center text-center g-2 mt-3">
             <Col xs={12} className="mb-2 d-flex align-items-center justify-content-center">
             </Col>
           
