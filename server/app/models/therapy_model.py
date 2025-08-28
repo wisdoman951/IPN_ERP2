@@ -317,7 +317,7 @@ def export_therapy_records(store_id=None):
                            m.member_id,
                            m.member_code,
                            m.name as member_name,
-                           s.name as store_name,
+                           s.store_name as store_name,
                            st.name as staff_name,
                            tr.date,
                            tr.note
@@ -335,7 +335,7 @@ def export_therapy_records(store_id=None):
                            m.member_id,
                            m.member_code,
                            m.name as member_name,
-                           s.name as store_name,
+                           s.store_name as store_name,
                            st.name as staff_name,
                            tr.date,
                            tr.note
