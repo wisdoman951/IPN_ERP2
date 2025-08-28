@@ -19,8 +19,9 @@ def get_store_based_where_condition(table_alias=None):
     if permission == 'admin':
         return ("", [])
 
-    if permission == 'basic' and store_id:
+    # Treat therapists like basic users: allow access to their own store's data
+    if permission in ('basic', 'therapist') and store_id:
         field = f"{table_alias}.store_id" if table_alias else "store_id"
         return (f" AND {field} = %s ", [store_id])
-    
+
     return (" AND 1=0 ", [])

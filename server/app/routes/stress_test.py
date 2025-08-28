@@ -1,6 +1,8 @@
 # server/app/routes/stress_test.py
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, send_file
 import traceback
+import pandas as pd
+import io
 from app.models.stress_test_model import (
     get_all_stress_tests, 
     add_stress_test, 
@@ -39,6 +41,64 @@ def get_stress_tests():
     except Exception as e:
         traceback.print_exc()
         return jsonify({"success": False, "error": str(e)}), 500
+
+@stress_test.route('/export', methods=['GET'])
+@auth_required
+def export_stress_tests_route():
+    """匯出壓力測試列表為 Excel"""
+    try:
+        user_store_level = request.store_level
+        user_store_id = request.store_id
+
+        filters = {
+            'name': request.args.get('name', ''),
+            'test_date': request.args.get('test_date', ''),
+            'position': request.args.get('position', ''),
+            'member_id': request.args.get('member_id', ''),
+            'phone': request.args.get('phone', ''),
+        }
+
+        records = get_all_stress_tests(user_store_level, user_store_id, filters)
+        if not records:
+            return jsonify({"message": "沒有可匯出的資料。"}), 404
+
+        df = pd.DataFrame([
+            {
+                '壓力測試ID': r.get('ipn_stress_id'),
+                '會員編號': r.get('member_code'),
+                '姓名': r.get('Name'),
+                '職稱': r.get('position'),
+                'A分數': r.get('a_score'),
+                'B分數': r.get('b_score'),
+                'C分數': r.get('c_score'),
+                'D分數': r.get('d_score'),
+                '總分': r.get('total_score'),
+                '測試日期': r.get('test_date')
+            }
+            for r in records
+        ])
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='壓力測試')
+            workbook = writer.book
+            worksheet = writer.sheets['壓力測試']
+            header_format = workbook.add_format({'bold': True, 'bg_color': '#D9EAD3', 'border': 1})
+            for col_num, value in enumerate(df.columns):
+                worksheet.write(0, col_num, value, header_format)
+                column_width = max(df[value].astype(str).map(len).max(), len(value)) + 2
+                worksheet.set_column(col_num, col_num, column_width)
+
+        output.seek(0)
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='壓力測試.xlsx'
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": f"匯出時發生錯誤: {str(e)}"}), 500
 
 @stress_test.route('/member/<int:member_id>', methods=['GET'])
 @auth_required

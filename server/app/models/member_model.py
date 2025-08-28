@@ -120,10 +120,20 @@ def delete_member_and_related_data(member_id: int):
     conn = None
     try:
         conn = connect_to_db()
-        conn.begin() 
+        conn.begin()
 
         with conn.cursor() as cursor:
-            # 關聯表列表
+            # 先刪除有外鍵依賴的 ipn_stress_answer
+            cursor.execute(
+                """
+                DELETE a FROM ipn_stress_answer a
+                JOIN ipn_stress s ON a.ipn_stress_id = s.ipn_stress_id
+                WHERE s.member_id = %s
+                """,
+                (member_id,)
+            )
+
+            # 關聯表列表 (直接以 member_id 關聯)
             related_tables = [
                 "product_sell", "therapy_sell", "therapy_record", "ipn_pure",
                 "ipn_stress", "medical_record", "usual_sympton_and_family_history"

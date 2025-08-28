@@ -32,7 +32,8 @@ const StressTest: React.FC = () => {
     loading,
     handleSearch,
     handleCheckboxChange,
-    handleDelete
+    handleDelete,
+    handleExport
   } = useStressTest();
 
   // 智慧搜尋邏輯
@@ -187,7 +188,7 @@ const StressTest: React.FC = () => {
       <div className="button-area">
         <Row className="justify-content-end g-3">
           <Col xs="auto">
-            <Button variant="info" className="text-white px-4" disabled={loading || selectedTests.length === 0}>
+            <Button variant="info" className="text-white px-4" onClick={handleExport} disabled={loading}>
               報表匯出
             </Button>
           </Col>
