@@ -159,11 +159,20 @@ const InventoryDetail: React.FC = () => {
             </tr>
           ) : (
             records.map((r) => (
-              <tr key={r.Inventory_ID}>
+              <tr
+                key={r.Inventory_ID}
+                onClick={() =>
+                  setSelectedId(
+                    selectedId === r.Inventory_ID ? null : r.Inventory_ID
+                  )
+                }
+                style={{ cursor: "pointer" }}
+              >
                 <td>
                   <Form.Check
                     type="checkbox"
                     checked={selectedId === r.Inventory_ID}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={() =>
                       setSelectedId(
                         selectedId === r.Inventory_ID ? null : r.Inventory_ID
