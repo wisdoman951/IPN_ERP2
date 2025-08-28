@@ -289,7 +289,11 @@ export const getStaffAccounts = async (keyword?: string): Promise<StaffAccount[]
             headers: getAuthHeaders(), // <-- 修正點
             params: { keyword: keyword || undefined }
         });
-        return response.data;
+        // 後端回傳 reset_requested 為數字 0/1，這裡統一轉為布林值
+        return response.data.map((acc: any) => ({
+            ...acc,
+            reset_requested: !!acc.reset_requested,
+        }));
     } catch (error) {
         console.error("獲取員工帳號列表失敗:", error);
         throw error;
