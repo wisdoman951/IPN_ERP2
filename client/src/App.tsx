@@ -8,7 +8,6 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import ForgotPassword from "./pages/ForgotPassword";
-import ResetPassword from "./pages/ResetPassword";
 
 // Member
 import MamberManagement from "./pages/member/MemberManagement";
@@ -108,7 +107,6 @@ const App: React.FC = () => {
             <div className="main-content">
                 <Routes>
                     <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
                     <Route path="/home" element={<ProtectedRoute element={<Home />} />} />
 
                     {/* Member */}
