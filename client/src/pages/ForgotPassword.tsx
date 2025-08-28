@@ -2,9 +2,6 @@ import React, { useState } from "react";
 import { Container, Form, Button, Alert, Spinner } from "react-bootstrap";
 import { forgotPassword } from "../services/LoginService";
 import { useNavigate } from "react-router-dom";
-import { base_url } from "../services/BASE_URL";
-
-const API_URL = `${base_url}/auth`;
 
 const ForgotPassword: React.FC = () => {
   const navigate = useNavigate();
@@ -42,25 +39,12 @@ const ForgotPassword: React.FC = () => {
 
     setIsLoading(true);
     try {
-      await forgotPassword(account);
-      
-      // 由於後端直接返回 token，我們需要模擬一個請求來獲取 token
-      // 實際應用中，這個 token 應該由後端通過郵件發送給用戶
-      const mockRequest = await fetch(`${API_URL}/forgot-password`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ account }),
-      });
-      
-      const result = await mockRequest.json();
-      
+      const result = await forgotPassword(account);
+
       setAlertMsg("重設密碼連結已產生，請前往重設密碼");
       setAlertVariant("success");
       setResetToken(result.token);
       setIsTokenReceived(true);
-
     } catch (err: any) {
       const msg = err.response?.data?.error || "請求失敗，請稍後再試";
       setAlertMsg(msg);
