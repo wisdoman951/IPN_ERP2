@@ -299,7 +299,7 @@ const InventoryEntryForm = () => {
 
   <Col xs={6} md={2}>
     <Button
-      variant="secondary"
+      variant="info"
       className="w-100 text-white"
       onClick={() => navigate(-1)}
     >
