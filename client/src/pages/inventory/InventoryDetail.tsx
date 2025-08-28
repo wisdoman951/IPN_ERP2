@@ -201,7 +201,7 @@ const InventoryDetail: React.FC = () => {
       </Table>
 
       {/* 下方按鈕列 */}
-      <Row className="mt-4 justify-content-center g-2">
+      <Row className="mt-4 justify-content-end g-2">
         <Col xs="auto">
           <Button variant="info" className="text-white px-4" onClick={handleExport}>報表匯出</Button>
         </Col>
