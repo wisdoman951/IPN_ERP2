@@ -168,7 +168,7 @@ def export_members():
         df = pd.DataFrame(members)
         
         column_mapping = {
-            'member_id': '會員編號', 'member_code': '會員編號', 'name': '姓名',
+            'member_id': '會員ID', 'member_code': '會員編號', 'name': '姓名',
             'birthday': '生日', 'address': '地址', 'phone': '電話', 'gender': '性別',
             'blood_type': '血型', 'line_id': 'Line ID', 'inferrer_id': '推薦人編號',
             'occupation': '職業', 'note': '備註', 'store_id': '所屬分店ID'

@@ -8,6 +8,8 @@ import ScrollableTable from "../../components/ScrollableTable";
 import { useTherapyRecord } from "../../hooks/useTherapyRecord";
 import { formatDate, truncateText, formatNumber } from "../../utils/therapyUtils";
 import { getTherapyPackages, getStaffMembers, TherapyPackage, StaffMember } from "../../services/TherapyDropdownService";
+import { downloadBlob } from "../../utils/downloadBlob";
+import { exportTherapyRecords } from "../../services/TherapyService";
 
 const TherapyRecord: React.FC = () => {
     const navigate = useNavigate();
@@ -33,8 +35,17 @@ const TherapyRecord: React.FC = () => {
         handleCheckboxChange,
         handleSearch,
         handleDelete,
-        handleExport,
     } = useTherapyRecord();
+
+    const handleExport = async () => {
+        try {
+            const blob = await exportTherapyRecords();
+            downloadBlob(blob, "療程紀錄.xlsx");
+        } catch (err) {
+            console.error("匯出失敗：", err);
+            alert("匯出報表失敗！");
+        }
+    };
 
     // 載入下拉選單資料
     useEffect(() => {
@@ -263,11 +274,11 @@ const TherapyRecord: React.FC = () => {
             <Container className="my-4">
                 <Row className="justify-content-end g-3">
                     <Col xs="auto">
-                        <Button 
-                            variant="info" 
+                        <Button
+                            variant="info"
                             className="text-white px-4"
                             onClick={handleExport}
-                            disabled={loading || records.length === 0}
+                            disabled={loading}
                         >
                             報表匯出
                         </Button>

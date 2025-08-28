@@ -1,6 +1,7 @@
 // ./src/hooks/useStressTest.ts
 import { useState, useEffect, useCallback } from 'react';
-import { getAllStressTests, deleteStressTest, StressTestData } from '../services/StressTestService';
+import { getAllStressTests, deleteStressTest, exportStressTests, StressTestData } from '../services/StressTestService';
+import { downloadBlob } from '../utils/downloadBlob';
 
 interface StressTest {
   ipn_stress_id: number;
@@ -84,6 +85,19 @@ export const useStressTest = () => {
     }
   }, [selectedTests, fetchTests]);
 
+  const handleExport = useCallback(async () => {
+    try {
+      setLoading(true);
+      const blob = await exportStressTests();
+      downloadBlob(blob, "壓力測試.xlsx");
+    } catch (error) {
+      console.error('Error exporting stress tests:', error);
+      alert('匯出報表失敗！');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     tests,
     selectedTests,
@@ -91,7 +105,8 @@ export const useStressTest = () => {
     fetchTests,
     handleSearch,
     handleCheckboxChange,
-    handleDelete
+    handleDelete,
+    handleExport
   };
 };
 

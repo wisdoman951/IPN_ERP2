@@ -75,6 +75,17 @@ export const deleteStressTest = async (stressId: number) => {
     return axios.delete(`${API_URL}/${stressId}`);
 };
 
+export const exportStressTests = async (filters?: StressTestSearchFilters) => {
+    const filtered = Object.fromEntries(
+        Object.entries(filters || {}).filter(([k, v]) => v !== undefined && v !== null && v !== "")
+    );
+    const response = await axios.get(`${API_URL}/export`, {
+        params: filtered,
+        responseType: 'blob'
+    });
+    return response.data;
+};
+
 // 取得單筆（含所有答案）
 export const getStressTestByIdWithAnswers = async (id: string | number) => {
     // 後端已經改好 /api/stress-test/<id> 會帶 answers
