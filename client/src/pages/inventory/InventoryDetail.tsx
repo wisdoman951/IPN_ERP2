@@ -211,7 +211,7 @@ const InventoryDetail: React.FC = () => {
         <Col xs="auto">
           <Button
             variant="info"
-            className="text-white px-4"
+            className="text-white px-4 me-2"
             onClick={() => {
               if (!selectedId) {
                 alert('請先勾選要修改的資料');
@@ -228,7 +228,7 @@ const InventoryDetail: React.FC = () => {
           </Button>
         </Col>
         <Col xs="auto">
-          <Button variant="info" className="text-white px-4">確認</Button>
+          <Button variant="info" className="text-white px-4 me-2">確認</Button>
         </Col>
       </Row>
     </Container>
