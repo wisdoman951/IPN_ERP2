@@ -159,7 +159,6 @@ def export_records():
 
         # 匯出對應店家的療程紀錄
         records = export_therapy_records(store_id=store_id)
-        
         # 過濾和重命名欄位以適合匯出
         export_data = [{
             '療程記錄ID': r.get('therapy_record_id'),
