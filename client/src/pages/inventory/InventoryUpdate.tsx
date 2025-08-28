@@ -267,7 +267,6 @@ const InventoryEntryForm = () => {
 
           <Row className="text-center g-2">
             <Col xs={12} className="mb-2 d-flex align-items-center justify-content-center">
-              <Form.Check type="checkbox" id="custom-check" className="me-2" />
             </Col>
           
             {/* <Col xs={6} md={2}>
