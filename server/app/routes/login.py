@@ -6,6 +6,10 @@ from datetime import datetime, timedelta
 from app.config import JWT_SECRET_KEY, JWT_EXPIRATION
 
 login_bp = Blueprint("auth", __name__)
+# NOTE: Retain legacy variable for compatibility with older imports.
+# Password reset requests are now persisted in the database, so this set
+# is unused but prevents ImportError in modules that still import it.
+password_reset_requests: set[str] = set()
 
 # 為所有其他響應添加適當的 CORS 頭
 @login_bp.after_request
