@@ -265,10 +265,9 @@ const InventoryEntryForm = () => {
             </Col>
           </Row>
 
-          <Row className="justify-content-center align-items-center text-center g-2" style={{ minHeight: "100vh" }}>
+          <Row className="text-center g-2">
             <Col xs={12} className="mb-2 d-flex align-items-center justify-content-center">
               <Form.Check type="checkbox" id="custom-check" className="me-2" />
-              <Form.Label htmlFor="custom-check" className="mb-0">勾選</Form.Label>
             </Col>
           
             {/* <Col xs={6} md={2}>
