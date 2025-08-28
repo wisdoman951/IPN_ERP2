@@ -21,6 +21,7 @@ interface RecordRow {
   quantity: number;
   Date: string;
   StaffName: string;
+  Supplier?: string;
   StoreName: string;
   SaleStaff?: string;
   Buyer?: string;
@@ -189,7 +190,7 @@ const InventoryDetail: React.FC = () => {
                 <td></td>
                 <td></td>
                 <td>{formatDate(r.Date)}</td>
-                <td></td>
+                <td>{r.Supplier ?? ''}</td>
                 <td>{r.StoreName}</td>
                 <td>{r.SaleStaff || r.StaffName}</td>
                 <td>{r.Buyer ?? ''}</td>

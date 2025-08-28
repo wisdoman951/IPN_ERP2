@@ -136,7 +136,7 @@ def delete_member_and_related_data(member_id: int):
             # 關聯表列表 (直接以 member_id 關聯)
             related_tables = [
                 "product_sell", "therapy_sell", "therapy_record", "ipn_pure",
-                "ipn_stress", "medical_record", "usual_sympton_and_family_history"
+                "ipn_stress", "medical_record", "health_status", "usual_sympton_and_family_history"
             ]
             for table in related_tables:
                 cursor.execute(f"DELETE FROM `{table}` WHERE member_id = %s", (member_id,))
