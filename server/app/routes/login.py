@@ -11,6 +11,8 @@ login_bp = Blueprint("auth", __name__)
 
 # 儲存重置密碼的 token
 password_reset_tokens = {}  # { token: { account, expiry } }
+# 紀錄申請重設密碼的帳號
+password_reset_requests = set()
 
 # 為所有其他響應添加適當的 CORS 頭
 @login_bp.after_request
@@ -151,6 +153,9 @@ def forgot_password():
     if not staff:
         return jsonify({"error": "查無此帳號"}), 404
 
+    # 標記此帳號已申請重設密碼
+    password_reset_requests.add(account)
+
     # 產生重設 token，有效期為 1 小時
     token = secrets.token_urlsafe(32)
     expiry = int(time.time()) + 3600  # 一小時後過期
@@ -201,10 +206,12 @@ def reset_password():
     # 更新密碼
     try:
         update_staff_password(account, new_password)
-        
+
         # 密碼更新成功，移除 token
         password_reset_tokens.pop(token, None)
-        
+        # 解除申請重設密碼標記
+        password_reset_requests.discard(account)
+
         return jsonify({
             "message": "密碼更新成功",
         }), 200
