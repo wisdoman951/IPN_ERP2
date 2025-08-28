@@ -19,7 +19,6 @@ from app.models.staff_model import (
     get_all_stores_for_dropdown
 )
 from app.middleware import auth_required, login_required, admin_required
-from app.routes.login import password_reset_requests
 staff_bp = Blueprint("staff", __name__)
 
 # --- 這個是您原有的，用於獲取完整員工列表 ---
@@ -220,10 +219,9 @@ def get_staff_accounts():
             staff_list = search_staff_with_accounts(keyword)
         else:
             staff_list = get_all_staff_with_accounts()
-        # 標記申請重設密碼的帳號
+        # 將資料庫的 reset_requested 轉為布林值
         for staff in staff_list:
-            account = staff.get("account")
-            staff["reset_requested"] = account in password_reset_requests
+            staff["reset_requested"] = bool(staff.get("reset_requested"))
         return jsonify(staff_list)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -236,10 +234,6 @@ def update_account_route(staff_id):
     try:
         success = update_staff_account(staff_id, data)
         if success:
-            # 若此員工曾申請重設密碼，更新後移除標記
-            account = data.get("account")
-            if account:
-                password_reset_requests.discard(account)
             return jsonify({"message": "員工帳號更新成功"}), 200
         else:
             return jsonify({"error": "更新失敗或無此員工"}), 404
