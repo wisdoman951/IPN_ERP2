@@ -93,6 +93,10 @@ export interface UpdateInventoryPayload {
     store_id?: number;
     staff_id?: number;
     date?: string;
+    supplier?: string;
+    buyer?: string;
+    voucher?: string;
+    note?: string;
 }
 
 export const updateInventoryItem = async (
