@@ -1,6 +1,7 @@
 import axios from "axios";
 import { base_url } from "./BASE_URL";
 import { TherapySearchParams } from "../hooks/useTherapyRecord";
+import { getAuthHeaders } from "./AuthUtils";
 
 const API_URL = `${base_url}/therapy`;
 
@@ -25,18 +26,23 @@ export interface TherapyRecord {
 
 // 療程紀錄 API
 export const getAllTherapyRecords = async (): Promise<TherapyRecord[]> => {
-    const response = await axios.get(`${API_URL}/record`);
+    const response = await axios.get(`${API_URL}/record`, {
+        headers: getAuthHeaders()
+    });
     return response.data;
 };
 
 export const getTherapyRecordById = async (recordId: number): Promise<TherapyRecord> => {
-    const response = await axios.get(`${API_URL}/record/${recordId}`);
+    const response = await axios.get(`${API_URL}/record/${recordId}`, {
+        headers: getAuthHeaders()
+    });
     return response.data;
 };
 
 export const searchTherapyRecords = async (params: TherapySearchParams): Promise<TherapyRecord[]> => {
     const response = await axios.get(`${API_URL}/record/search`, {
-        params: params
+        params: params,
+        headers: getAuthHeaders()
     });
     return response.data;
 };
@@ -50,7 +56,9 @@ export const addTherapyRecord = async (data: {
     date: string;
     note?: string;
 }) => {
-    return axios.post(`${API_URL}/record`, data);
+    return axios.post(`${API_URL}/record`, data, {
+        headers: getAuthHeaders()
+    });
 };
 
 export const updateTherapyRecord = async (
@@ -65,29 +73,37 @@ export const updateTherapyRecord = async (
         note?: string;
     }
 ) => {
-    return axios.put(`${API_URL}/record/${recordId}`, data);
+    return axios.put(`${API_URL}/record/${recordId}`, data, {
+        headers: getAuthHeaders()
+    });
 };
 
 export const deleteTherapyRecord = async (recordId: number) => {
-    return axios.delete(`${API_URL}/record/${recordId}`);
+    return axios.delete(`${API_URL}/record/${recordId}`, {
+        headers: getAuthHeaders()
+    });
 };
 
 export const exportTherapyRecords = async () => {
     const response = await axios.get(`${API_URL}/record/export`, {
-        responseType: "blob"
+        responseType: "blob",
+        headers: getAuthHeaders()
     });
     return response.data;
 };
 
 // 療程銷售 API
 export const getAlltherapySells = async () => {
-    const response = await axios.get(`${API_URL}/sale`);
+    const response = await axios.get(`${API_URL}/sale`, {
+        headers: getAuthHeaders()
+    });
     return response.data;
 };
 
 export const searchtherapySells = async (keyword: string) => {
     const response = await axios.get(`${API_URL}/sale/search`, {
-        params: { keyword }
+        params: { keyword },
+        headers: getAuthHeaders()
     });
     return response.data;
 };
@@ -103,7 +119,9 @@ export const addtherapySell = async (data: {
     staffId: string;
     saleCategory: string;
 }) => {
-    return axios.post(`${API_URL}/add-sale`, data);
+    return axios.post(`${API_URL}/add-sale`, data, {
+        headers: getAuthHeaders()
+    });
 };
 
 export const updatetherapySell = async (
@@ -120,22 +138,29 @@ export const updatetherapySell = async (
         saleCategory: string;
     }
 ) => {
-    return axios.put(`${API_URL}/sale/${saleId}`, data);
+    return axios.put(`${API_URL}/sale/${saleId}`, data, {
+        headers: getAuthHeaders()
+    });
 };
 
 export const deletetherapySell = async (saleId: number) => {
-    return axios.delete(`${API_URL}/sale/${saleId}`);
+    return axios.delete(`${API_URL}/sale/${saleId}`, {
+        headers: getAuthHeaders()
+    });
 };
 
 export const exporttherapySells = async () => {
     const response = await axios.get(`${API_URL}/sale/export`, {
-        responseType: "blob"
+        responseType: "blob",
+        headers: getAuthHeaders()
     });
     return response.data;
-}; 
+};
 
 export const getAllTherapiesForDropdown = async () => {
-    const response = await axios.get(`${API_URL}/for-dropdown`);
+    const response = await axios.get(`${API_URL}/for-dropdown`, {
+        headers: getAuthHeaders()
+    });
     return response.data;
 };
 

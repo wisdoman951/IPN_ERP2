@@ -159,11 +159,20 @@ const InventoryDetail: React.FC = () => {
             </tr>
           ) : (
             records.map((r) => (
-              <tr key={r.Inventory_ID}>
+              <tr
+                key={r.Inventory_ID}
+                onClick={() =>
+                  setSelectedId(
+                    selectedId === r.Inventory_ID ? null : r.Inventory_ID
+                  )
+                }
+                style={{ cursor: "pointer" }}
+              >
                 <td>
                   <Form.Check
                     type="checkbox"
                     checked={selectedId === r.Inventory_ID}
+                    onClick={(e) => e.stopPropagation()}
                     onChange={() =>
                       setSelectedId(
                         selectedId === r.Inventory_ID ? null : r.Inventory_ID
@@ -192,7 +201,7 @@ const InventoryDetail: React.FC = () => {
       </Table>
 
       {/* 下方按鈕列 */}
-      <Row className="mt-4 justify-content-center g-2">
+      <Row className="mt-4 justify-content-end g-2">
         <Col xs="auto">
           <Button variant="info" className="text-white px-4" onClick={handleExport}>報表匯出</Button>
         </Col>
@@ -202,7 +211,7 @@ const InventoryDetail: React.FC = () => {
         <Col xs="auto">
           <Button
             variant="info"
-            className="text-white px-4"
+            className="text-white px-4 me-2"
             onClick={() => {
               if (!selectedId) {
                 alert('請先勾選要修改的資料');
@@ -219,7 +228,7 @@ const InventoryDetail: React.FC = () => {
           </Button>
         </Col>
         <Col xs="auto">
-          <Button variant="info" className="text-white px-4">確認</Button>
+          <Button variant="info" className="text-white px-4 me-2">確認</Button>
         </Col>
       </Row>
     </Container>
