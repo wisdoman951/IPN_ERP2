@@ -110,15 +110,16 @@ const UserAccountManagement: React.FC = () => {
                         <th>帳號</th>
                         <th>權限</th>
                         <th>密碼</th>
+                        <th>備註</th>
                     </tr>
                 </thead>
                 <tbody>
                     {loading ? (
-                        <tr><td colSpan={7} className="text-center py-5"><Spinner animation="border" /></td></tr>
+                        <tr><td colSpan={8} className="text-center py-5"><Spinner animation="border" /></td></tr>
                     ) : accounts.length === 0 ? (
-                        <tr><td colSpan={7} className="text-center text-muted py-5">尚無資料</td></tr>
+                        <tr><td colSpan={8} className="text-center text-muted py-5">尚無資料</td></tr>
                     ) : accounts.map(acc => (
-                        <tr key={acc.staff_id}>
+                        <tr key={acc.staff_id} className={acc.reset_requested ? 'table-warning' : ''}>
                             <td className="text-center align-middle"><Form.Check type="checkbox" checked={selectedIds.includes(acc.staff_id)} onChange={e => handleCheckboxChange(acc.staff_id, e.target.checked)} /></td>
                             <td className="align-middle">{acc.name}</td>
                             <td className="align-middle">{acc.phone || '-'}</td>
@@ -126,6 +127,7 @@ const UserAccountManagement: React.FC = () => {
                             <td className="align-middle">{acc.account || '-'}</td>
                             <td className="align-middle">{acc.permission ? PERMISSION_LABELS[acc.permission] || acc.permission : '-'}</td>
                             <td className="align-middle">{'******'}</td>
+                            <td className="align-middle text-danger">{acc.reset_requested ? '此員工已申請密碼重設' : '-'}</td>
                         </tr>
                     ))}
                 </tbody>
