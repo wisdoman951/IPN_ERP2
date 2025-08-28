@@ -152,13 +152,13 @@ def delete_record(record_id):
 def export_records():
     """匯出療程紀錄"""
     try:
-        # 匯出時不限制店家，避免因店別過濾造成匯出檔案為空
-        # 仍會進行權限驗證，但資料以所有店家紀錄為基礎
-        get_user_from_token(request)
+        # 根據登入者身分決定匯出範圍，分店僅匯出自己的紀錄，
+        # 總店／admin 則可匯出所有店家資料
+        user = get_user_from_token(request)
+        store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
 
-        # 直接匯出所有療程紀錄
-        records = export_therapy_records(store_id=None)
-        
+        # 匯出對應店家的療程紀錄
+        records = export_therapy_records(store_id=store_id)
         # 過濾和重命名欄位以適合匯出
         export_data = [{
             '療程記錄ID': r.get('therapy_record_id'),

@@ -78,6 +78,22 @@ def test_therapy_record_export(client, monkeypatch):
     assert rv.mimetype == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
 
 
+def test_therapy_record_export_respects_store(client, monkeypatch):
+    called = {}
+
+    def fake_export(store_id):
+        called['store_id'] = store_id
+        return []
+
+    monkeypatch.setattr('app.routes.therapy.export_therapy_records', fake_export)
+    monkeypatch.setattr('app.routes.therapy.get_user_from_token',
+                        lambda req: {'store_id': 2, 'permission': 'staff'})
+
+    rv = client.get('/api/therapy/record/export', headers=auth_headers())
+    assert rv.status_code == 200
+    assert called['store_id'] == 2
+
+
 def test_therapy_record_export_empty(client, monkeypatch):
     monkeypatch.setattr('app.routes.therapy.export_therapy_records', lambda store_id: [])
     rv = client.get('/api/therapy/record/export', headers=auth_headers())
