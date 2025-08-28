@@ -167,59 +167,17 @@ export const logout = (): void => {
 };
 
 /**
- * 發送重設密碼請求（管理員功能）
- * @param account - 需要重設密碼的帳號
- * @returns 重設密碼請求結果
- */
-export const requestPasswordReset = async (account: string) => {
-  try {
-    const res = await axios.post(`${API_URL}/request-password-reset`, {
-      account,
-    }, { headers: HEADERS });
-    return res.data;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      throw new Error(error.response.data?.error || '重設密碼請求失敗');
-    }
-    throw error;
-  }
-};
-
-/**
  * 發送忘記密碼請求
  * @param account 使用者帳號
  * @returns Promise
  */
-export const forgotPassword = async (account: string): Promise<{ message: string, token: string }> => {
+export const forgotPassword = async (account: string): Promise<{ message: string }> => {
   try {
     const response = await axios.post(`${API_URL}/forgot-password`, { account }, { headers: HEADERS });
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response) {
       throw new Error(error.response.data?.error || '忘記密碼請求失敗');
-    }
-    throw error;
-  }
-};
-
-/**
- * 重設密碼
- * @param token 重置密碼令牌
- * @param account 使用者帳號
- * @param newPassword 新密碼
- * @returns Promise
- */
-export const resetPassword = async (token: string, account: string, newPassword: string): Promise<{ message: string }> => {
-  try {
-    const response = await axios.post(`${API_URL}/reset-password`, {
-      token,
-      account,
-      newPassword
-    }, { headers: HEADERS });
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      throw new Error(error.response.data?.error || '重設密碼失敗');
     }
     throw error;
   }
