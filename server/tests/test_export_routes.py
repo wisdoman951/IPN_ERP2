@@ -1,8 +1,9 @@
 import io
 import os
 import sys
-import pandas as pd
 import pytest
+from datetime import date
+from openpyxl import load_workbook
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app import create_app
@@ -66,13 +67,24 @@ def test_therapy_record_export(client, monkeypatch):
         'member_name': 'Alice',
         'store_name': 'Store',
         'staff_name': 'Bob',
-        'date': '2024-01-01',
+        'date': date(2024, 1, 1),
         'note': ''
     }]
     monkeypatch.setattr('app.routes.therapy.export_therapy_records', lambda store_id: sample)
     rv = client.get('/api/therapy/record/export', headers=auth_headers())
     assert rv.status_code == 200
     assert rv.mimetype == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+
+def test_therapy_record_export_empty(client, monkeypatch):
+    monkeypatch.setattr('app.routes.therapy.export_therapy_records', lambda store_id: [])
+    rv = client.get('/api/therapy/record/export', headers=auth_headers())
+    assert rv.status_code == 200
+    wb = load_workbook(filename=io.BytesIO(rv.data))
+    ws = wb.active
+    headers = [cell.value for cell in ws[1]]
+    assert headers == ['療程記錄ID', '會員編號', '會員姓名', '商店名稱', '服務人員', '日期', '備註']
+    assert ws.max_row == 1
 
 def test_sales_order_export(client, monkeypatch):
     sample = [{
