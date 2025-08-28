@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button, Table } from "react-bootstrap";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
-import { getInventoryRecords, exportInventory } from "../../services/InventoryService";
+import { getInventoryRecords, exportInventory, deleteInventoryItem } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
 
@@ -48,6 +48,29 @@ const InventoryDetail: React.FC = () => {
       buyer: buyer || undefined,
       productId: productId ? Number(productId) : undefined,
     }).then((res) => setRecords(res));
+  };
+
+  const handleDelete = async () => {
+    if (!selectedId) {
+      alert('請先勾選要刪除的資料');
+      return;
+    }
+    if (selectedId >= 1000000) {
+      alert('銷售資料無法更動，更動請至銷售產品/銷售療程進行修改。');
+      return;
+    }
+    if (!window.confirm('確定要刪除選中的庫存紀錄嗎？')) {
+      return;
+    }
+    try {
+      await deleteInventoryItem(selectedId);
+      setSelectedId(null);
+      handleSearch();
+      alert('刪除成功');
+    } catch (err) {
+      console.error('刪除庫存記錄失敗', err);
+      alert('刪除失敗');
+    }
   };
 
   const handleExport = async () => {
@@ -174,7 +197,7 @@ const InventoryDetail: React.FC = () => {
           <Button variant="info" className="text-white px-4" onClick={handleExport}>報表匯出</Button>
         </Col>
         <Col xs="auto">
-          <Button variant="info" className="text-white px-4">刪除</Button>
+          <Button variant="info" className="text-white px-4" onClick={handleDelete}>刪除</Button>
         </Col>
         <Col xs="auto">
           <Button
