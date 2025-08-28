@@ -1,8 +1,8 @@
 import io
 import os
 import sys
-import pandas as pd
 import pytest
+from datetime import date
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from app import create_app
@@ -66,7 +66,7 @@ def test_therapy_record_export(client, monkeypatch):
         'member_name': 'Alice',
         'store_name': 'Store',
         'staff_name': 'Bob',
-        'date': '2024-01-01',
+        'date': date(2024, 1, 1),
         'note': ''
     }]
     monkeypatch.setattr('app.routes.therapy.export_therapy_records', lambda store_id: sample)

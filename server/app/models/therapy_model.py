@@ -1,4 +1,5 @@
 import pymysql
+from datetime import date, datetime
 from app.config import DB_CONFIG
 from app.utils import get_store_based_where_condition
 
@@ -316,7 +317,7 @@ def export_therapy_records(store_id=None):
                            m.member_id,
                            m.member_code,
                            m.name as member_name,
-                           s.name as store_name,
+                           s.store_name as store_name,
                            st.name as staff_name,
                            tr.date,
                            tr.note
@@ -334,7 +335,7 @@ def export_therapy_records(store_id=None):
                            m.member_id,
                            m.member_code,
                            m.name as member_name,
-                           s.name as store_name,
+                           s.store_name as store_name,
                            st.name as staff_name,
                            tr.date,
                            tr.note
@@ -347,11 +348,11 @@ def export_therapy_records(store_id=None):
                 cursor.execute(query)
                 
             result = cursor.fetchall()
-            
-            # 處理日期格式
+
+            # 處理日期格式，將 datetime 物件轉為字串
             for record in result:
-                if record.get('日期'):
-                    record['日期'] = record['日期'].strftime('%Y-%m-%d')
+                if record.get('date') and isinstance(record['date'], (date, datetime)):
+                    record['date'] = record['date'].strftime('%Y-%m-%d')
                     
         return result
     except Exception as e:
