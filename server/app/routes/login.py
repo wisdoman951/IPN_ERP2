@@ -1,14 +1,11 @@
 # server\app\routes\login.py
 from flask import Blueprint, request, jsonify, make_response
-from app.models.login_model import find_staff_by_account, get_all_stores
+from app.models.login_model import find_staff_by_account, get_all_stores, mark_reset_requested
 import jwt
 from datetime import datetime, timedelta
 from app.config import JWT_SECRET_KEY, JWT_EXPIRATION
 
 login_bp = Blueprint("auth", __name__)
-
-# 紀錄申請重設密碼的帳號
-password_reset_requests = set()
 
 # 為所有其他響應添加適當的 CORS 頭
 @login_bp.after_request
@@ -120,7 +117,10 @@ def forgot_password():
         return jsonify({"error": "查無此帳號"}), 404
 
     # 標記此帳號已申請重設密碼
-    password_reset_requests.add(account)
+    try:
+        mark_reset_requested(account, True)
+    except Exception as e:
+        return jsonify({"error": f"設定重設標記失敗: {str(e)}"}), 500
 
     # 在實際應用中，這裡應該通知總部人員協助重設
     return jsonify({

@@ -49,6 +49,23 @@ def update_staff_password(account, new_password):
         conn.close()
 
 
+def mark_reset_requested(account, requested=True):
+    """更新指定帳號的密碼重設申請標記"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "UPDATE staff SET reset_requested = %s WHERE account = %s",
+                (1 if requested else 0, account),
+            )
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
 def get_store_info(store_id):
     """根據 store_id 獲取分店與其員工帳號"""
     conn = connect_to_db()
