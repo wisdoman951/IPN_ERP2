@@ -159,8 +159,8 @@ const EditMember: React.FC = () => {
                         <Col md={12}><Form.Group><Form.Label>備註</Form.Label><Form.Control as="textarea" rows={3} name="note" value={form.note || ''} onChange={handleChange} /></Form.Group></Col>
                     </Row>
                     <div className="d-flex justify-content-end gap-2 mt-4">
-                        <Button variant="secondary" onClick={() => navigate('/member-info')} disabled={loading}>取消</Button>
-                        <Button variant="primary" type="submit" disabled={loading || fetchLoading}>
+                        <Button variant="info" className="text-white" onClick={() => navigate('/member-info')} disabled={loading}>取消</Button>
+                        <Button variant="info" className="text-white" type="submit" disabled={loading || fetchLoading}>
                             {loading ? <Spinner as="span" size="sm" /> : "儲存更新"}
                         </Button>
                     </div>
