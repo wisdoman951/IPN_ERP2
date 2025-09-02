@@ -17,6 +17,7 @@ from app.models.member_model import (
     get_next_member_code,
     delete_member_and_related_data as delete_member_model
 )
+from app.models.store_model import get_all_stores
 
 member_bp = Blueprint("member", __name__)
 
@@ -160,18 +161,26 @@ def export_members():
         user_store_id = request.store_id
         
         # 根據權限獲取會員資料
-        members = get_all_members(store_level=user_store_level, store_id=user_store_id) 
-        
+        members = get_all_members(store_level=user_store_level, store_id=user_store_id)
+
         if not members:
             return jsonify({"message": "沒有可匯出的會員資料。"}), 404
 
+        # 取得所有分店資訊以建立 ID 與名稱的對照
+        stores = get_all_stores()
+        store_map = {store['store_id']: store['store_name'] for store in stores}
+
+        for member in members:
+            member['store_name'] = store_map.get(member.get('store_id'), member.get('store_id'))
+            member.pop('store_id', None)
+
         df = pd.DataFrame(members)
-        
+
         column_mapping = {
             'member_id': '會員ID', 'member_code': '會員編號', 'name': '姓名',
             'birthday': '生日', 'address': '地址', 'phone': '電話', 'gender': '性別',
             'blood_type': '血型', 'line_id': 'Line ID', 'inferrer_id': '推薦人編號',
-            'occupation': '職業', 'note': '備註', 'store_id': '所屬分店ID'
+            'occupation': '職業', 'note': '備註', 'store_name': '所屬分店'
         }
         df = df.rename(columns=column_mapping)
             

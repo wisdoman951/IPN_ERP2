@@ -164,11 +164,6 @@ const MemberInfo: React.FC = () => {
                         </Button>
                         {/* ***** 結束修改 ***** */}
                     </Col>
-                    <Col xs="auto">
-                        <Button variant="info" className="text-white" onClick={() => navigate(-1)}>
-                            確認
-                        </Button>
-                    </Col>
                 </Row>
             </Container>
         </div>

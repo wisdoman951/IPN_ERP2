@@ -38,6 +38,7 @@ def test_member_export(client, monkeypatch):
         'store_id': 1
     }]
     monkeypatch.setattr('app.routes.member.get_all_members', lambda store_level, store_id: sample)
+    monkeypatch.setattr('app.routes.member.get_all_stores', lambda: [{'store_id': 1, 'store_name': '總部'}])
     rv = client.get('/api/member/export', headers=auth_headers())
     assert rv.status_code == 200
     assert rv.mimetype == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
