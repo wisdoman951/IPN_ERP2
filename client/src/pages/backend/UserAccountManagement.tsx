@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Form, Button, Table, Spinner, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { getStaffAccounts, deleteMultipleStaff, StaffAccount } from '../../services/StaffService';
+import { getStaffAccounts, deleteMultipleStaff, StaffAccount, exportStaffAccounts, exportSelectedStaffAccounts } from '../../services/StaffService';
 import Header from '../../components/Header'; // 1. 引入 Header
 import DynamicContainer from '../../components/DynamicContainer'; // 2. 引入 DynamicContainer
 
@@ -79,6 +79,43 @@ const UserAccountManagement: React.FC = () => {
         navigate(`/backend/user-accounts/edit/${selectedIds[0]}`);
     };
 
+    const handleExport = async () => {
+        try {
+            setLoading(true);
+            const blob = await exportStaffAccounts(keyword);
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '員工帳號資料.xlsx';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('匯出帳號資料失敗：', err);
+            alert('匯出帳號資料失敗');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleExportSelected = async () => {
+        if (selectedIds.length === 0) return;
+        try {
+            setLoading(true);
+            const blob = await exportSelectedStaffAccounts(selectedIds);
+            const url = window.URL.createObjectURL(new Blob([blob]));
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '員工帳號資料.xlsx';
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('匯出勾選帳號資料失敗：', err);
+            alert('匯出帳號資料失敗');
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // 3. 將所有頁面內容都放進一個名為 `content` 的變數中
     const content = (
         <Container fluid className="p-4">
@@ -135,6 +172,8 @@ const UserAccountManagement: React.FC = () => {
                 </tbody>
             </Table>
             <div className="d-flex justify-content-end gap-2 mt-4">
+                <Button variant="info" className="text-white" onClick={handleExport} disabled={loading}>報表匯出</Button>
+                <Button variant="info" className="text-white" onClick={handleExportSelected} disabled={loading || selectedIds.length === 0}>勾選匯出</Button>
                 <Button variant="info" className="text-white" onClick={handleDelete} disabled={selectedIds.length === 0}>刪除</Button>
                 <Button variant="info" className="text-white" onClick={handleEdit} disabled={selectedIds.length !== 1}>修改</Button>
                 <Button variant="info" className="text-white" onClick={() => navigate('/backend')}>確認</Button>
