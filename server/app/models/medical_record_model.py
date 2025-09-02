@@ -342,8 +342,15 @@ def update_medical_record(record_id, data):
                     )
 
 
-            symptom_data = json.loads(data.get('symptom', '{}'))
-            family_data = json.loads(data.get('familyHistory', '{}'))
+            def _ensure_dict(value):
+                if isinstance(value, str):
+                    return json.loads(value or '{}')
+                if isinstance(value, dict):
+                    return value
+                return {}
+
+            symptom_data = _ensure_dict(data.get('symptom', {}))
+            family_data = _ensure_dict(data.get('familyHistory', {}))
             if usual_symptoms_id:
                 cursor.execute("""
                     UPDATE usual_sympton_and_family_history SET
@@ -357,7 +364,7 @@ def update_medical_record(record_id, data):
                     usual_symptoms_id
                 ))
 
-            health_data = json.loads(data.get('healthStatus', '{}'))
+            health_data = _ensure_dict(data.get('healthStatus', {}))
             if health_status_id:
                 cursor.execute("""
                     UPDATE health_status SET health_status_selection = %s, others = %s
