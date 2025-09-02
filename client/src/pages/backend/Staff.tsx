@@ -184,7 +184,16 @@ const Staff: React.FC = () => {
             <Table bordered hover responsive>
                 <thead className="text-center bg-light">
                     <tr>
-                        <th><Form.Check type="checkbox" onChange={handleSelectAll} checked={staffList.length > 0 && selectedStaffIds.length === staffList.length} /></th>
+                        <th>
+                            <div className="d-flex align-items-center justify-content-center">
+                                <span className="me-1">勾選</span>
+                                <Form.Check
+                                    type="checkbox"
+                                    onChange={handleSelectAll}
+                                    checked={staffList.length > 0 && selectedStaffIds.length === staffList.length}
+                                />
+                            </div>
+                        </th>
                         <th>編號</th>
                         <th>姓名</th>
                         <th>身分證字號</th>
