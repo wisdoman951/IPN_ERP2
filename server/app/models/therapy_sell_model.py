@@ -491,11 +491,11 @@ def get_remaining_sessions(member_id, therapy_id):
             
             # 計算已使用量
             cursor.execute(
-                "SELECT COUNT(*) as total_used FROM therapy_record WHERE member_id = %s AND therapy_id = %s",
+                "SELECT COALESCE(SUM(deduct_sessions), 0) as total_used FROM therapy_record WHERE member_id = %s AND therapy_id = %s",
                 (member_id, therapy_id)
             )
             used_result = cursor.fetchone()
-            total_used = int(used_result['total_used']) if used_result and used_result.get('total_used') is not None else 0
+            total_used = int(float(used_result['total_used'])) if used_result and used_result.get('total_used') is not None else 0
             
             # 直接回傳計算結果的數字
             return total_purchased - total_used
@@ -534,7 +534,7 @@ def get_remaining_sessions_bulk(member_id, therapy_ids):
             # Total used per therapy
             cursor.execute(
                 f"""
-                SELECT therapy_id, COUNT(*) AS total_used
+                SELECT therapy_id, COALESCE(SUM(deduct_sessions),0) AS total_used
                 FROM therapy_record
                 WHERE member_id = %s AND therapy_id IN ({placeholders})
                 GROUP BY therapy_id
@@ -543,7 +543,7 @@ def get_remaining_sessions_bulk(member_id, therapy_ids):
             )
             used_rows = cursor.fetchall()
             used = {
-                int(row['therapy_id']): int(row['total_used'])
+                int(row['therapy_id']): int(float(row['total_used']))
                 for row in used_rows
             }
 
