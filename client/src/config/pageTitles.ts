@@ -23,7 +23,7 @@ export const pageTitles: PageTitleMap = {
   '/medical-record/add-medical-record': { basic: '新增健康檢查紀錄 1.1.1.2.1', admin: '新增健康檢查紀錄 1.2.1.2.1' },
   '/medical-record/add-family-medical-history': { basic: '平時症狀 家族病史 1.1.1.2.1.1', admin: '平時症狀 家族病史 1.2.1.2.1.1' },
   '/medical-record/symptoms-and-history': { basic: '症狀與病史選擇 1.1.1.2.1.1', admin: '症狀與病史選擇 1.2.1.2.1.1' },
-  '/medical-record/edit/:id': { basic: '編輯健康檢查紀錄 1.1.1.2.1', admin: '編輯健康檢查紀錄 1.1.1.2.1' },
+  '/medical-record/edit/:id': { basic: '編輯健康檢查紀錄 1.1.1.2.1', admin: '編輯健康檢查紀錄 1.2.1.2.1' },
 
    // Therapy 
   '/therapy-record': { basic: '療程紀錄 1.1.1.3', admin: '療程紀錄 1.2.1.3' },

@@ -87,7 +87,7 @@ const MedicalRecord: React.FC = () => {
                     <Col md={6} className="mb-3 mb-md-0">
                         <Form.Control
                             type="text"
-                            placeholder="姓名/電話/編號"
+                            placeholder="姓名/會員編號"
                             value={searchValue}
                             onChange={(e) => setSearchValue(e.target.value)}
                         />
@@ -132,9 +132,6 @@ const MedicalRecord: React.FC = () => {
                         >
                             修改
                         </Button>
-                    </Col>
-                    <Col xs="auto">
-                        <Button variant="info" className="text-white">確認</Button>
                     </Col>
                 </Row>
             </div>
