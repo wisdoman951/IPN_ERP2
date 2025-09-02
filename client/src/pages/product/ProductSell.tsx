@@ -1,5 +1,5 @@
 // .\src\pages\product\ProductSell.tsx
-import React from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Button, Container, Row, Col, Form, Spinner } from "react-bootstrap"; // Spinner 已在原程式碼但未匯入
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -9,9 +9,11 @@ import { formatDateToChinese } from "../../utils/memberUtils"; // 假設日期�
 import { formatCurrency } from "../../utils/productSellUtils"; // formatDiscount 可能不再需要
 import { useProductSell } from "../../hooks/useProductSell";
 import { ProductSell as ProductSellType } from "../../services/ProductSellService"; // 匯入更新後的型別
+import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
 
 const ProductSell: React.FC = () => {
     const navigate = useNavigate();
+    const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
     const {
         sales,
         selectedSales,
@@ -24,6 +26,70 @@ const ProductSell: React.FC = () => {
         // handleExport, // Figma 中沒有此按鈕，暫時移除
         handleCheckboxChange
     } = useProductSell();
+
+    useEffect(() => {
+        const loadBundles = async () => {
+            try {
+                const bundles = await fetchAllBundles();
+                const map: Record<number, { name: string; contents: string }> = {};
+                bundles.forEach((b: Bundle) => {
+                    map[b.bundle_id] = { name: b.name || b.bundle_contents, contents: b.bundle_contents };
+                });
+                setBundleMap(map);
+            } catch (err) {
+                console.error("載入產品組合失敗", err);
+            }
+        };
+        loadBundles();
+    }, []);
+
+    const getDisplayName = (sale: ProductSellType) => {
+        const match = sale.note?.match(/\[bundle:(\d+)\]/);
+        if (match) {
+            const id = parseInt(match[1], 10);
+            return bundleMap[id]?.name || sale.product_name || "-";
+        }
+        return sale.product_name || "-";
+    };
+
+    const getNote = (sale: ProductSellType) => {
+        const match = sale.note?.match(/\[bundle:(\d+)\]/);
+        if (match) {
+            const id = parseInt(match[1], 10);
+            return bundleMap[id]?.contents || "-";
+        }
+        return sale.note || "-";
+    };
+
+    const groupedSales = useMemo(() => {
+        const bundles: Record<string, ProductSellType & { product_sell_ids: number[] }> = {};
+        const singles: (ProductSellType & { product_sell_ids?: number[] })[] = [];
+
+        sales.forEach((sale) => {
+            const match = sale.note?.match(/\[bundle:(\d+)\]/);
+            if (match) {
+                const bundleId = match[1];
+                const key = `${bundleId}-${sale.member_id}-${sale.date}-${sale.payment_method}-${sale.staff_id}`;
+                const existing = bundles[key];
+                if (existing) {
+                    existing.final_price =
+                        (existing.final_price || 0) + (sale.final_price || sale.product_price || 0);
+                    existing.product_sell_ids.push(sale.product_sell_id);
+                } else {
+                    bundles[key] = {
+                        ...sale,
+                        product_sell_id: sale.product_sell_id,
+                        product_sell_ids: [sale.product_sell_id],
+                        quantity: 1
+                    } as ProductSellType & { product_sell_ids: number[] };
+                }
+            } else {
+                singles.push(sale);
+            }
+        });
+
+        return [...Object.values(bundles), ...singles];
+    }, [sales]);
 
     const tableHeader = (
         <tr>
@@ -48,8 +114,8 @@ const ProductSell: React.FC = () => {
                 <Spinner animation="border" variant="info" /> {/* 使用 Spinner 並指定 variant */}
             </td>
         </tr>
-    ) : sales.length > 0 ? (
-        sales.map((sale: ProductSellType) => ( // 強制使用更新後的型別
+    ) : groupedSales.length > 0 ? (
+        groupedSales.map((sale: ProductSellType & { product_sell_ids?: number[] }) => (
             <tr key={sale.product_sell_id}>
                 <td className="text-center align-middle">
                     <Form.Check
@@ -61,7 +127,7 @@ const ProductSell: React.FC = () => {
                 <td className="align-middle">{sale.member_code || "-"}</td>
                 <td className="align-middle">{sale.member_name || "-"}</td>
                 <td className="align-middle">{formatDateToChinese(sale.date) || "-"}</td>
-                <td className="align-middle">{sale.product_name || "-"}</td>
+                <td className="align-middle">{getDisplayName(sale)}</td>
                 <td className="text-center align-middle">{sale.quantity || "-"}</td>
                 <td className="text-end align-middle">
                     {/* 顯示 final_price，如果沒有則顯示 product_price 或計算值 */}
@@ -70,7 +136,7 @@ const ProductSell: React.FC = () => {
                 <td className="align-middle">{sale.payment_method || "-"}</td>
                 <td className="align-middle">{sale.staff_name || "-"}</td>
                 <td className="align-middle">{sale.sale_category || "-"}</td>
-                <td className="align-middle" style={{ maxWidth: '200px', whiteSpace: 'normal' }}>{sale.note || '-'}</td>
+                <td className="align-middle" style={{ maxWidth: '200px', whiteSpace: 'normal' }}>{getNote(sale)}</td>
             </tr>
         ))
     ) : (
