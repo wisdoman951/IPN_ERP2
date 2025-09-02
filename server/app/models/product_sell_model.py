@@ -67,17 +67,44 @@ def insert_product_sell(data: dict):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            insert_query = """
+                INSERT INTO product_sell (
+                    member_id, staff_id, store_id, product_id, date, quantity,
+                    unit_price, discount_amount, final_price, payment_method,
+                    sale_category, note
+                ) VALUES (
+                    %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(date)s, %(quantity)s,
+                    %(unit_price)s, %(discount_amount)s, %(final_price)s, %(payment_method)s,
+                    %(sale_category)s, %(note)s
+                )
+            """
+
             if data.get('bundle_id'):
                 bundle_id = data.get('bundle_id')
                 bundle_qty = int(data.get('quantity', 1))
                 cursor.execute(
                     "SELECT item_id, quantity FROM product_bundle_items WHERE bundle_id = %s AND item_type = 'Product'",
-                    (bundle_id,)
+                    (bundle_id,),
                 )
                 bundle_items = cursor.fetchall()
                 if not bundle_items:
-                    print(f"No product items found for bundle_id {bundle_id}.")
-                    return None
+                    bundle_data = {
+                        "member_id": data.get('member_id'),
+                        "staff_id": data.get('staff_id'),
+                        "store_id": data.get('store_id'),
+                        "product_id": None,
+                        "date": data.get('date'),
+                        "quantity": bundle_qty,
+                        "unit_price": float(data.get('unit_price', 0)),
+                        "discount_amount": float(data.get('discount_amount', 0)),
+                        "final_price": float(data.get('final_price', 0)),
+                        "payment_method": data.get('payment_method'),
+                        "sale_category": data.get('sale_category'),
+                        "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
+                    }
+                    cursor.execute(insert_query, bundle_data)
+                    conn.commit()
+                    return conn.insert_id()
 
                 item_totals = []
                 total_price = Decimal('0')
@@ -90,17 +117,6 @@ def insert_product_sell(data: dict):
                     item_totals.append((item, unit_price, quantity, item_total))
                     total_price += item_total
                 discount_total = Decimal(str(data.get('discount_amount') or 0))
-                insert_query = """
-                    INSERT INTO product_sell (
-                        member_id, staff_id, store_id, product_id, date, quantity,
-                        unit_price, discount_amount, final_price, payment_method,
-                        sale_category, note
-                    ) VALUES (
-                        %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(date)s, %(quantity)s,
-                        %(unit_price)s, %(discount_amount)s, %(final_price)s, %(payment_method)s,
-                        %(sale_category)s, %(note)s
-                    )
-                """
 
                 for item, unit_price, quantity, item_total in item_totals:
                     discount_amount = (item_total / total_price * discount_total) if total_price > 0 else Decimal('0')
@@ -124,20 +140,8 @@ def insert_product_sell(data: dict):
 
                 conn.commit()
                 return conn.insert_id()
-
             else:
-                query = """
-                    INSERT INTO product_sell (
-                        member_id, staff_id, store_id, product_id, date, quantity,
-                        unit_price, discount_amount, final_price, payment_method,
-                        sale_category, note
-                    ) VALUES (
-                        %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(date)s, %(quantity)s,
-                        %(unit_price)s, %(discount_amount)s, %(final_price)s, %(payment_method)s,
-                        %(sale_category)s, %(note)s
-                    )
-                """
-                cursor.execute(query, data)
+                cursor.execute(insert_query, data)
                 quantity_change = -int(data['quantity'])
                 update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
                 conn.commit()
