@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button, Container, Row, Col, Form, Table, Spinner, Modal, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { getAllStaff, searchStaff, exportStaffToExcel } from "../../services/StaffService";
+import { getAllStaff, searchStaff, exportStaffToExcel, exportSelectedStaffToExcel } from "../../services/StaffService";
 import Header from "../../components/Header"; // 1. 引入標準 Header
 import DynamicContainer from "../../components/DynamicContainer"; // 2. 引入標準容器
 import { downloadBlob } from "../../utils/downloadBlob";
@@ -146,6 +146,21 @@ const Staff: React.FC = () => {
         }
     };
 
+    const handleExportSelected = async () => {
+        if (selectedStaffIds.length === 0) return;
+        try {
+            const result = await exportSelectedStaffToExcel(selectedStaffIds);
+            if (result.success) {
+                downloadBlob(result.data, `員工資料_勾選_${new Date().toISOString().split('T')[0]}.xlsx`);
+            } else {
+                alert(result.message || '匯出失敗');
+            }
+        } catch (err) {
+            console.error('匯出員工資料失敗', err);
+            alert('匯出失敗');
+        }
+    };
+
     const content = (
         <Container fluid className="p-4">
             {error && <Alert variant="danger" onClose={() => setError("")} dismissible>{error}</Alert>}
@@ -200,6 +215,7 @@ const Staff: React.FC = () => {
 
             <div className="d-flex justify-content-end gap-2 mt-4">
                 <Button variant="info" className="text-white" onClick={handleExport} disabled={loading || staffList.length === 0}>報表匯出</Button>
+                <Button variant="info" className="text-white" onClick={handleExportSelected} disabled={loading || selectedStaffIds.length === 0}>勾選匯出</Button>
                 <Button variant="info" className="text-white" onClick={handleDelete} disabled={selectedStaffIds.length === 0}>刪除</Button>
                 <Button variant="info" className="text-white" onClick={handleEdit} disabled={selectedStaffIds.length !== 1}>修改</Button>
                 <Button variant="info" className="text-white" onClick={() => navigate('/backend')}>確認</Button>

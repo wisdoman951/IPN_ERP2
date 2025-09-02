@@ -126,6 +126,32 @@ def get_staff_by_id(staff_id):
         if connection:
             connection.close()
 
+def get_staff_by_ids(staff_ids: list[int]):
+    """根據 ID 列表取得員工資料"""
+    if not staff_ids:
+        return []
+    connection = connect_to_db()
+    try:
+        with connection.cursor() as cursor:
+            placeholders = ', '.join(['%s'] * len(staff_ids))
+            query = f"""
+                SELECT staff_id, family_information_id, emergency_contact_id,
+                       work_experience_id, hiring_information_id, name, gender,
+                       fill_date, onboard_date, nationality, education, married,
+                       position, phone, national_id, mailing_address,
+                       registered_address, account, password, permission, store_id
+                FROM staff
+                WHERE staff_id IN ({placeholders})
+            """
+            cursor.execute(query, tuple(staff_ids))
+            return cursor.fetchall()
+    except Exception as e:
+        print(f"Error in get_staff_by_ids: {e}")
+        return []
+    finally:
+        if connection:
+            connection.close()
+
 def get_staff_details(staff_id):
     """獲取員工詳細資料包括家庭成員和工作經驗"""
     connection = connect_to_db()

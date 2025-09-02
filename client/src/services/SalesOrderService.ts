@@ -101,6 +101,11 @@ export const exportSalesOrders = async (): Promise<Blob> => {
     const response = await axios.get(`${API_URL}/export`, { responseType: 'blob' });
     return response.data;
 };
+
+export const exportSelectedSalesOrders = async (ids: number[]): Promise<Blob> => {
+    const response = await axios.post(`${API_URL}/export-selected`, { ids }, { responseType: 'blob' });
+    return response.data;
+};
 export interface SalesOrderDetail {
     order_id: number;
     order_number: string;
