@@ -88,7 +88,11 @@ const TherapyPackageSelection: React.FC = () => {
 
             let packages: TherapyPackageBaseType[] = [];
             if (therapyRes.success && therapyRes.data) {
-                packages = therapyRes.data.map(p => ({ ...p, type: 'therapy' }));
+                packages = therapyRes.data.map(p => ({
+                    ...p,
+                    type: 'therapy',
+                    therapy_id: Number(p.therapy_id),
+                }));
             }
 
             const bundlePackages: TherapyPackageBaseType[] = bundleData.map((b: Bundle) => ({
@@ -118,14 +122,17 @@ const TherapyPackageSelection: React.FC = () => {
                 return;
             }
             try {
-                const therapyIds = allPackages.filter(p => p.type !== 'bundle' && p.therapy_id)
-                    .map(p => p.therapy_id as number);
+                const therapyIds = allPackages
+                    .filter(p => p.type !== 'bundle' && p.therapy_id !== undefined)
+                    .map(p => Number(p.therapy_id))
+                    .filter(id => !isNaN(id));
                 const res = await fetchRemainingSessionsBulk(memberId, therapyIds);
                 const map = new Map<string, number>();
                 if (res && res.data) {
                     Object.entries(res.data).forEach(([id, remaining]) => {
-                        if (remaining !== undefined) {
-                            map.set(`t-${id}`, Number(remaining as any));
+                        const numericId = Number(id);
+                        if (!isNaN(numericId) && remaining !== undefined) {
+                            map.set(`t-${numericId}`, Number(remaining as any));
                         }
                     });
                 }

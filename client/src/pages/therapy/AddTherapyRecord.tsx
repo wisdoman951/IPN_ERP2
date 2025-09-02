@@ -65,7 +65,13 @@ const AddTherapyRecord: React.FC = () => {
                 ]);
 
                 setStaffList(Array.isArray(staffData) ? staffData : []);
-                setAllTherapyList(Array.isArray(therapyData) ? therapyData : []);
+                const normalizedTherapies = Array.isArray(therapyData)
+                    ? therapyData.map((t: any) => ({
+                        ...t,
+                        therapy_id: Number(t.therapy_id),
+                    }))
+                    : [];
+                setAllTherapyList(normalizedTherapies);
 
                 if (recordId) {
                     const record = await getTherapyRecordById(recordId);
@@ -109,8 +115,8 @@ const AddTherapyRecord: React.FC = () => {
             }
 
             const therapyIds = allTherapyList
-                .map((t) => t.therapy_id)
-                .filter((id): id is number => typeof id === 'number');
+                .map((t) => Number(t.therapy_id))
+                .filter((id) => !isNaN(id));
             if (therapyIds.length === 0) {
                 setTherapyList([]);
                 return;
@@ -119,9 +125,10 @@ const AddTherapyRecord: React.FC = () => {
             try {
                 const res = await fetchRemainingSessionsBulk(formData.member_id, therapyIds);
                 const remainingMap = res.data || {};
-                const filtered = allTherapyList.filter(
-                    (t) => (remainingMap[t.therapy_id ?? 0] || 0) > 0
-                );
+                const filtered = allTherapyList.filter((t) => {
+                    const tid = Number(t.therapy_id);
+                    return !isNaN(tid) && (remainingMap[tid] || 0) > 0;
+                });
                 setTherapyList(filtered);
                 if (
                     formData.therapy_id &&
@@ -246,7 +253,7 @@ const AddTherapyRecord: React.FC = () => {
                         <Form.Select name="therapy_id" value={formData.therapy_id} onChange={handleChange} required disabled={loading}>
                             <option value="" disabled>{loading ? '載入中...' : '請選擇療程方案'}</option>
                             {therapyList.map((therapy) => (
-                                <option key={therapy.therapy_id} value={therapy.therapy_id}>{therapy.name}</option>
+                                <option key={therapy.therapy_id} value={therapy.therapy_id?.toString()}>{therapy.name}</option>
                             ))}
                         </Form.Select>
                     </Form.Group>
