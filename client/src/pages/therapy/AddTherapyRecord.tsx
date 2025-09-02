@@ -116,7 +116,19 @@ const AddTherapyRecord: React.FC = () => {
 
             try {
                 const res = await fetchRemainingSessionsBulk(formData.member_id);
-                const remainingMap = (res && res.data ? res.data : res) || {};
+                const raw = (res && (res as any).data ? (res as any).data : res) || {};
+                let remainingMap: Record<number, number> = {};
+                if (Array.isArray(raw)) {
+                    remainingMap = raw.reduce((acc: Record<number, number>, cur: any) => {
+                        const tid = Number(cur.therapy_id ?? cur.id);
+                        const remain = Number(cur.remaining_sessions ?? cur.remaining);
+                        if (!isNaN(tid) && !isNaN(remain)) acc[tid] = remain;
+                        return acc;
+                    }, {});
+                } else if (raw && typeof raw === 'object') {
+                    remainingMap = raw as Record<number, number>;
+                }
+
                 const filtered = allTherapyList.filter((t) => {
                     const tid = Number(t.therapy_id);
                     return !isNaN(tid) && (remainingMap[tid] || 0) > 0;
