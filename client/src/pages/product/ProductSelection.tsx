@@ -35,8 +35,14 @@ const ProductSelection: React.FC = () => {
           getAllProducts(),
           fetchAllBundles()
         ]);
-        setProducts(productData);
-        setBundles(bundleData);
+        const sortedProducts = [...productData].sort(
+          (a, b) => b.product_id - a.product_id
+        );
+        const sortedBundles = [...bundleData].sort(
+          (a, b) => b.bundle_id - a.bundle_id
+        );
+        setProducts(sortedProducts);
+        setBundles(sortedBundles);
       } catch (err) {
         console.error("載入產品資料失敗：", err);
         setError("載入產品資料失敗，請稍後再試。");
