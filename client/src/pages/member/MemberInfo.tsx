@@ -30,7 +30,7 @@ const MemberInfo: React.FC = () => {
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
             <th>姓名</th>
-            <th>編號</th>
+            <th>會員編號</th>
             <th>生日</th>
             <th>年齡</th>
             <th>住址</th>
@@ -98,7 +98,7 @@ const MemberInfo: React.FC = () => {
                     <Col xs={12} md={6} className="mb-3 mb-md-0">
                         <Form.Control
                             type="text"
-                            placeholder="姓名/電話/編號"
+                            placeholder="姓名/電話/會員編號"
                             value={keyword}
                             onChange={(e) => setKeyword(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
