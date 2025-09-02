@@ -555,7 +555,10 @@ def get_remaining_sessions_bulk(member_id, therapy_ids):
                 [member_id, *therapy_ids]
             )
             purchased_rows = cursor.fetchall()
-            purchased = {row['therapy_id']: int(float(row['total_purchased'])) for row in purchased_rows}
+            purchased = {
+                int(row['therapy_id']): int(float(row['total_purchased']))
+                for row in purchased_rows
+            }
 
             # Total used per therapy
             cursor.execute(
@@ -568,11 +571,15 @@ def get_remaining_sessions_bulk(member_id, therapy_ids):
                 [member_id, *therapy_ids]
             )
             used_rows = cursor.fetchall()
-            used = {row['therapy_id']: int(row['total_used']) for row in used_rows}
+            used = {
+                int(row['therapy_id']): int(row['total_used'])
+                for row in used_rows
+            }
 
             result = {}
             for tid in therapy_ids:
-                result[tid] = purchased.get(tid, 0) - used.get(tid, 0)
+                tid_int = int(tid)
+                result[tid_int] = purchased.get(tid_int, 0) - used.get(tid_int, 0)
             return result
     finally:
         if conn:
