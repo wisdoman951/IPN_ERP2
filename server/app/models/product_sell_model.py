@@ -78,7 +78,6 @@ def insert_product_sell(data: dict):
                     %(sale_category)s, %(note)s
                 )
             """
-
             if data.get('bundle_id'):
                 bundle_id = data.get('bundle_id')
                 bundle_qty = int(data.get('quantity', 1))
