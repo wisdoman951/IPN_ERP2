@@ -133,7 +133,8 @@ const AddTherapySell: React.FC = () => {
             type: 'therapy',
             TherapyName: editSale.PackageName,
             TherapyContent: editSale.PackageName,
-            TherapyPrice: editSale.Price || 0,
+            TherapyPrice: editSale.UnitPrice ||
+              ((editSale.Price || 0) / (editSale.Sessions || 1)),
             userSessions: editSale.Sessions?.toString() || "1",
           },
         ]);
@@ -198,6 +199,11 @@ const AddTherapySell: React.FC = () => {
     try {
       if (therapyPackages.length === 0) {
         setError('請選擇至少一項療程');
+        setLoading(false);
+        return false;
+      }
+      if (isEditMode && therapyPackages.length !== 1) {
+        setError('修改模式不支援新增多個療程品項，請使用新增功能');
         setLoading(false);
         return false;
       }
@@ -360,9 +366,19 @@ const AddTherapySell: React.FC = () => {
                           <span className="text-muted">點擊「選取」按鈕選擇療程</span>
                         )}
                       </div>
-                      <Button variant="info" type="button" className="text-white align-self-start px-3" onClick={openPackageSelection}>選取</Button>
+                      <Button
+                        variant="info"
+                        type="button"
+                        className="text-white align-self-start px-3"
+                        onClick={openPackageSelection}
+                        disabled={isEditMode}
+                      >選取</Button>
                     </div>
-                    <Form.Text muted>可複選，跳出新視窗選取。</Form.Text>
+                    {isEditMode ? (
+                      <Form.Text className="text-danger">修改模式無法新增療程品項，若需新增請使用新增功能。</Form.Text>
+                    ) : (
+                      <Form.Text muted>可複選，跳出新視窗選取。</Form.Text>
+                    )}
                   </Form.Group>
                 </Row>
 
