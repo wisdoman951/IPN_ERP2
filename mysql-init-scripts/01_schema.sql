@@ -341,7 +341,7 @@ CREATE TABLE `product_sell` (
   `member_id` int NOT NULL,
   `staff_id` int DEFAULT NULL,
   `store_id` int NOT NULL,
-  `product_id` int NOT NULL,
+  `product_id` int DEFAULT NULL,
   `date` date NOT NULL,
   `quantity` int NOT NULL,
   `unit_price` decimal(10,2) NOT NULL,

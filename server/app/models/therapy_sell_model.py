@@ -209,6 +209,29 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                         (bundle_id,)
                     )
                     bundle_items = cursor.fetchall()
+                    if not bundle_items:
+                        empty_bundle_values = {
+                            "therapy_id": None,
+                            "member_id": data_item.get("memberId"),
+                            "store_id": data_item.get("storeId"),
+                            "staff_id": data_item.get("staffId"),
+                            "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
+                            "amount": bundle_qty,
+                            "discount": data_item.get("discount", 0),
+                            "final_price": float(data_item.get("final_price") or data_item.get("finalPrice") or 0),
+                            "payment_method": data_item.get("paymentMethod"),
+                            "sale_category": data_item.get("saleCategory"),
+                            "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]"
+                        }
+                        logging.debug(
+                            f"--- [MODEL] Values for SQL for empty bundle {index + 1}: {empty_bundle_values}"
+                        )
+                        cursor.execute(insert_query, empty_bundle_values)
+                        created_ids.append(cursor.lastrowid)
+                        logging.debug(
+                            f"--- [MODEL] Empty bundle inserted. ID: {cursor.lastrowid}"
+                        )
+                        continue
                     total_qty = sum(item.get('quantity', 0) for item in bundle_items) or 1
                     for item in bundle_items:
                         item_values = {
