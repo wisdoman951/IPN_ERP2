@@ -140,25 +140,27 @@ def create_sale():
         print(f"新增療程銷售失敗: {e}")
         return jsonify({"error": str(e)}), 500
 
-'''@therapy_sell.route('/sales/<int:sale_id>', methods=['PUT'])
-@login_required
+@therapy_sell.route('/sales/<int:sale_id>', methods=['PUT'])
+@auth_required
 def update_sale(sale_id):
     """更新療程銷售紀錄"""
     try:
-        data = request.get_json()
-        
-        # 從 session 獲取用戶的 store_id 和 staff_id，如果數據中沒有提供的話
-        if 'user' in session:
-            if 'store_id' in session['user'] and not data.get('storeId'):
-                data['storeId'] = session['user']['store_id']
-                
+        data = request.get_json() or {}
+
+        user = get_user_from_token(request)
+        if user:
+            if user.get('store_id') and not data.get('storeId'):
+                data['storeId'] = user.get('store_id')
+            if user.get('staff_id') and not data.get('staffId'):
+                data['staffId'] = user.get('staff_id')
+
         result = update_therapy_sell(sale_id, data)
         if "error" in result:
             return jsonify(result), 400
         return jsonify(result)
     except Exception as e:
         print(f"更新療程銷售失敗: {e}")
-        return jsonify({"error": str(e)}), 500'''
+        return jsonify({"error": str(e)}), 500
 
 @therapy_sell.route('/sales/<int:sale_id>', methods=['DELETE'])
 @auth_required

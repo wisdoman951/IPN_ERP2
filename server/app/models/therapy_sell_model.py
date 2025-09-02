@@ -334,94 +334,65 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
         logging.debug(f"--- [MODEL] Exiting insert_many_therapy_sells ---")
 
 def update_therapy_sell(sale_id, data):
-    """更新療程銷售紀錄"""
+    """更新單筆療程銷售紀錄"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            # 取得現有的記錄
             cursor.execute("SELECT * FROM therapy_sell WHERE therapy_sell_id = %s", (sale_id,))
             existing_record = cursor.fetchone()
-            
             if not existing_record:
                 return {"error": "找不到要更新的銷售記錄"}
-                
-            # 根據療程代碼查詢療程ID
-            therapy_id = existing_record.get("therapy_id")
-            if data.get("therapyPackageId"):
-                therapy_code = data.get("therapyPackageId")
-                cursor.execute("SELECT therapy_id FROM therapy WHERE code = %s", (therapy_code,))
-                therapy_result = cursor.fetchone()
-                if therapy_result:
-                    therapy_id = therapy_result["therapy_id"]
-                    
-            # 提取數據並使用現有值作為默認值
-            member_id = data.get("memberId", existing_record["member_id"])
-            store_id = data.get("storeId", existing_record["store_id"])
-            staff_id = data.get("staffId", existing_record["staff_id"])
-            purchase_date = data.get("purchaseDate", existing_record["date"])
-            sessions = data.get("sessions", existing_record["amount"])
-            discount = data.get("discount", existing_record["discount"])
-            payment_method = data.get("paymentMethod", existing_record.get("payment_method", "Cash"))
-            sale_category = data.get("salesCategory", existing_record.get("sale_category", ""))
-            note = data.get("note", existing_record["note"])
-            
-            # 處理付款相關附加資訊
-            if data.get("transferCode"):
-                if "轉帳碼:" in note:
-                    note = note.replace(note.split("轉帳碼:")[1].split(",")[0], data.get("transferCode"))
-                else:
-                    note = f"轉帳碼: {data.get('transferCode')}, " + note
-                    
-            if data.get("cardNumber"):
-                if "卡號:" in note:
-                    note = note.replace(note.split("卡號:")[1].split(",")[0], data.get("cardNumber"))
-                else:
-                    note = f"卡號: {data.get('cardNumber')}, " + note
-            
-            # 如果沒有找到對應的療程ID，將療程代碼添加到備註中
-            if data.get("therapyPackageId") and not therapy_id:
-                if "療程代碼:" in note:
-                    note = note.replace(note.split("療程代碼:")[1].split(",")[0], 
-                                       f"{data.get('therapyPackageId')} (未找到對應療程)")
-                else:
-                    note = f"療程代碼: {data.get('therapyPackageId')} (未找到對應療程), " + note
-                    
-            cursor.execute("SELECT price FROM therapy WHERE therapy_id = %s", (therapy_id,))
-            price_row = cursor.fetchone()
-            unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
-            final_price = unit_price * sessions - discount
 
-            query = """
-                UPDATE therapy_sell
-                SET member_id = %s, store_id = %s, staff_id = %s,
-                    date = %s, amount = %s, discount = %s, final_price = %s,
-                    payment_method = %s, sale_category = %s, therapy_id = %s, note = %s
-                WHERE therapy_sell_id = %s
-            """
-            values = (
+            therapy_id = data.get("therapy_id") or existing_record.get("therapy_id")
+
+            member_id = data.get("memberId", existing_record.get("member_id"))
+            store_id = data.get("storeId", existing_record.get("store_id"))
+            staff_id = data.get("staffId", existing_record.get("staff_id"))
+            purchase_date = data.get("purchaseDate", existing_record.get("date"))
+            amount = data.get("amount", existing_record.get("amount"))
+            discount = data.get("discount", existing_record.get("discount") or 0)
+            final_price = data.get("finalPrice")
+
+            if final_price is None:
+                cursor.execute("SELECT price FROM therapy WHERE therapy_id = %s", (therapy_id,))
+                price_row = cursor.fetchone()
+                unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
+                final_price = unit_price * amount - discount
+
+            payment_method = data.get("paymentMethod", existing_record.get("payment_method"))
+            sale_category = data.get("saleCategory", existing_record.get("sale_category"))
+            note = data.get("note", existing_record.get("note"))
+
+            query = (
+                "UPDATE therapy_sell SET therapy_id=%s, member_id=%s, store_id=%s, staff_id=%s, "
+                "date=%s, amount=%s, discount=%s, final_price=%s, payment_method=%s, sale_category=%s, note=%s "
+                "WHERE therapy_sell_id=%s"
+            )
+            cursor.execute(query, (
+                therapy_id,
                 member_id,
                 store_id,
                 staff_id,
                 purchase_date,
-                sessions,
+                amount,
                 discount,
                 final_price,
                 payment_method,
                 sale_category,
-                therapy_id,
                 note,
-                sale_id
-            )
-            cursor.execute(query, values)
-            
+                sale_id,
+            ))
+
         conn.commit()
         return {"success": True, "message": "療程銷售紀錄更新成功"}
     except Exception as e:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         print(f"更新療程銷售錯誤: {e}")
         return {"error": str(e)}
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 def delete_therapy_sell(sale_id):
     """刪除療程銷售紀錄"""
