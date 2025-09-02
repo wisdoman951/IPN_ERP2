@@ -1,6 +1,7 @@
 # app/models/product_bundle_model.py
 
 import pymysql
+import json
 from app.config import DB_CONFIG
 from pymysql.cursors import DictCursor
 
@@ -18,12 +19,13 @@ def get_all_product_bundles():
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT 
+                SELECT
                     pb.bundle_id,
                     pb.bundle_code,
                     pb.name,
                     pb.selling_price,
                     pb.calculated_price,
+                    pb.visible_store_ids,
                     pb.created_at,
                     -- 使用 IFNULL 避免組合內沒有項目時回傳 NULL
                     IFNULL(
@@ -52,6 +54,12 @@ def get_all_product_bundles():
             """
             cursor.execute(query)
             result = cursor.fetchall()
+            for row in result:
+                if row.get('visible_store_ids'):
+                    try:
+                        row['visible_store_ids'] = json.loads(row['visible_store_ids'])
+                    except Exception:
+                        pass
             return result
     finally:
         conn.close()
@@ -63,15 +71,16 @@ def create_product_bundle(data: dict):
         with conn.cursor() as cursor:
             # 步驟 1: 修改 SQL 語句，使用 %s 作為佔位符
             bundle_query = """
-                INSERT INTO product_bundles (bundle_code, name, calculated_price, selling_price)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO product_bundles (bundle_code, name, calculated_price, selling_price, visible_store_ids)
+                VALUES (%s, %s, %s, %s, %s)
             """
             # 步驟 2: 建立一個包含參數的元組 (tuple)，順序必須與 %s 對應
             bundle_values = (
                 data['bundle_code'],
                 data['name'],
-                data['calculated_price'],
-                data['selling_price']
+                data.get('calculated_price'),
+                data['selling_price'],
+                json.dumps(data.get('visible_store_ids')) if data.get('visible_store_ids') is not None else None
             )
             # 步驟 3: 執行 SQL
             cursor.execute(bundle_query, bundle_values)
@@ -112,6 +121,11 @@ def get_bundle_details_by_id(bundle_id: int):
             bundle_details = cursor.fetchone()
             if not bundle_details:
                 return None
+            if bundle_details.get('visible_store_ids'):
+                try:
+                    bundle_details['visible_store_ids'] = json.loads(bundle_details['visible_store_ids'])
+                except Exception:
+                    pass
 
             # 2. 獲取該組合的所有項目
             cursor.execute("SELECT item_id, item_type, quantity FROM product_bundle_items WHERE bundle_id = %s", (bundle_id,))
@@ -137,12 +151,14 @@ def update_product_bundle(bundle_id: int, data: dict):
                     bundle_code = %s,
                     name = %s,
                     calculated_price = %s,
-                    selling_price = %s
+                    selling_price = %s,
+                    visible_store_ids = %s
                 WHERE bundle_id = %s
             """
             update_values = (
                 data['bundle_code'], data['name'],
-                data['calculated_price'], data['selling_price'],
+                data.get('calculated_price'), data['selling_price'],
+                json.dumps(data.get('visible_store_ids')) if data.get('visible_store_ids') is not None else None,
                 bundle_id
             )
             cursor.execute(update_query, update_values)

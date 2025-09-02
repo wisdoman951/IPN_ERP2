@@ -322,6 +322,7 @@ CREATE TABLE `product_bundles` (
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '組合名稱/項目',
   `calculated_price` decimal(12,2) DEFAULT NULL COMMENT '根據組合內項目自動試算的原始總價',
   `selling_price` decimal(12,2) DEFAULT NULL COMMENT '管理者手動設定的最終銷售價格',
+  `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
   PRIMARY KEY (`bundle_id`),
   UNIQUE KEY `bundle_code` (`bundle_code`)
