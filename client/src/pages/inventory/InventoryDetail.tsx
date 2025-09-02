@@ -228,9 +228,6 @@ const InventoryDetail: React.FC = () => {
             修改
           </Button>
         </Col>
-        <Col xs="auto">
-          <Button variant="info" className="text-white px-4 me-2">確認</Button>
-        </Col>
       </Row>
     </Container>
   );
