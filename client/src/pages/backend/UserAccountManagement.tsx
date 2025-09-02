@@ -176,7 +176,6 @@ const UserAccountManagement: React.FC = () => {
                 <Button variant="info" className="text-white" onClick={handleExportSelected} disabled={loading || selectedIds.length === 0}>勾選匯出</Button>
                 <Button variant="info" className="text-white" onClick={handleDelete} disabled={selectedIds.length === 0}>刪除</Button>
                 <Button variant="info" className="text-white" onClick={handleEdit} disabled={selectedIds.length !== 1}>修改</Button>
-                <Button variant="info" className="text-white" onClick={() => navigate('/backend')}>確認</Button>
             </div>
         </Container>
     );
