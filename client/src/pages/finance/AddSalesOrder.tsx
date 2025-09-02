@@ -340,7 +340,6 @@ const AddSalesOrder: React.FC = () => {
                 <Card.Footer className="text-center no-print">
                     <Button variant="info" className="mx-1 text-white" onClick={handlePrint}>列印</Button>
                     <Button variant="info" className="mx-1 text-white" onClick={() => setItems([{}])}>刪除</Button>
-                    <Button variant="info" className="mx-1 text-white">修改</Button>
                     <Button variant="info" className="mx-1 text-white" onClick={handleSubmit} disabled={loading}>
                         {loading ? <Spinner as="span" size="sm" /> : "確認"}
                     </Button>

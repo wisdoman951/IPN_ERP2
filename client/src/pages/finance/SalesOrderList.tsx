@@ -134,7 +134,6 @@ const SalesOrderList: React.FC = () => {
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExportSelected} disabled={loading || selectedIds.length === 0}>勾選匯出</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleDelete} disabled={loading || selectedIds.length === 0}>刪除</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={() => navigate(`/finance/sales/add?order_id=${selectedIds[0]}`)} disabled={loading || selectedIds.length !== 1}>修改</Button></Col>
-                    <Col xs="auto"><Button variant="info" className="text-white" onClick={() => navigate("/finance")}>確認</Button></Col>
                 </Row>
             </Container>
         </>
