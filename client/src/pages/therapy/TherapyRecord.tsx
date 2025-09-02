@@ -110,11 +110,11 @@ const TherapyRecord: React.FC = () => {
                             >
                                 <option value="">請選擇方案</option>
                                 {therapyPackages.map((pkg) => (
-                                    <option 
-                                        key={pkg.therapy_id} 
-                                        value={pkg.TherapyCode}
+                                    <option
+                                        key={pkg.therapy_id}
+                                        value={pkg.therapy_id.toString()}
                                     >
-                                        {pkg.TherapyContent}
+                                        {pkg.TherapyName || pkg.TherapyContent}
                                     </option>
                                 ))}
                             </Form.Select>
@@ -295,15 +295,6 @@ const TherapyRecord: React.FC = () => {
                             disabled={loading || selectedIds.length !== 1}
                         >
                             修改
-                        </Button>
-                    </Col>
-                    <Col xs="auto">
-                        <Button
-                            variant="info"
-                            className="text-white px-4"
-                            onClick={() => navigate(-1)}
-                        >
-                            確認
                         </Button>
                     </Col>
                 </Row>

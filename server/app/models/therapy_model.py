@@ -137,7 +137,7 @@ def search_therapy_records(filters):
 
             if filters.get('endDate'):
                 sql += " AND tr.date <= %s"
-                sql_params.append(params['endDate'])
+                sql_params.append(filters['endDate'])
 
             if filters.get('therapist'):
                 sql += " AND tr.staff_id = %s"
