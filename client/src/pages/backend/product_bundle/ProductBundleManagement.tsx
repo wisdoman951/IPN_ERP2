@@ -7,6 +7,7 @@ import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
 import { fetchAllBundles, deleteBundle, Bundle } from '../../../services/ProductBundleService';
+import { fetchAllStores, Store } from '../../../services/StoreService';
 
 const ProductBundleManagement: React.FC = () => {
     const [bundles, setBundles] = useState<Bundle[]>([]);
@@ -17,6 +18,7 @@ const ProductBundleManagement: React.FC = () => {
     const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
     const [showTherapyModal, setShowTherapyModal] = useState(false);
     const [showProductModal, setShowProductModal] = useState(false);
+    const [stores, setStores] = useState<Store[]>([]);
     const navigate = useNavigate();
 
     const fetchBundles = useCallback(async () => {
@@ -35,6 +37,10 @@ const ProductBundleManagement: React.FC = () => {
     useEffect(() => {
         fetchBundles();
     }, [fetchBundles]);
+
+    useEffect(() => {
+        fetchAllStores().then(setStores).catch(() => {});
+    }, []);
 
     const handleCloseModal = () => {
         setShowModal(false);
@@ -115,6 +121,7 @@ const ProductBundleManagement: React.FC = () => {
                             <th>編號</th>
                             <th>項目 (組合名稱)</th>
                             <th>組合內容</th>
+                            <th>限定分店</th>
                             <th>售價</th>
                             <th>操作</th>
                         </tr>
@@ -128,6 +135,13 @@ const ProductBundleManagement: React.FC = () => {
                                     <td className="align-middle">{bundle.bundle_code}</td>
                                     <td className="align-middle">{bundle.name}</td>
                                     <td className="align-middle">{bundle.bundle_contents || '---'}</td>
+                                    <td className="align-middle">{
+                                        bundle.visible_store_ids && bundle.visible_store_ids.length > 0
+                                            ? bundle.visible_store_ids
+                                                .map(id => stores.find(s => s.store_id === id)?.store_name || id)
+                                                .join(', ')
+                                            : '---'
+                                    }</td>
                                     <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
                                     <td className="align-middle">
                                         <Button variant="link" onClick={() => handleShowEditModal(bundle)}>修改</Button>

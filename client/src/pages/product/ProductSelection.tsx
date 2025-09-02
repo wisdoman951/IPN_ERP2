@@ -5,6 +5,7 @@ import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import { getAllProducts, Product } from "../../services/ProductSellService";
 import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
+import { getStoreId } from "../../services/AuthUtils";
 
 interface SelectedProduct {
   type?: 'product' | 'bundle';
@@ -36,7 +37,11 @@ const ProductSelection: React.FC = () => {
           fetchAllBundles()
         ]);
         setProducts(productData);
-        setBundles(bundleData);
+        const storeId = Number(getStoreId());
+        const filteredBundles = storeId
+          ? bundleData.filter(b => !b.visible_store_ids || b.visible_store_ids.includes(storeId))
+          : bundleData;
+        setBundles(filteredBundles);
       } catch (err) {
         console.error("載入產品資料失敗：", err);
         setError("載入產品資料失敗，請稍後再試。");
