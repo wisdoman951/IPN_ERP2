@@ -17,7 +17,8 @@ interface SelectedProduct {
   product_id?: number;
   bundle_id?: number;
   code?: string;
-  name: string;
+  name?: string;
+  content?: string;
   price: number;
   quantity: number;
   inventory_id?: number;
@@ -289,7 +290,7 @@ const AddProductSell: React.FC = () => {
     if (success) {
       const itemsForOrder: SalesOrderItemData[] = selectedProducts.map(p => ({
         product_id: p.product_id ?? p.bundle_id ?? undefined,
-        item_description: p.name,
+        item_description: p.name || p.content,
         item_type: 'Product',
         item_code: p.code,
         unit: '個',
@@ -366,7 +367,7 @@ const AddProductSell: React.FC = () => {
               <Form.Label>購買品項</Form.Label>
               <div className="d-flex gap-2">
                 <div className="flex-grow-1 border rounded p-2" style={{ minHeight: "40px", maxHeight: "120px", overflowY: "auto" }}>
-                  {selectedProducts.length > 0 ? ( selectedProducts.map((p, i) => ( <div key={i}>{p.name} (單價: NT${p.price.toLocaleString()}) x {p.quantity}</div>))
+                  {selectedProducts.length > 0 ? ( selectedProducts.map((p, i) => ( <div key={i}>{p.name || p.content} (單價: NT${p.price.toLocaleString()}) x {p.quantity}</div>))
                   ) : ( <span className="text-muted">點擊「選取」按鈕選擇產品</span> )}
                 </div>
                 <Button variant="info" type="button" className="text-white align-self-start px-3" onClick={openProductSelection}>選取</Button>

@@ -59,10 +59,10 @@ const ProductSelection: React.FC = () => {
         const bundles: ItemBase[] = filteredBundles.map((b: Bundle) => ({
           type: 'bundle',
           bundle_id: b.bundle_id,
-          name: b.name,
+          name: b.name || b.bundle_contents || '',
           code: b.bundle_code,
           price: Number(b.selling_price),
-          content: b.bundle_contents
+          content: b.bundle_contents || ''
         }));
 
         const combined = [...products, ...bundles];
@@ -160,7 +160,7 @@ const ProductSelection: React.FC = () => {
       product_id: item.product_id,
       bundle_id: item.bundle_id,
       code: item.code,
-      name: item.name,
+      name: item.name || item.content,
       price: item.price,
       quantity: Number(item.quantity),
       inventory_id: item.inventory_id,
@@ -213,7 +213,7 @@ const ProductSelection: React.FC = () => {
                         <div style={{ fontSize: '0.9rem' }}>
                           <strong>{item.name || item.content}</strong>
                           <div>
-                            <small className="text-muted">代碼: {item.code} / 單價: NT$ {item.price.toLocaleString()}</small>
+                            <small className="text-muted">產品編號: {item.code} / 單價: NT$ {item.price.toLocaleString()}</small>
                           </div>
                           {item.stock_quantity !== undefined && (
                             <div>
@@ -269,7 +269,7 @@ const ProductSelection: React.FC = () => {
             <Col>
               <Form.Control
                 type="text"
-                placeholder="輸入產品名稱、代碼或內容進行篩選..."
+                placeholder="輸入產品名稱、產品編號或內容進行篩選..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
