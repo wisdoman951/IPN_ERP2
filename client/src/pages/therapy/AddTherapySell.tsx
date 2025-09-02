@@ -79,32 +79,9 @@ const AddTherapySell: React.FC = () => {
     };
 
     const restoreState = () => {
-      if (isEditMode && editSale) {
-        setFormData(prev => ({
-          ...prev,
-          memberId: editSale.Member_ID?.toString() || "",
-          memberCode: editSale.member_code || "",
-          staffId: editSale.Staff_ID?.toString() || "",
-          date: editSale.PurchaseDate?.split("T")[0] || prev.date,
-          paymentMethod: editSale.PaymentMethod || prev.paymentMethod,
-          saleCategory: editSale.SaleCategory || prev.saleCategory,
-          note: editSale.Note || "",
-        }));
-        setMemberName(editSale.MemberName || "");
-        setTherapyPackages([
-          {
-            therapy_id: editSale.therapy_id,
-            type: 'therapy',
-            TherapyName: editSale.PackageName,
-            TherapyContent: editSale.PackageName,
-            TherapyPrice: editSale.Price || 0,
-            userSessions: editSale.Sessions?.toString() || "1",
-          },
-        ]);
-        return;
-      }
-
       const formStateData = localStorage.getItem('addTherapySellFormState');
+      const storedPkgs = localStorage.getItem('selectedTherapyPackagesWithSessions');
+
       if (formStateData) {
         try {
           const formState = JSON.parse(formStateData);
@@ -127,7 +104,6 @@ const AddTherapySell: React.FC = () => {
         }
       }
 
-      const storedPkgs = localStorage.getItem('selectedTherapyPackagesWithSessions');
       if (storedPkgs) {
         try {
           const pkgs = JSON.parse(storedPkgs);
@@ -137,6 +113,30 @@ const AddTherapySell: React.FC = () => {
         } catch (e) {
           console.error('解析 selectedTherapyPackagesWithSessions 失敗', e);
         }
+      }
+
+      if (!formStateData && !storedPkgs && isEditMode && editSale) {
+        setFormData(prev => ({
+          ...prev,
+          memberId: editSale.Member_ID?.toString() || "",
+          memberCode: editSale.member_code || "",
+          staffId: editSale.Staff_ID?.toString() || "",
+          date: editSale.PurchaseDate?.split("T")[0] || prev.date,
+          paymentMethod: editSale.PaymentMethod || prev.paymentMethod,
+          saleCategory: editSale.SaleCategory || prev.saleCategory,
+          note: editSale.Note || "",
+        }));
+        setMemberName(editSale.MemberName || "");
+        setTherapyPackages([
+          {
+            therapy_id: editSale.therapy_id,
+            type: 'therapy',
+            TherapyName: editSale.PackageName,
+            TherapyContent: editSale.PackageName,
+            TherapyPrice: editSale.Price || 0,
+            userSessions: editSale.Sessions?.toString() || "1",
+          },
+        ]);
       }
     };
 
@@ -161,7 +161,7 @@ const AddTherapySell: React.FC = () => {
     const { name, value } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: name === 'discountAmount' ? parseFloat(value) || 0 : value,
     }));
   };
 
@@ -335,7 +335,7 @@ const AddTherapySell: React.FC = () => {
                     <MemberColumn
                       memberCode={formData.memberCode}
                       name={memberName}
-                      isEditMode={false}
+                      isEditMode={isEditMode}
                         onMemberChange={(code, name, data) => {
                           setFormData(prev => ({ ...prev, memberCode: code, memberId: data?.member_id?.toString() || "" }));
                           setMemberName(name);

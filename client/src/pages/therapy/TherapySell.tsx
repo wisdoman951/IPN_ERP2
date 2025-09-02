@@ -13,6 +13,7 @@ import {
 } from "../../services/TherapySellService"; // 假設路徑正確
 import { formatDateToChinese } from "../../utils/memberUtils"; // 假設日期格式化
 import { formatCurrency } from "../../utils/productSellUtils"; // 借用金額格式化
+import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
 
 // 更新 interface 以符合 Figma 需求
 export interface TherapySellRow { // 更改 interface 名稱以避免與組件名衝突
@@ -65,6 +66,7 @@ const TherapySell: React.FC = () => {
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
     
     
     
@@ -88,6 +90,22 @@ const TherapySell: React.FC = () => {
     useEffect(() => {
         fetchSales();
     }, []); // storeId 通常在登入後固定，如果會變動則加入依賴
+
+    useEffect(() => {
+        const loadBundles = async () => {
+            try {
+                const bundles = await fetchAllBundles();
+                const map: Record<number, { name: string; contents: string }> = {};
+                bundles.forEach((b: Bundle) => {
+                    map[b.bundle_id] = { name: b.name || b.bundle_contents, contents: b.bundle_contents };
+                });
+                setBundleMap(map);
+            } catch (err) {
+                console.error("載入產品組合失敗", err);
+            }
+        };
+        loadBundles();
+    }, []);
     
 
     const fetchSales = async () => {
@@ -140,6 +158,28 @@ const TherapySell: React.FC = () => {
         } finally {
             setLoading(false);
         }
+    };
+
+    const getDisplayName = (sale: TherapySellRow) => {
+        const match = sale.Note?.match(/\[bundle:(\d+)\]/);
+        if (match) {
+            const id = parseInt(match[1], 10);
+            return bundleMap[id]?.name || sale.PackageName || "-";
+        }
+        return sale.PackageName || "-";
+    };
+
+    const getNote = (sale: TherapySellRow) => {
+        const match = sale.Note?.match(/\[bundle:(\d+)\]/);
+        if (match) {
+            const id = parseInt(match[1], 10);
+            const contents = bundleMap[id]?.contents;
+            if (contents) {
+                return contents.split(/[,，]/).join("\n");
+            }
+            return "-";
+        }
+        return sale.Note || "-";
     };
     
 
@@ -212,7 +252,7 @@ const TherapySell: React.FC = () => {
                 <td className="align-middle">{sale.MemberCode || "-"}</td>
                 <td className="align-middle">{sale.MemberName || "-"}</td>
                 <td className="align-middle">{formatDateToChinese(sale.PurchaseDate) || "-"}</td>
-                <td className="align-middle">{sale.PackageName || "-"}</td>
+                <td className="align-middle">{getDisplayName(sale)}</td>
                 <td className="text-center align-middle">{sale.Sessions || "-"}</td>
                 <td className="text-end align-middle">{formatCurrency(sale.Price) || "-"}</td>
                 <td className="align-middle">
@@ -225,7 +265,7 @@ const TherapySell: React.FC = () => {
                         return therapySaleCategoryValueToDisplayMap[cat] || cat || "-";
                     })()}
                 </td>
-                <td className="align-middle" style={{ maxWidth: '150px', whiteSpace: 'normal' }}>{sale.Note || "-"}</td>
+                <td className="align-middle" style={{ maxWidth: '150px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
             </tr>
         ))
     ) : (
