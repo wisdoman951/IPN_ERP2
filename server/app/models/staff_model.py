@@ -823,10 +823,10 @@ def search_staff_with_accounts(keyword):
             SELECT s.staff_id, s.name, s.phone, s.account, s.password, s.permission, s.reset_requested, st.store_name
             FROM staff s
             LEFT JOIN store st ON s.store_id = st.store_id
-            WHERE s.name LIKE %s OR s.phone LIKE %s OR s.account LIKE %s
+            WHERE s.name LIKE %s OR s.phone LIKE %s OR s.account LIKE %s OR CAST(s.staff_id AS CHAR) LIKE %s
             ORDER BY s.staff_id DESC
             """
-            cursor.execute(query, (like_keyword, like_keyword, like_keyword))
+            cursor.execute(query, (like_keyword, like_keyword, like_keyword, like_keyword))
             return cursor.fetchall()
     finally:
         if conn:
