@@ -11,6 +11,15 @@ import { useProductSell } from "../../hooks/useProductSell";
 import { ProductSell as ProductSellType } from "../../services/ProductSellService"; // 匯入更新後的型別
 import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
 
+const paymentMethodValueToDisplayMap: { [key: string]: string } = {
+    Cash: "現金",
+    CreditCard: "信用卡",
+    Transfer: "轉帳",
+    MobilePayment: "行動支付",
+    Pending: "待付款",
+    Others: "其他",
+};
+
 const ProductSell: React.FC = () => {
     const navigate = useNavigate();
     const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
@@ -145,7 +154,11 @@ const ProductSell: React.FC = () => {
                             : undefined
                     ) || "-"}
                 </td>
-                <td className="align-middle">{sale.payment_method || "-"}</td>
+                <td className="align-middle">
+                    {sale.payment_method
+                        ? paymentMethodValueToDisplayMap[sale.payment_method] || sale.payment_method
+                        : "-"}
+                </td>
                 <td className="align-middle">{sale.staff_name || "-"}</td>
                 <td className="align-middle">{sale.sale_category || "-"}</td>
                 <td className="align-middle" style={{ maxWidth: '200px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
