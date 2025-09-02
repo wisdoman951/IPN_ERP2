@@ -218,7 +218,6 @@ const Staff: React.FC = () => {
                 <Button variant="info" className="text-white" onClick={handleExportSelected} disabled={loading || selectedStaffIds.length === 0}>勾選匯出</Button>
                 <Button variant="info" className="text-white" onClick={handleDelete} disabled={selectedStaffIds.length === 0}>刪除</Button>
                 <Button variant="info" className="text-white" onClick={handleEdit} disabled={selectedStaffIds.length !== 1}>修改</Button>
-                <Button variant="info" className="text-white" onClick={() => navigate('/backend')}>確認</Button>
             </div>
 
             <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)}>
