@@ -311,15 +311,19 @@ def update_medical_record(record_id, data):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("SELECT member_id, usual_sympton_and_family_history_id, micro_surgery, health_status_id FROM medical_record WHERE medical_record_id = %s", (record_id,))
+            cursor.execute(
+                "SELECT member_id, usual_sympton_and_family_history_id, micro_surgery, health_status_id, store_id FROM medical_record WHERE medical_record_id = %s",
+                (record_id,),
+            )
             related_ids = cursor.fetchone()
             if not related_ids:
                 raise ValueError("找不到要更新的紀錄")
-            
+
             member_id = related_ids['member_id']
             usual_symptoms_id = related_ids['usual_sympton_and_family_history_id']
             micro_surgery_id = related_ids['micro_surgery']
             health_status_id = related_ids['health_status_id']
+            store_id = related_ids['store_id']
 
             blood_pressure_value = data.get('bloodPressure')
             if blood_pressure_value:
@@ -329,10 +333,13 @@ def update_medical_record(record_id, data):
                 if existing_ipn_pure:
                     cursor.execute("UPDATE ipn_pure SET blood_preasure = %s, date = CURDATE() WHERE member_id = %s", (blood_pressure_value, member_id))
                 else:
-                    cursor.execute("""
-                        INSERT INTO ipn_pure (member_id, staff_id, blood_preasure, date)
-                        VALUES (%s, NULL, %s, CURDATE())
-                    """, (member_id, blood_pressure_value))
+                    cursor.execute(
+                        """
+                        INSERT INTO ipn_pure (member_id, staff_id, blood_preasure, date, store_id)
+                        VALUES (%s, NULL, %s, CURDATE(), %s)
+                        """,
+                        (member_id, blood_pressure_value, store_id),
+                    )
 
 
             symptom_data = json.loads(data.get('symptom', '{}'))
