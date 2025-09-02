@@ -107,6 +107,7 @@ const UserAccountManagement: React.FC = () => {
                         <th>姓名</th>
                         <th>電話</th>
                         <th>員工編號</th>
+                        <th>店別</th>
                         <th>帳號</th>
                         <th>權限</th>
                         <th>密碼</th>
@@ -115,15 +116,16 @@ const UserAccountManagement: React.FC = () => {
                 </thead>
                 <tbody>
                     {loading ? (
-                        <tr><td colSpan={8} className="text-center py-5"><Spinner animation="border" /></td></tr>
+                        <tr><td colSpan={9} className="text-center py-5"><Spinner animation="border" /></td></tr>
                     ) : accounts.length === 0 ? (
-                        <tr><td colSpan={8} className="text-center text-muted py-5">尚無資料</td></tr>
+                        <tr><td colSpan={9} className="text-center text-muted py-5">尚無資料</td></tr>
                     ) : accounts.map(acc => (
                         <tr key={acc.staff_id} className={acc.reset_requested ? 'table-warning' : ''}>
                             <td className="text-center align-middle"><Form.Check type="checkbox" checked={selectedIds.includes(acc.staff_id)} onChange={e => handleCheckboxChange(acc.staff_id, e.target.checked)} /></td>
                             <td className="align-middle">{acc.name}</td>
                             <td className="align-middle">{acc.phone || '-'}</td>
                             <td className="align-middle">{acc.staff_id}</td>
+                            <td className="align-middle">{acc.store_name || '-'}</td>
                             <td className="align-middle">{acc.account || '-'}</td>
                             <td className="align-middle">{acc.permission ? PERMISSION_LABELS[acc.permission] || acc.permission : '-'}</td>
                             <td className="align-middle">{'******'}</td>
