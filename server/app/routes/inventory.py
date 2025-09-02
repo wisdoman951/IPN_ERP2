@@ -237,6 +237,24 @@ def export_inventory():
         
         # 使用pandas創建DataFrame
         df = pd.DataFrame(inventory_data)
+        # 將欄位名稱轉換為中文
+        df.rename(columns={
+            'Inventory_ID': '庫存ID',
+            'Product_ID': '產品ID',
+            'ProductName': '產品名稱',
+            'ProductCode': '產品編號',
+            'StockIn': '入庫量',
+            'StockOut': '出庫量',
+            'StockLoan': '借出量',
+            'StockQuantity': '庫存量',
+            'StockThreshold': '庫存預警值',
+            'Store_ID': '店鋪ID',
+            'StoreName': '店鋪名稱',
+            'StockInTime': '入庫時間',
+            'SoldQuantity': '銷售量',
+            'LastSoldTime': '最後銷售時間',
+            'UnsoldDays': '未銷售天數'
+        }, inplace=True)
         
         # 創建Excel文件
         output = io.BytesIO()
