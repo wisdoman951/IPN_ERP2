@@ -1,5 +1,6 @@
 # \app\models\product_sell_model.py
 import pymysql
+from decimal import Decimal
 from app.config import DB_CONFIG
 
 def connect_to_db():
@@ -79,17 +80,16 @@ def insert_product_sell(data: dict):
                     return None
 
                 item_totals = []
-                total_price = 0
+                total_price = Decimal('0')
                 for item in bundle_items:
                     cursor.execute("SELECT price FROM product WHERE product_id = %s", (item['item_id'],))
                     price_row = cursor.fetchone()
-                    unit_price = price_row['price'] if price_row and price_row.get('price') is not None else 0
+                    unit_price = Decimal(str(price_row['price'])) if price_row and price_row.get('price') is not None else Decimal('0')
                     quantity = int(item.get('quantity', 0)) * bundle_qty
                     item_total = unit_price * quantity
                     item_totals.append((item, unit_price, quantity, item_total))
                     total_price += item_total
-
-                discount_total = float(data.get('discount_amount', 0))
+                discount_total = Decimal(str(data.get('discount_amount') or 0))
                 insert_query = """
                     INSERT INTO product_sell (
                         member_id, staff_id, store_id, product_id, date, quantity,
@@ -103,7 +103,7 @@ def insert_product_sell(data: dict):
                 """
 
                 for item, unit_price, quantity, item_total in item_totals:
-                    discount_amount = (item_total / total_price) * discount_total if total_price > 0 else 0
+                    discount_amount = (item_total / total_price * discount_total) if total_price > 0 else Decimal('0')
                     final_price = item_total - discount_amount
                     item_data = {
                         "member_id": data.get('member_id'),
@@ -112,9 +112,9 @@ def insert_product_sell(data: dict):
                         "product_id": item['item_id'],
                         "date": data.get('date'),
                         "quantity": quantity,
-                        "unit_price": unit_price,
-                        "discount_amount": discount_amount,
-                        "final_price": final_price,
+                        "unit_price": float(unit_price),
+                        "discount_amount": float(discount_amount),
+                        "final_price": float(final_price),
                         "payment_method": data.get('payment_method'),
                         "sale_category": data.get('sale_category'),
                         "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
