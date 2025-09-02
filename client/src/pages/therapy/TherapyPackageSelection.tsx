@@ -127,15 +127,14 @@ const TherapyPackageSelection: React.FC = () => {
                     .map(p => Number(p.therapy_id))
                     .filter(id => !isNaN(id));
                 const res = await fetchRemainingSessionsBulk(memberId, therapyIds);
+                const dataMap = (res && res.data ? res.data : res) || {};
                 const map = new Map<string, number>();
-                if (res && res.data) {
-                    Object.entries(res.data).forEach(([id, remaining]) => {
-                        const numericId = Number(id);
-                        if (!isNaN(numericId) && remaining !== undefined) {
-                            map.set(`t-${numericId}`, Number(remaining as any));
-                        }
-                    });
-                }
+                Object.entries(dataMap).forEach(([id, remaining]) => {
+                    const numericId = Number(id);
+                    if (!isNaN(numericId) && remaining !== undefined) {
+                        map.set(`t-${numericId}`, Number(remaining as any));
+                    }
+                });
                 setRemainingMap(map);
             } catch (e) {
                 console.error('獲取剩餘堂數失敗', e);

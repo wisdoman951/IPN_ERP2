@@ -124,7 +124,7 @@ const AddTherapyRecord: React.FC = () => {
 
             try {
                 const res = await fetchRemainingSessionsBulk(formData.member_id, therapyIds);
-                const remainingMap = res.data || {};
+                const remainingMap = (res && res.data ? res.data : res) || {};
                 const filtered = allTherapyList.filter((t) => {
                     const tid = Number(t.therapy_id);
                     return !isNaN(tid) && (remainingMap[tid] || 0) > 0;
