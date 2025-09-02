@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, FormEvent } from 'react';
 import { Modal, Button, Form, Alert, Row, Col, Spinner } from 'react-bootstrap';
+import { AxiosError } from 'axios';
 import {
     createBundle, updateBundle, getBundleDetails,
     fetchProductsForDropdown, fetchTherapiesForDropdown,
@@ -41,7 +42,9 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
             // 載入下拉選單資料
             fetchProductsForDropdown().then(setProducts).catch(() => setError("無法載入產品列表"));
             fetchTherapiesForDropdown().then(setTherapies).catch(() => setError("無法載入療程列表"));
-            fetchAllStores().then(setStores).catch(() => setError("無法載入分店列表"));
+            fetchAllStores()
+                .then(data => setStores(data.filter(s => s.store_name !== '總店')))
+                .catch(() => setError("無法載入分店列表"));
 
             // 如果是編輯模式，則獲取該組合的詳細資料並填充表單
             if (editingBundle) {
@@ -59,8 +62,14 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                         setSelectedTherapyIds(thrpIds);
                         setSelectedStoreIds(data.visible_store_ids || []);
                         // 填充數量
-                        prodIds.forEach(id => setProductQuantities(q => ({ ...q, [id]: (data.items.find(i => i.item_id === id && i.item_type === 'Product') as any)?.quantity || 1 })));
-                        thrpIds.forEach(id => setTherapyQuantities(q => ({ ...q, [id]: (data.items.find(i => i.item_id === id && i.item_type === 'Therapy') as any)?.quantity || 1 })));
+                        prodIds.forEach(id => {
+                            const item = data.items.find(i => i.item_id === id && i.item_type === 'Product');
+                            setProductQuantities(q => ({ ...q, [id]: item?.quantity || 1 }));
+                        });
+                        thrpIds.forEach(id => {
+                            const item = data.items.find(i => i.item_id === id && i.item_type === 'Therapy');
+                            setTherapyQuantities(q => ({ ...q, [id]: item?.quantity || 1 }));
+                        });
                     })
                     .catch(() => setError("無法載入組合詳情"))
                     .finally(() => setLoading(false));
@@ -149,8 +158,9 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
             }
             onSaveSuccess();
             onHide();
-        } catch (err: any) {
-            setError(err.response?.data?.error || "儲存失敗，請檢查欄位或聯繫管理員。");
+        } catch (err) {
+            const axiosErr = err as AxiosError<{ error?: string }>;
+            setError(axiosErr.response?.data?.error || "儲存失敗，請檢查欄位或聯繫管理員。");
         } finally {
             setLoading(false);
         }
