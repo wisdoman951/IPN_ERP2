@@ -13,12 +13,14 @@ import { SalesOrderItemData } from "../../services/SalesOrderService";
 import { getUserRole, getStoreName } from "../../utils/authUtils";
 
 interface SelectedProduct {
-  product_id: number;
+  type?: 'product' | 'bundle';
+  product_id?: number;
+  bundle_id?: number;
   code?: string;
   name: string;
   price: number;
   quantity: number;
-  inventory_id: number;
+  inventory_id?: number;
 }
 
 const paymentMethodDisplayMap: { [key: string]: string } = {
@@ -235,7 +237,6 @@ const AddProductSell: React.FC = () => {
         }
 
         const sellData: ProductSellData = {
-          product_id: product.product_id,
           member_id: parseInt(memberId),
           store_id: parseInt(storeId),
           staff_id: selectedStaffId ? parseInt(selectedStaffId) : undefined,
@@ -250,6 +251,13 @@ const AddProductSell: React.FC = () => {
           discount_amount: itemDiscountAmount,
           final_price: itemFinalPrice,
         };
+
+        if (product.product_id) {
+          sellData.product_id = product.product_id;
+        } else if (product.bundle_id) {
+          sellData.bundle_id = product.bundle_id;
+        }
+
         await addProductSell(sellData);
       }
 
@@ -280,7 +288,7 @@ const AddProductSell: React.FC = () => {
     const success = await processSale();
     if (success) {
       const itemsForOrder: SalesOrderItemData[] = selectedProducts.map(p => ({
-        product_id: p.product_id,
+        product_id: p.product_id ?? p.bundle_id ?? undefined,
         item_description: p.name,
         item_type: 'Product',
         item_code: p.code,

@@ -28,7 +28,8 @@ export interface Product {
 
 export interface ProductSellData {
   product_sell_id?: number;
-  product_id: number;
+  product_id?: number;
+  bundle_id?: number;
   member_id: number;
   staff_id?: number;
   store_id: number;
