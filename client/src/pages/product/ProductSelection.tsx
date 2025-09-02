@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Form, Button, ListGroup, Spinner, Alert, Row, Col, Card, InputGroup } from 'react-bootstrap';
+import { Container, Form, Button, ListGroup, Spinner, Alert, Row, Col, Card, InputGroup, Tabs, Tab } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
@@ -29,6 +29,7 @@ const ProductSelection: React.FC = () => {
   const [displayedItems, setDisplayedItems] = useState<ItemBase[]>([]);
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, SelectedItem>>(new Map());
   const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState<'product' | 'bundle'>('product');
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -66,7 +67,7 @@ const ProductSelection: React.FC = () => {
 
         const combined = [...products, ...bundles];
         setAllItems(combined);
-        setDisplayedItems(combined);
+        setDisplayedItems(combined.filter(item => item.type === activeTab));
       } catch (err) {
         console.error('載入產品資料失敗：', err);
         setPageError('載入產品資料失敗，請稍後再試。');
@@ -95,19 +96,17 @@ const ProductSelection: React.FC = () => {
   }, []);
 
   useEffect(() => { // 前端篩選
-    if (searchTerm.trim() === '') {
-      setDisplayedItems(allItems);
-    } else {
+    let filtered = allItems.filter(item => item.type === activeTab);
+    if (searchTerm.trim() !== '') {
       const lower = searchTerm.toLowerCase();
-      setDisplayedItems(
-        allItems.filter(item =>
-          item.name.toLowerCase().includes(lower) ||
-          (item.code?.toLowerCase() || '').includes(lower) ||
-          (item.content?.toLowerCase() || '').includes(lower)
-        )
+      filtered = filtered.filter(item =>
+        item.name.toLowerCase().includes(lower) ||
+        (item.code?.toLowerCase() || '').includes(lower) ||
+        (item.content?.toLowerCase() || '').includes(lower)
       );
     }
-  }, [searchTerm, allItems]);
+    setDisplayedItems(filtered);
+  }, [searchTerm, allItems, activeTab]);
 
   const getItemKey = (item: ItemBase) =>
     item.type === 'bundle' ? `b-${item.bundle_id}` : `p-${item.product_id}`;
@@ -179,6 +178,87 @@ const ProductSelection: React.FC = () => {
     window.open('/inventory/inventory-search', '_blank', 'noopener,noreferrer,width=1200,height=800');
   };
 
+  const renderItemList = () => {
+    if (loading) {
+      return (
+        <div className="text-center p-5">
+          <Spinner animation="border" variant="info" />
+          <p className="mt-2">載入中...</p>
+        </div>
+      );
+    }
+    if (displayedItems.length === 0 && !pageError) {
+      return (
+        <Alert variant="secondary">
+          目前沒有符合條件的{activeTab === 'product' ? '產品' : '產品組合'}。
+        </Alert>
+      );
+    }
+    if (displayedItems.length > 0) {
+      return (
+        <ListGroup variant="flush" style={{ maxHeight: 'calc(100vh - 380px)', overflowY: 'auto' }}>
+          {displayedItems.map(item => {
+            const key = getItemKey(item);
+            const current = selectedItemsMap.get(key);
+            const isSelected = !!current;
+            return (
+              <ListGroup.Item key={key} className="py-2 px-2">
+                <Row className="align-items-center gx-2">
+                  <Col xs={12} sm={5} md={5}>
+                    <Form.Check
+                      type="checkbox"
+                      className="mb-2 mb-sm-0"
+                      id={`prod-select-${key}`}
+                      label={
+                        <div style={{ fontSize: '0.9rem' }}>
+                          <strong>{item.name || item.content}</strong>
+                          <div>
+                            <small className="text-muted">代碼: {item.code} / 單價: NT$ {item.price.toLocaleString()}</small>
+                          </div>
+                          {item.stock_quantity !== undefined && (
+                            <div>
+                              <small className="text-success">剩餘 {item.stock_quantity}</small>
+                            </div>
+                          )}
+                          {item.type === 'bundle' && item.content && (
+                            <div>
+                              <small className="text-muted">{item.content}</small>
+                            </div>
+                          )}
+                        </div>
+                      }
+                      checked={isSelected}
+                      onChange={() => handleToggleItem(item)}
+                    />
+                  </Col>
+                  {isSelected && current && (
+                    <Col xs={12} sm={7} md={7} className="mt-1 mt-sm-0">
+                      <InputGroup size="sm">
+                        <InputGroup.Text>數量:</InputGroup.Text>
+                        <Form.Control
+                          type="number"
+                          min="1"
+                          value={current.quantity}
+                          onChange={(e) => handleQuantityChange(key, e.target.value)}
+                          style={{ maxWidth: '70px', textAlign: 'center' }}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <InputGroup.Text>
+                          小計: NT$ {((item.price || 0) * Number(current.quantity || 0)).toLocaleString()}
+                        </InputGroup.Text>
+                      </InputGroup>
+                    </Col>
+                  )}
+                </Row>
+              </ListGroup.Item>
+            );
+          })}
+        </ListGroup>
+      );
+    }
+    return null;
+  };
+
   const content = (
     <Container className="my-4">
       {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
@@ -203,66 +283,12 @@ const ProductSelection: React.FC = () => {
             </Col>
           </Row>
 
-          {loading && (
-            <div className="text-center p-5"><Spinner animation="border" variant="info" /> <p className="mt-2">載入中...</p></div>
-          )}
-          {!loading && displayedItems.length === 0 && !pageError && (
-            <Alert variant="secondary">目前沒有符合條件的產品。</Alert>
-          )}
-          {!loading && displayedItems.length > 0 && (
-            <ListGroup variant="flush" style={{ maxHeight: 'calc(100vh - 380px)', overflowY: 'auto' }}>
-              {displayedItems.map(item => {
-                const key = getItemKey(item);
-                const current = selectedItemsMap.get(key);
-                const isSelected = !!current;
-                return (
-                  <ListGroup.Item key={key} className="py-2 px-2">
-                    <Row className="align-items-center gx-2">
-                      <Col xs={12} sm={5} md={5}>
-                        <Form.Check
-                          type="checkbox"
-                          className="mb-2 mb-sm-0"
-                          id={`prod-select-${key}`}
-                          label={
-                            <div style={{ fontSize: '0.9rem' }}>
-                              <strong>{item.name || item.content}</strong>
-                              <div><small className="text-muted">代碼: {item.code} / 單價: NT$ {item.price.toLocaleString()}</small></div>
-                              {item.stock_quantity !== undefined && (
-                                <div><small className="text-success">剩餘 {item.stock_quantity}</small></div>
-                              )}
-                              {item.type === 'bundle' && item.content && (
-                                <div><small className="text-muted">{item.content}</small></div>
-                              )}
-                            </div>
-                          }
-                          checked={isSelected}
-                          onChange={() => handleToggleItem(item)}
-                        />
-                      </Col>
-                      {isSelected && current && (
-                        <Col xs={12} sm={7} md={7} className="mt-1 mt-sm-0">
-                          <InputGroup size="sm">
-                            <InputGroup.Text>數量:</InputGroup.Text>
-                            <Form.Control
-                              type="number"
-                              min="1"
-                              value={current.quantity}
-                              onChange={(e) => handleQuantityChange(key, e.target.value)}
-                              style={{ maxWidth: '70px', textAlign: 'center' }}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                            <InputGroup.Text>
-                              小計: NT$ {((item.price || 0) * Number(current.quantity || 0)).toLocaleString()}
-                            </InputGroup.Text>
-                          </InputGroup>
-                        </Col>
-                      )}
-                    </Row>
-                  </ListGroup.Item>
-                );
-              })}
-            </ListGroup>
-          )}
+          <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'product' | 'bundle') || 'product')} className="mb-3">
+            <Tab eventKey="product" title="單品" />
+            <Tab eventKey="bundle" title="產品組合" />
+          </Tabs>
+
+          {renderItemList()}
         </Card.Body>
         {!loading && (
           <Card.Footer>
