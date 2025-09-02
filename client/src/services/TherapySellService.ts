@@ -432,16 +432,10 @@ export const fetchRemainingSessions = async (memberId: string, therapyId: string
     return response.data;
 };
 
-export const fetchRemainingSessionsBulk = async (
-    memberId: string,
-    therapyIds: number[]
-) => {
+export const fetchRemainingSessionsBulk = async (memberId: string) => {
     const response = await axios.post(
         `${API_URL}/remaining-sessions/bulk`,
-        {
-            member_id: memberId,
-            therapy_ids: therapyIds,
-        },
+        { member_id: memberId },
         { headers: getAuthHeaders() }
     );
     return response.data;

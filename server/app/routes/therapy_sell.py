@@ -316,16 +316,15 @@ def remaining_sessions_route():
 @therapy_sell.route("/remaining-sessions/bulk", methods=["POST"])
 @auth_required
 def remaining_sessions_bulk_route():
-    """Fetch remaining sessions for multiple therapy packages in one request."""
+    """Fetch remaining sessions for all therapy packages of a member."""
     data = request.get_json() or {}
     member_id = data.get("member_id")
-    therapy_ids = data.get("therapy_ids")
 
-    if not member_id or not isinstance(therapy_ids, list):
-        return jsonify({"error": "member_id 與 therapy_ids 皆為必填"}), 400
+    if not member_id:
+        return jsonify({"error": "member_id 為必填"}), 400
 
     try:
-        result = get_remaining_sessions_bulk(member_id, therapy_ids)
+        result = get_remaining_sessions_bulk(member_id)
         return jsonify({"data": result})
     except Exception as e:
         import traceback
