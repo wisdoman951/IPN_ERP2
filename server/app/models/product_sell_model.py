@@ -89,7 +89,6 @@ def insert_product_sell(data: dict):
                     item_total = unit_price * quantity
                     item_totals.append((item, unit_price, quantity, item_total))
                     total_price += item_total
-
                 discount_total = Decimal(str(data.get('discount_amount') or 0))
                 insert_query = """
                     INSERT INTO product_sell (
