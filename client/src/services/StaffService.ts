@@ -347,7 +347,36 @@ export const createStaffAccount = async (data: Partial<StaffAccount>) => {
     }
 };
 
-// 6. 沿用您原有的 getAllStores 函式
+// 6. 新增：匯出員工帳號資料（全部）
+export const exportStaffAccounts = async (keyword?: string) => {
+    try {
+        const response = await axios.get(`${API_URL}/accounts/export`, {
+            responseType: "blob",
+            headers: getAuthHeaders(),
+            params: { keyword: keyword || undefined }
+        });
+        return response.data;
+    } catch (error) {
+        console.error("匯出員工帳號資料失敗:", error);
+        throw error;
+    }
+};
+
+// 7. 新增：匯出勾選的員工帳號資料
+export const exportSelectedStaffAccounts = async (ids: number[]) => {
+    try {
+        const response = await axios.post(`${API_URL}/accounts/export-selected`, { ids }, {
+            responseType: "blob",
+            headers: getAuthHeaders()
+        });
+        return response.data;
+    } catch (error) {
+        console.error("匯出選定員工帳號資料失敗:", error);
+        throw error;
+    }
+};
+
+// 8. 沿用您原有的 getAllStores 函式
 // 為了讓 AddEditUserAccount.tsx 能直接使用，我們做一個簡單的包裝
 export const fetchStoresForDropdown = async (): Promise<Store[]> => {
     try {

@@ -325,6 +325,125 @@ def update_account_route(staff_id):
         return jsonify({"error": error_message}), 500
 
 
+# 總部專用：匯出員工帳號資料
+@staff_bp.route("/accounts/export", methods=["GET"])
+@admin_required
+def export_staff_accounts_route():
+    """匯出所有員工帳號資料為 Excel"""
+    try:
+        keyword = request.args.get("keyword")
+        if keyword:
+            staff_list = search_staff_with_accounts(keyword)
+        else:
+            staff_list = get_all_staff_with_accounts()
+
+        if not staff_list:
+            return jsonify({"message": "沒有可匯出的員工帳號資料。"}), 404
+
+        columns = [
+            "staff_id", "name", "phone", "store_name",
+            "account", "password", "permission", "reset_requested"
+        ]
+        column_mapping = {
+            "staff_id": "員工編號",
+            "name": "姓名",
+            "phone": "電話",
+            "store_name": "店別",
+            "account": "帳號",
+            "password": "密碼",
+            "permission": "權限",
+            "reset_requested": "申請重設"
+        }
+
+        df = pd.DataFrame(staff_list)
+        for col in columns:
+            if col not in df.columns:
+                df[col] = None
+        df = df[columns].rename(columns=column_mapping)
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            df.to_excel(writer, index=False, sheet_name="帳號資料")
+            workbook = writer.book
+            worksheet = writer.sheets["帳號資料"]
+            header_format = workbook.add_format({"bold": True, "bg_color": "#D9EAD3", "border": 1})
+            for col_num, value in enumerate(df.columns.values):
+                worksheet.write(0, col_num, value, header_format)
+            for i, col in enumerate(df.columns):
+                column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
+                worksheet.set_column(i, i, column_width)
+        output.seek(0)
+
+        return send_file(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name="員工帳號資料.xlsx",
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+# 總部專用：匯出勾選的員工帳號資料
+@staff_bp.route("/accounts/export-selected", methods=["POST"])
+@admin_required
+def export_selected_staff_accounts_route():
+    """匯出勾選的員工帳號資料為 Excel"""
+    try:
+        data = request.json or {}
+        ids = data.get("ids")
+        if not ids or not isinstance(ids, list):
+            return jsonify({"error": "請提供要匯出的員工 ID 列表"}), 400
+
+        staff_list = get_all_staff_with_accounts()
+        staff_list = [s for s in staff_list if s.get("staff_id") in ids]
+        if not staff_list:
+            return jsonify({"message": "沒有可匯出的員工帳號資料。"}), 404
+
+        columns = [
+            "staff_id", "name", "phone", "store_name",
+            "account", "password", "permission", "reset_requested"
+        ]
+        column_mapping = {
+            "staff_id": "員工編號",
+            "name": "姓名",
+            "phone": "電話",
+            "store_name": "店別",
+            "account": "帳號",
+            "password": "密碼",
+            "permission": "權限",
+            "reset_requested": "申請重設"
+        }
+
+        df = pd.DataFrame(staff_list)
+        for col in columns:
+            if col not in df.columns:
+                df[col] = None
+        df = df[columns].rename(columns=column_mapping)
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+            df.to_excel(writer, index=False, sheet_name="帳號資料")
+            workbook = writer.book
+            worksheet = writer.sheets["帳號資料"]
+            header_format = workbook.add_format({"bold": True, "bg_color": "#D9EAD3", "border": 1})
+            for col_num, value in enumerate(df.columns.values):
+                worksheet.write(0, col_num, value, header_format)
+            for i, col in enumerate(df.columns):
+                column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
+                worksheet.set_column(i, i, column_width)
+        output.seek(0)
+
+        return send_file(
+            output,
+            mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            as_attachment=True,
+            download_name="員工帳號資料.xlsx",
+        )
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 # 總部專用：獲取所有分店列表，用於下拉式選單
 @staff_bp.route("/stores", methods=["GET"])
 @login_required  # 使用 login_required 即可，因為分店和總部可能都需要這個列表
