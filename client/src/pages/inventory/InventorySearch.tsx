@@ -341,13 +341,6 @@ const InventorySearch: React.FC = () => {
                         >
                             修改
                         </Button>
-                        <Button 
-                            variant="info" 
-                            className="text-white px-4 me-2 btn btn-info"
-                            onClick={() => {}}
-                        >
-                            確認
-                        </Button>
                     </Col>
                 </Row>
         </Container>

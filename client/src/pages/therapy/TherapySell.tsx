@@ -241,7 +241,7 @@ const TherapySell: React.FC = () => {
                     <Col xs={12} md={6} className="mb-3 mb-md-0">
                         <Form.Control
                             type="text"
-                            placeholder="姓名/電話/編號" // <--- 修改提示文字
+                            placeholder="姓名/會員編號"
                             value={searchKeyword}
                             onChange={(e) => setSearchKeyword(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -297,16 +297,7 @@ const TherapySell: React.FC = () => {
                             修改
                         </Button>
                     </Col>
-                    <Col xs="auto">
-                        <Button
-                            variant="info" // 修改 variant
-                            className="text-white px-4"
-                            onClick={() => { /* TODO: 確認 "確認" 按鈕功能 */ alert("確認按鈕功能待定義"); }}
-                            disabled={loading}
-                        >
-                            確認
-                        </Button>
-                    </Col>
+                    
                 </Row>
             </Container>
         </>
@@ -314,7 +305,7 @@ const TherapySell: React.FC = () => {
 
     return (
         <>
-            <Header /> {/* 確認頁面標題 */}
+            <Header />
             <DynamicContainer content={content} />
         </>
     );
