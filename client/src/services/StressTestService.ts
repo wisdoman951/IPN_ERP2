@@ -6,8 +6,7 @@ const API_URL = `${base_url}/stress-test`;
 // 搜尋欄位型別（完整支援所有搜尋）
 export interface StressTestSearchFilters {
     name?: string;
-    member_id?: string;
-    phone?: string;
+    member_code?: string;
     test_date?: string;
     position?: string;
 }
@@ -17,10 +16,9 @@ export const getAllStressTests = async (filters?: {
   name?: string,
   test_date?: string,
   position?: string,
-  member_id?: string,
-  phone?: string
+  member_code?: string
 }) => {
-  // 過濾掉沒值的欄位，否則 url ?phone=&member_id=&position= 會都帶空值，後端會吃空字串不是 None
+  // 過濾掉沒值的欄位，避免在 URL 中傳送空字串
   const filtered = Object.fromEntries(
     Object.entries(filters || {}).filter(([k, v]) => v !== undefined && v !== null && v !== "")
   );

@@ -31,8 +31,7 @@ def get_stress_tests():
             'name': request.args.get('name', ''),
             'test_date': request.args.get('test_date', ''),
             'position': request.args.get('position', ''),
-            'member_id': request.args.get('member_id', ''),
-            'phone': request.args.get('phone', ''),
+            'member_code': request.args.get('member_code', ''),
         }
         print("🚩API收到filters: ", filters)  # debug用，正式可移除
 
@@ -54,8 +53,7 @@ def export_stress_tests_route():
             'name': request.args.get('name', ''),
             'test_date': request.args.get('test_date', ''),
             'position': request.args.get('position', ''),
-            'member_id': request.args.get('member_id', ''),
-            'phone': request.args.get('phone', ''),
+            'member_code': request.args.get('member_code', ''),
         }
 
         records = get_all_stress_tests(user_store_level, user_store_id, filters)
