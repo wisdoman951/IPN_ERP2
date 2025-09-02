@@ -210,13 +210,13 @@ const TherapyPackageSelection: React.FC = () => {
             {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
              {error && <Alert variant="warning" >{error}</Alert>} {/* API 載入錯誤 */}
             <Card>
-                <Card.Header as="h5">選擇療程套餐並設定堂數</Card.Header>
+                <Card.Header as="h5">選擇療程並設定堂數</Card.Header>
                 <Card.Body>
                     <Row className="mb-3 gx-2">
                         <Col>
                             <Form.Control
                                 type="text"
-                                placeholder="輸入療程名稱、代碼或內容進行篩選..."
+                                placeholder="輸入療程名稱、產品編號或內容進行篩選..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -246,7 +246,7 @@ const TherapyPackageSelection: React.FC = () => {
                                                     label={
                                                         <div style={{fontSize:'0.9rem'}}>
                                                             <strong>{pkg.TherapyContent || pkg.TherapyName}</strong>
-                                                            <div><small className="text-muted">代碼: {pkg.TherapyCode} / 單價: NT$ {pkg.TherapyPrice.toLocaleString()}</small></div>
+                                                            <div><small className="text-muted">產品編號: {pkg.TherapyCode} / 單價: NT$ {pkg.TherapyPrice.toLocaleString()}</small></div>
                                                             {memberId && remainingMap.has(pkgKey) && (
                                                                 <div><small className="text-success">剩餘 {remainingMap.get(pkgKey)} 堂</small></div>
                                                             )}
