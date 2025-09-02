@@ -18,8 +18,7 @@ export interface SearchFilters {
   name: string;
   test_date: string;
   position: string;
-  member_id: string;   // 新增
-  phone: string;       // 新增
+  member_code: string;   // 會員編號
 }
 
 /**

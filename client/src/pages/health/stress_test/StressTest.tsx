@@ -16,8 +16,7 @@ export interface SearchFilters {
   name: string;
   test_date: string;
   position: string;
-  member_id: string;
-  phone: string;
+  member_code: string;
 }
 
 const StressTest: React.FC = () => {
@@ -42,8 +41,7 @@ const StressTest: React.FC = () => {
       name: "",
       test_date: "",
       position: "",
-      member_id: "",
-      phone: ""
+      member_code: ""
     };
     const kw = searchKeyword.trim();
 
@@ -52,13 +50,9 @@ const StressTest: React.FC = () => {
       return;
     }
 
-    // 電話
-    if (/^09\d{8}$/.test(kw)) {
-      filters.phone = kw;
-    }
-    // 會員編號
-    else if (/^\d+$/.test(kw) && !/^09\d{8}$/.test(kw)) {
-      filters.member_id = kw;
+    // 會員編號（含字母與數字）
+    if (/^[A-Za-z]*\d+$/.test(kw)) {
+      filters.member_code = kw;
     }
     // 日期 yyyy-mm-dd
     else if (/^\d{4}-\d{2}-\d{2}$/.test(kw)) {
@@ -141,15 +135,15 @@ const StressTest: React.FC = () => {
     <div className="w-100 px-4">
       <div className="search-area">
         <Row className="align-items-center">
-          <Col xs={12} md={5} className="mb-3 mb-md-0">
-            <Form.Control
-              type="text"
-              placeholder="搜尋姓名／電話／會員編號／日期／職位 (例: 職位:設計師)"
-              value={searchKeyword}
-              onChange={e => setSearchKeyword(e.target.value)}
-              onKeyDown={e => { if (e.key === "Enter") handleSmartSearch(); }}
-            />
-          </Col>
+      <Col xs={12} md={5} className="mb-3 mb-md-0">
+        <Form.Control
+          type="text"
+          placeholder="搜尋姓名／會員編號／日期／職位 (例: 職位:設計師)"
+          value={searchKeyword}
+          onChange={e => setSearchKeyword(e.target.value)}
+          onKeyDown={e => { if (e.key === "Enter") handleSmartSearch(); }}
+        />
+      </Col>
           <Col xs={12} md="auto" className="mt-3 mt-md-0">
             <Button
               variant="info"
@@ -195,11 +189,6 @@ const StressTest: React.FC = () => {
           <Col xs="auto">
             <Button variant="info" className="text-white px-4" onClick={handleDelete} disabled={loading || selectedTests.length === 0}>
               刪除
-            </Button>
-          </Col>
-          <Col xs="auto">
-            <Button variant="info" className="text-white px-4" disabled={loading}>
-              確認
             </Button>
           </Col>
         </Row>

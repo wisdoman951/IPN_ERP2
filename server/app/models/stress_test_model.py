@@ -105,10 +105,9 @@ def get_all_stress_tests(store_level: str, store_id: int, filters=None):
             smart_kw = filters.get('smart_keyword') or filters.get('name')
             if smart_kw:
                 where_conditions.append(
-                    "(m.name LIKE %s OR m.member_code LIKE %s OR m.occupation LIKE %s OR m.phone LIKE %s)"
+                    "(m.name LIKE %s OR m.member_code LIKE %s OR m.occupation LIKE %s)"
                 )
                 params.extend([
-                    f"%{smart_kw}%",
                     f"%{smart_kw}%",
                     f"%{smart_kw}%",
                     f"%{smart_kw}%"
@@ -118,12 +117,9 @@ def get_all_stress_tests(store_level: str, store_id: int, filters=None):
             if filters.get('test_date'):
                 where_conditions.append("s.test_date = %s")
                 params.append(filters['test_date'])
-            if filters.get('member_id'):
+            if filters.get('member_code'):
                 where_conditions.append("(m.member_code = %s OR s.member_id = %s)")
-                params.extend([filters['member_id'], filters['member_id']])
-            if filters.get('phone'):
-                where_conditions.append("m.phone = %s")
-                params.append(filters['phone'])
+                params.extend([filters['member_code'], filters['member_code']])
             if filters.get('position'):
                 where_conditions.append("m.occupation LIKE %s")
                 params.append(f"%{filters['position']}%")
