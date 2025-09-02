@@ -114,16 +114,8 @@ const AddTherapyRecord: React.FC = () => {
                 return;
             }
 
-            const therapyIds = allTherapyList
-                .map((t) => Number(t.therapy_id))
-                .filter((id) => !isNaN(id));
-            if (therapyIds.length === 0) {
-                setTherapyList([]);
-                return;
-            }
-
             try {
-                const res = await fetchRemainingSessionsBulk(formData.member_id, therapyIds);
+                const res = await fetchRemainingSessionsBulk(formData.member_id);
                 const remainingMap = (res && res.data ? res.data : res) || {};
                 const filtered = allTherapyList.filter((t) => {
                     const tid = Number(t.therapy_id);

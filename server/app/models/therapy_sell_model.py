@@ -505,52 +505,49 @@ def get_remaining_sessions(member_id, therapy_id):
         if conn:
             conn.close()
 
-# ---- New helper to fetch remaining sessions for multiple therapy packages ----
-def get_remaining_sessions_bulk(member_id, therapy_ids):
+# ---- Helper to fetch remaining sessions for a member across all therapies ----
+def get_remaining_sessions_bulk(member_id):
     """Return a mapping of therapy_id -> remaining sessions for the given member."""
-    if not therapy_ids:
-        return {}
-
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            placeholders = ','.join(['%s'] * len(therapy_ids))
-            # Total purchased per therapy
+            # Total purchased per therapy for this member
             cursor.execute(
-                f"""
+                """
                 SELECT therapy_id, COALESCE(SUM(amount),0) AS total_purchased
                 FROM therapy_sell
-                WHERE member_id = %s AND therapy_id IN ({placeholders})
+                WHERE member_id = %s
                 GROUP BY therapy_id
                 """,
-                [member_id, *therapy_ids]
+                (member_id,)
             )
             purchased_rows = cursor.fetchall()
             purchased = {
-                int(row['therapy_id']): int(float(row['total_purchased']))
-                for row in purchased_rows
+                int(row["therapy_id"]): int(float(row["total_purchased"]))
+                for row in purchased_rows if row.get("therapy_id") is not None
             }
 
-            # Total used per therapy
+            # Total used sessions per therapy for this member
             cursor.execute(
-                f"""
+                """
                 SELECT therapy_id, COALESCE(SUM(deduct_sessions),0) AS total_used
                 FROM therapy_record
-                WHERE member_id = %s AND therapy_id IN ({placeholders})
+                WHERE member_id = %s
                 GROUP BY therapy_id
                 """,
-                [member_id, *therapy_ids]
+                (member_id,)
             )
             used_rows = cursor.fetchall()
             used = {
-                int(row['therapy_id']): int(float(row['total_used']))
-                for row in used_rows
+                int(row["therapy_id"]): int(float(row["total_used"]))
+                for row in used_rows if row.get("therapy_id") is not None
             }
 
-            result = {}
-            for tid in therapy_ids:
-                tid_int = int(tid)
-                result[tid_int] = purchased.get(tid_int, 0) - used.get(tid_int, 0)
+            all_ids = set(purchased.keys()) | set(used.keys())
+            result = {
+                tid: purchased.get(tid, 0) - used.get(tid, 0)
+                for tid in all_ids
+            }
             return result
     finally:
         if conn:

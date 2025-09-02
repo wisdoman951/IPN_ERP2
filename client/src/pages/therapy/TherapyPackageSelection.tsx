@@ -122,11 +122,7 @@ const TherapyPackageSelection: React.FC = () => {
                 return;
             }
             try {
-                const therapyIds = allPackages
-                    .filter(p => p.type !== 'bundle' && p.therapy_id !== undefined)
-                    .map(p => Number(p.therapy_id))
-                    .filter(id => !isNaN(id));
-                const res = await fetchRemainingSessionsBulk(memberId, therapyIds);
+                const res = await fetchRemainingSessionsBulk(memberId);
                 const dataMap = (res && res.data ? res.data : res) || {};
                 const map = new Map<string, number>();
                 Object.entries(dataMap).forEach(([id, remaining]) => {
