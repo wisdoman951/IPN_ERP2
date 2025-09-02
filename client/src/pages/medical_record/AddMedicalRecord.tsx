@@ -47,6 +47,7 @@ const AddMedicalRecord = () => {
                         <MemberColumn
                             memberCode={form.memberCode}
                             name={form.name}
+                            isEditMode={isEditMode}
                             onMemberChange={handleMemberChange}
                             onError={setError}
                         />

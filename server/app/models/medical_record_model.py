@@ -121,6 +121,8 @@ def format_record_for_edit(record: dict):
         record['bloodPressure'] = record.pop('blood_preasure', None)
         record['cosmeticSurgery'] = record.pop('cosmetic_surgery', 'No')
         record['cosmeticDesc'] = record.pop('micro_surgery_description', None)
+        # 將 member_code 轉換為前端使用的 camelCase
+        record['memberCode'] = record.pop('member_code', None)
         
         # 將產生的新欄位加入 record 中
         record['symptom'] = symptom
