@@ -426,7 +426,8 @@ export const searchMemberById = async (memberId: string): Promise<Member[]> => {
 // vvvv 新增這個函式 vvvv
 export const fetchRemainingSessions = async (memberId: string, therapyId: string) => {
     const response = await axios.get(`${API_URL}/remaining-sessions`, {
-        params: { member_id: memberId, therapy_id: therapyId }
+        params: { member_id: memberId, therapy_id: therapyId },
+        headers: getAuthHeaders()
     });
     return response.data;
 };
@@ -435,9 +436,13 @@ export const fetchRemainingSessionsBulk = async (
     memberId: string,
     therapyIds: number[]
 ) => {
-    const response = await axios.post(`${API_URL}/remaining-sessions/bulk`, {
-        member_id: memberId,
-        therapy_ids: therapyIds,
-    });
+    const response = await axios.post(
+        `${API_URL}/remaining-sessions/bulk`,
+        {
+            member_id: memberId,
+            therapy_ids: therapyIds,
+        },
+        { headers: getAuthHeaders() }
+    );
     return response.data;
 };

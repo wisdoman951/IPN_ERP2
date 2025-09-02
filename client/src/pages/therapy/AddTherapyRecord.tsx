@@ -303,7 +303,7 @@ const AddTherapyRecord: React.FC = () => {
                     <Button
                         variant="info"
                         className="text-white"
-                        onClick={() => {}}
+                        onClick={() => window.print()}
                         disabled={loading || isFetchingSessions}
                     >
                         列印
