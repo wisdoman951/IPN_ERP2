@@ -56,7 +56,11 @@ const ProductSell: React.FC = () => {
         const match = sale.note?.match(/\[bundle:(\d+)\]/);
         if (match) {
             const id = parseInt(match[1], 10);
-            return bundleMap[id]?.contents || "-";
+            const contents = bundleMap[id]?.contents;
+            if (contents) {
+                return contents.split(/[,，]/).join("\n");
+            }
+            return "-";
         }
         return sale.note || "-";
     };
@@ -71,13 +75,15 @@ const ProductSell: React.FC = () => {
                 const bundleId = match[1];
                 const key = `${bundleId}-${sale.member_id}-${sale.date}-${sale.payment_method}-${sale.staff_id}`;
                 const existing = bundles[key];
+                const price = Number(sale.final_price ?? sale.product_price ?? 0);
                 if (existing) {
-                    existing.final_price =
-                        (existing.final_price || 0) + (sale.final_price || sale.product_price || 0);
+                    existing.final_price = Number(existing.final_price) + price;
                     existing.product_sell_ids.push(sale.product_sell_id);
                 } else {
                     bundles[key] = {
                         ...sale,
+                        final_price: price,
+                        product_price: price,
                         product_sell_id: sale.product_sell_id,
                         product_sell_ids: [sale.product_sell_id],
                         quantity: 1
@@ -131,12 +137,18 @@ const ProductSell: React.FC = () => {
                 <td className="text-center align-middle">{sale.quantity || "-"}</td>
                 <td className="text-end align-middle">
                     {/* 顯示 final_price，如果沒有則顯示 product_price 或計算值 */}
-                    {formatCurrency(sale.final_price !== undefined ? sale.final_price : sale.product_price) || "-"}
+                    {formatCurrency(
+                        sale.final_price !== undefined
+                            ? Number(sale.final_price)
+                            : sale.product_price !== undefined
+                            ? Number(sale.product_price)
+                            : undefined
+                    ) || "-"}
                 </td>
                 <td className="align-middle">{sale.payment_method || "-"}</td>
                 <td className="align-middle">{sale.staff_name || "-"}</td>
                 <td className="align-middle">{sale.sale_category || "-"}</td>
-                <td className="align-middle" style={{ maxWidth: '200px', whiteSpace: 'normal' }}>{getNote(sale)}</td>
+                <td className="align-middle" style={{ maxWidth: '200px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
             </tr>
         ))
     ) : (
