@@ -88,7 +88,7 @@ const ProductSell: React.FC = () => {
                     <Col xs={12} md={6} className="mb-3 mb-md-0">
                         <Form.Control
                             type="text"
-                            placeholder="姓名/電話/編號" // <--- 修改提示文字
+                            placeholder="姓名/會員編號"
                             value={keyword}
                             onChange={(e) => setKeyword(e.target.value)}
                             onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
@@ -162,17 +162,6 @@ const ProductSell: React.FC = () => {
                             onClick={() => selectedSales.length === 1 && navigate(`/product-sell/edit/${selectedSales[0]}`)} // 假設修改頁面路由
                         >
                             修改
-                        </Button>
-                    </Col>
-                    <Col xs="auto">
-                        <Button
-                            variant="info" // "確認"按鈕使用更合適的 variant
-                            className="text-white px-4"
-                            // onClick={() => navigate(-1)} // 確認按鈕的功能可能不是返回，需確認
-                            onClick={() => alert("確認按鈕被點擊")} // 暫定功能
-                            disabled={loading} // 確認按鈕是否也受 loading 影響
-                        >
-                            確認
                         </Button>
                     </Col>
                 </Row>
