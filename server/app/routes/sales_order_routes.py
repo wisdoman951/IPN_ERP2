@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify, send_file
 from app.models.sales_order_model import (
     create_sales_order,
     get_all_sales_orders,
+    get_sales_orders_by_ids,
     delete_sales_orders_by_ids,
     get_sales_order_by_id,
     update_sales_order
@@ -62,6 +63,55 @@ def export_sales_orders_route():
         result = get_all_sales_orders(keyword)
         if not result.get('success'):
             return jsonify({'error': result.get('error', '獲取列表失敗')}), 500
+        orders = result.get('data', [])
+        if not orders:
+            return jsonify({'message': '沒有可匯出的銷售單資料。'}), 404
+
+        df = pd.DataFrame(orders)
+        df.rename(columns={
+            'order_id': '銷售單ID',
+            'order_number': '銷售單號',
+            'order_date': '日期',
+            'grand_total': '總計',
+            'sale_category': '銷售類別',
+            'note': '備註',
+            'member_name': '會員姓名',
+            'staff_name': '銷售人員'
+        }, inplace=True)
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='銷售單')
+            workbook = writer.book
+            worksheet = writer.sheets['銷售單']
+            header_format = workbook.add_format({'bold': True, 'bg_color': '#D9EAD3', 'border': 1})
+            for col_num, value in enumerate(df.columns):
+                worksheet.write(0, col_num, value, header_format)
+                column_width = max(df[value].astype(str).map(len).max(), len(value)) + 2
+                worksheet.set_column(col_num, col_num, column_width)
+
+        output.seek(0)
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='銷售單.xlsx'
+        )
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({'error': f'匯出時發生錯誤: {str(e)}'}), 500
+
+@sales_order_bp.route('/export-selected', methods=['POST'])
+def export_selected_sales_orders_route():
+    """匯出勾選的銷售單列表為 Excel"""
+    try:
+        data = request.json or {}
+        ids = data.get('ids')
+        if not ids or not isinstance(ids, list):
+            return jsonify({'error': '請提供要匯出的銷售單 ID 列表'}), 400
+        result = get_sales_orders_by_ids(ids)
+        if not result.get('success'):
+            return jsonify({'error': result.get('error', '獲取資料失敗')}), 500
         orders = result.get('data', [])
         if not orders:
             return jsonify({'message': '沒有可匯出的銷售單資料。'}), 404

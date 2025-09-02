@@ -209,6 +209,41 @@ def get_all_sales_orders(keyword: str = None):
         if conn:
             conn.close()
 
+def get_sales_orders_by_ids(order_ids: list[int]):
+    """根據 ID 列表取得銷售單資料"""
+    if not order_ids:
+        return {"success": False, "error": "未提供要匯出的銷售單ID"}
+    conn = None
+    try:
+        conn = connect_to_db()
+        with conn.cursor() as cursor:
+            placeholders = ', '.join(['%s'] * len(order_ids))
+            query = f"""
+                SELECT
+                    so.order_id,
+                    so.order_number,
+                    so.order_date,
+                    so.grand_total,
+                    so.sale_category,
+                    so.note,
+                    m.name AS member_name,
+                    s.name AS staff_name
+                FROM sales_orders so
+                LEFT JOIN member m ON so.member_id = m.member_id
+                LEFT JOIN staff s ON so.staff_id = s.staff_id
+                WHERE so.order_id IN ({placeholders})
+                ORDER BY so.order_date DESC, so.order_id DESC
+            """
+            cursor.execute(query, tuple(order_ids))
+            result = cursor.fetchall()
+            return {"success": True, "data": result}
+    except Exception as e:
+        print(f"Error getting sales orders by IDs: {e}")
+        return {"success": False, "error": str(e)}
+    finally:
+        if conn:
+            conn.close()
+
 def delete_sales_orders_by_ids(order_ids: list[int]):
     """根據 order_id 列表刪除銷售單"""
     if not order_ids:

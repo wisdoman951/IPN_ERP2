@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
 import ScrollableTable from '../../components/ScrollableTable';
-import { SalesOrderListRow, getSalesOrders, deleteSalesOrders, exportSalesOrders } from '../../services/SalesOrderService';
+import { SalesOrderListRow, getSalesOrders, deleteSalesOrders, exportSalesOrders, exportSelectedSalesOrders } from '../../services/SalesOrderService';
 import { formatCurrency } from '../../utils/productSellUtils'; // 借用金額格式化工具
 import { downloadBlob } from '../../utils/downloadBlob';
 
@@ -40,6 +40,20 @@ const SalesOrderList: React.FC = () => {
             setLoading(true);
             const blob = await exportSalesOrders();
             downloadBlob(blob, `銷售單列表_${new Date().toISOString().split('T')[0]}.xlsx`);
+        } catch (err: any) {
+            console.error('匯出銷售單失敗：', err);
+            setError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleExportSelected = async () => {
+        if (selectedIds.length === 0) return;
+        try {
+            setLoading(true);
+            const blob = await exportSelectedSalesOrders(selectedIds);
+            downloadBlob(blob, `銷售單列表_勾選_${new Date().toISOString().split('T')[0]}.xlsx`);
         } catch (err: any) {
             console.error('匯出銷售單失敗：', err);
             setError(err.message);
@@ -117,6 +131,7 @@ const SalesOrderList: React.FC = () => {
             <Container className="my-4">
                 <Row className="justify-content-end g-2">
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExport} disabled={loading}>報表匯出</Button></Col>
+                    <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExportSelected} disabled={loading || selectedIds.length === 0}>勾選匯出</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleDelete} disabled={loading || selectedIds.length === 0}>刪除</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={() => navigate(`/finance/sales/add?order_id=${selectedIds[0]}`)} disabled={loading || selectedIds.length !== 1}>修改</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={() => navigate("/finance")}>確認</Button></Col>

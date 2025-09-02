@@ -251,6 +251,25 @@ export const exportStaffToExcel = async (filters = {}) => {
   }
 };
 
+export const exportSelectedStaffToExcel = async (ids: number[]) => {
+  try {
+    const response = await axios.post(`${API_URL}/export-selected`, { ids }, {
+      responseType: "blob",
+      headers: getAuthHeaders()
+    });
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error) {
+    console.error("匯出失敗:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "發生錯誤"
+    };
+  }
+};
+
 // Select 用簡版
 export const getAllStaffs = async (): Promise<Staff[]> => {
   const result = await getAllStaff();

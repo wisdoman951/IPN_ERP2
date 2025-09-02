@@ -5,6 +5,7 @@ from app.models.staff_model import (
     get_all_staff,
     search_staff,
     get_staff_by_id,
+    get_staff_by_ids,
     create_staff,
     update_staff,
     delete_staff,
@@ -115,6 +116,57 @@ def export_staff_route():
             return jsonify({"message": "沒有可匯出的員工資料。"}), 404
 
         # 僅輸出指定欄位，避免遺漏或順序錯亂
+        columns = [
+            'staff_id', 'family_information_id', 'emergency_contact_id',
+            'work_experience_id', 'hiring_information_id', 'name', 'gender',
+            'fill_date', 'onboard_date', 'nationality', 'education', 'married',
+            'position', 'phone', 'national_id', 'mailing_address',
+            'registered_address', 'account', 'password', 'permission', 'store_id'
+        ]
+
+        df = pd.DataFrame(staff_list)
+        for col in columns:
+            if col not in df.columns:
+                df[col] = None
+        df = df[columns]
+
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+            df.to_excel(writer, index=False, sheet_name='員工資料')
+            workbook = writer.book
+            worksheet = writer.sheets['員工資料']
+            header_format = workbook.add_format({'bold': True, 'bg_color': '#D9EAD3', 'border': 1})
+            for col_num, value in enumerate(df.columns.values):
+                worksheet.write(0, col_num, value, header_format)
+            for i, col in enumerate(df.columns):
+                column_width = max(df[col].astype(str).map(len).max(), len(col)) + 2
+                worksheet.set_column(i, i, column_width)
+        output.seek(0)
+
+        return send_file(
+            output,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            as_attachment=True,
+            download_name='員工資料.xlsx'
+        )
+    except Exception as e:
+        print(f"匯出員工資料失敗: {e}")
+        return jsonify({'error': str(e)}), 500
+
+@staff_bp.route("/export-selected", methods=["POST"])
+@auth_required
+def export_selected_staff_route():
+    """匯出勾選的員工資料為 Excel 檔案"""
+    try:
+        data = request.json or {}
+        ids = data.get('ids')
+        if not ids or not isinstance(ids, list):
+            return jsonify({'error': '請提供要匯出的員工 ID 列表'}), 400
+
+        staff_list = get_staff_by_ids(ids)
+        if not staff_list:
+            return jsonify({'message': '沒有可匯出的員工資料。'}), 404
+
         columns = [
             'staff_id', 'family_information_id', 'emergency_contact_id',
             'work_experience_id', 'hiring_information_id', 'name', 'gender',
