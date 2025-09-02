@@ -203,11 +203,35 @@ def export_selected_staff_route():
             'registered_address', 'account', 'password', 'permission', 'store_id'
         ]
 
+        column_mapping = {
+            'staff_id': '員工編號',
+            'family_information_id': '家庭資料ID',
+            'emergency_contact_id': '緊急聯絡人ID',
+            'work_experience_id': '工作經驗ID',
+            'hiring_information_id': '雇用資訊ID',
+            'name': '姓名',
+            'gender': '性別',
+            'fill_date': '填表日期',
+            'onboard_date': '到職日期',
+            'nationality': '國籍',
+            'education': '教育程度',
+            'married': '婚姻狀況',
+            'position': '職位',
+            'phone': '電話',
+            'national_id': '身分證',
+            'mailing_address': '通訊地址',
+            'registered_address': '戶籍地址',
+            'account': '帳號',
+            'password': '密碼',
+            'permission': '權限',
+            'store_id': '分店ID'
+        }
+
         df = pd.DataFrame(staff_list)
         for col in columns:
             if col not in df.columns:
                 df[col] = None
-        df = df[columns]
+        df = df[columns].rename(columns=column_mapping)
 
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
