@@ -1,5 +1,5 @@
 // .\src\pages\product\ProductSell.tsx
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { Button, Container, Row, Col, Form, Spinner } from "react-bootstrap"; // Spinner 已在原程式碼但未匯入
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -9,9 +9,11 @@ import { formatDateToChinese } from "../../utils/memberUtils"; // 假設日期�
 import { formatCurrency } from "../../utils/productSellUtils"; // formatDiscount 可能不再需要
 import { useProductSell } from "../../hooks/useProductSell";
 import { ProductSell as ProductSellType } from "../../services/ProductSellService"; // 匯入更新後的型別
+import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
 
 const ProductSell: React.FC = () => {
     const navigate = useNavigate();
+    const [bundleMap, setBundleMap] = useState<Record<number, string>>({});
     const {
         sales,
         selectedSales,
@@ -24,6 +26,29 @@ const ProductSell: React.FC = () => {
         // handleExport, // Figma 中沒有此按鈕，暫時移除
         handleCheckboxChange
     } = useProductSell();
+
+    useEffect(() => {
+        const loadBundles = async () => {
+            try {
+                const bundles = await fetchAllBundles();
+                const map: Record<number, string> = {};
+                bundles.forEach((b: Bundle) => { map[b.bundle_id] = b.name || b.bundle_contents; });
+                setBundleMap(map);
+            } catch (err) {
+                console.error("載入產品組合失敗", err);
+            }
+        };
+        loadBundles();
+    }, []);
+
+    const getDisplayName = (sale: ProductSellType) => {
+        const match = sale.note?.match(/\[bundle:(\d+)\]/);
+        if (match) {
+            const id = parseInt(match[1], 10);
+            return bundleMap[id] || sale.product_name || "-";
+        }
+        return sale.product_name || "-";
+    };
 
     const tableHeader = (
         <tr>
@@ -61,7 +86,7 @@ const ProductSell: React.FC = () => {
                 <td className="align-middle">{sale.member_code || "-"}</td>
                 <td className="align-middle">{sale.member_name || "-"}</td>
                 <td className="align-middle">{formatDateToChinese(sale.date) || "-"}</td>
-                <td className="align-middle">{sale.product_name || "-"}</td>
+                <td className="align-middle">{getDisplayName(sale)}</td>
                 <td className="text-center align-middle">{sale.quantity || "-"}</td>
                 <td className="text-end align-middle">
                     {/* 顯示 final_price，如果沒有則顯示 product_price 或計算值 */}
