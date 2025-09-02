@@ -198,7 +198,7 @@ const UsualSymptomsAndFamilyHistory = () => {
                     <Button onClick={onSave} variant="info" className="text-white">
                         儲存並返回
                     </Button>
-                    <Button onClick={() => navigate("/medical-record/add")} variant="secondary" className="text-white">
+                    <Button onClick={() => navigate("/medical-record/add")} variant="info" className="text-white">
                         取消
                     </Button>
                 </div>
