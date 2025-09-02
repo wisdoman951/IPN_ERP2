@@ -1,5 +1,6 @@
 # \app\models\product_sell_model.py
 import pymysql
+from decimal import Decimal
 from app.config import DB_CONFIG
 
 def connect_to_db():
@@ -57,32 +58,91 @@ def get_product_sell_by_id(sell_id: int):
     return result
 
 def insert_product_sell(data: dict):
-    """新增產品銷售紀錄"""
-    # 如果沒有提供 product_id，先跳過新增避免資料庫錯誤
-    if not data.get('product_id'):
-        print("Skipping product_sell insertion due to missing product_id.")
+    """新增產品銷售紀錄，可處理單品或產品組合"""
+    # 若沒有提供 product_id 或 bundle_id，則不進行插入
+    if not data.get('product_id') and not data.get('bundle_id'):
+        print("Skipping product_sell insertion due to missing product_id and bundle_id.")
         return None
 
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = """
-                INSERT INTO product_sell (
-                    member_id, staff_id, store_id, product_id, date, quantity,
-                    unit_price, discount_amount, final_price, payment_method,
-                    sale_category, note
-                ) VALUES (
-                    %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(date)s, %(quantity)s,
-                    %(unit_price)s, %(discount_amount)s, %(final_price)s, %(payment_method)s,
-                    %(sale_category)s, %(note)s
+            if data.get('bundle_id'):
+                bundle_id = data.get('bundle_id')
+                bundle_qty = int(data.get('quantity', 1))
+                cursor.execute(
+                    "SELECT item_id, quantity FROM product_bundle_items WHERE bundle_id = %s AND item_type = 'Product'",
+                    (bundle_id,)
                 )
-            """
-            cursor.execute(query, data)
-            # 更新庫存
-            quantity_change = -int(data['quantity'])
-            update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
-        conn.commit()
-        return conn.insert_id()
+                bundle_items = cursor.fetchall()
+                if not bundle_items:
+                    print(f"No product items found for bundle_id {bundle_id}.")
+                    return None
+
+                item_totals = []
+                total_price = Decimal('0')
+                for item in bundle_items:
+                    cursor.execute("SELECT price FROM product WHERE product_id = %s", (item['item_id'],))
+                    price_row = cursor.fetchone()
+                    unit_price = Decimal(str(price_row['price'])) if price_row and price_row.get('price') is not None else Decimal('0')
+                    quantity = int(item.get('quantity', 0)) * bundle_qty
+                    item_total = unit_price * quantity
+                    item_totals.append((item, unit_price, quantity, item_total))
+                    total_price += item_total
+
+                discount_total = Decimal(str(data.get('discount_amount') or 0))
+                insert_query = """
+                    INSERT INTO product_sell (
+                        member_id, staff_id, store_id, product_id, date, quantity,
+                        unit_price, discount_amount, final_price, payment_method,
+                        sale_category, note
+                    ) VALUES (
+                        %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(date)s, %(quantity)s,
+                        %(unit_price)s, %(discount_amount)s, %(final_price)s, %(payment_method)s,
+                        %(sale_category)s, %(note)s
+                    )
+                """
+
+                for item, unit_price, quantity, item_total in item_totals:
+                    discount_amount = (item_total / total_price * discount_total) if total_price > 0 else Decimal('0')
+                    final_price = item_total - discount_amount
+                    item_data = {
+                        "member_id": data.get('member_id'),
+                        "staff_id": data.get('staff_id'),
+                        "store_id": data.get('store_id'),
+                        "product_id": item['item_id'],
+                        "date": data.get('date'),
+                        "quantity": quantity,
+                        "unit_price": float(unit_price),
+                        "discount_amount": float(discount_amount),
+                        "final_price": float(final_price),
+                        "payment_method": data.get('payment_method'),
+                        "sale_category": data.get('sale_category'),
+                        "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
+                    }
+                    cursor.execute(insert_query, item_data)
+                    update_inventory_quantity(item['item_id'], data['store_id'], -quantity, cursor)
+
+                conn.commit()
+                return conn.insert_id()
+
+            else:
+                query = """
+                    INSERT INTO product_sell (
+                        member_id, staff_id, store_id, product_id, date, quantity,
+                        unit_price, discount_amount, final_price, payment_method,
+                        sale_category, note
+                    ) VALUES (
+                        %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(date)s, %(quantity)s,
+                        %(unit_price)s, %(discount_amount)s, %(final_price)s, %(payment_method)s,
+                        %(sale_category)s, %(note)s
+                    )
+                """
+                cursor.execute(query, data)
+                quantity_change = -int(data['quantity'])
+                update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
+                conn.commit()
+                return conn.insert_id()
     except Exception as e:
         conn.rollback()
         raise e
