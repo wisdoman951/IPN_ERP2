@@ -26,7 +26,12 @@ export const fetchAllStores = async (): Promise<Store[]> => {
         const response = await axios.get(`${API_URL}/list`, {
             headers: getAuthHeaders()
         });
-        return response.data;
+        // 去除重複分店（依據 store_id）
+        const stores: Store[] = response.data;
+        const uniqueStores = Array.from(
+            new Map(stores.map(s => [s.store_id, s])).values()
+        );
+        return uniqueStores;
     } catch (error: any) {
         console.error("獲取分店列表失敗:", error);
         throw error;
