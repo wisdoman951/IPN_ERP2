@@ -65,3 +65,40 @@ export const addProduct = async (data: { code: string; name: string; price: numb
     throw error;
   }
 };
+
+export const updateProduct = async (
+  productId: number,
+  data: { code: string; name: string; price: number }
+) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.put(`${API_URL}/${productId}`, data, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Store-ID": "1",
+        "X-Store-Level": "admin",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("更新產品失敗：", error);
+    throw error;
+  }
+};
+
+export const deleteProduct = async (productId: number) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.delete(`${API_URL}/${productId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "X-Store-ID": "1",
+        "X-Store-Level": "admin",
+      },
+    });
+    return response.data;
+  } catch (error) {
+    console.error("刪除產品失敗：", error);
+    throw error;
+  }
+};

@@ -180,3 +180,40 @@ export const addTherapy = async (data: { code: string; name: string; price: numb
         throw error;
     }
 };
+
+export const updateTherapy = async (
+    therapyId: number,
+    data: { code: string; name: string; price: number; content?: string }
+) => {
+    try {
+        const token = localStorage.getItem("token");
+        const response = await axios.put(`${API_URL}/package/${therapyId}`, data, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "X-Store-ID": "1",
+                "X-Store-Level": "admin",
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("更新療程失敗：", error);
+        throw error;
+    }
+};
+
+export const deleteTherapy = async (therapyId: number) => {
+    try {
+        const token = localStorage.getItem("token");
+        const response = await axios.delete(`${API_URL}/package/${therapyId}`, {
+            headers: {
+                Authorization: `Bearer ${token}`,
+                "X-Store-ID": "1",
+                "X-Store-Level": "admin",
+            },
+        });
+        return response.data;
+    } catch (error) {
+        console.error("刪除療程失敗：", error);
+        throw error;
+    }
+};

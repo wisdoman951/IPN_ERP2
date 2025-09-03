@@ -1,31 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
-import { addProduct } from '../../../services/ProductService';
+import { addProduct, updateProduct } from '../../../services/ProductService';
+import { Product as ProductItem } from '../../../services/ProductBundleService';
 
 interface AddProductModalProps {
     show: boolean;
     onHide: () => void;
+    editingProduct?: ProductItem | null;
 }
 
-const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide }) => {
+const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editingProduct }) => {
     const [code, setCode] = useState('');
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
 
+    useEffect(() => {
+        if (editingProduct) {
+            setCode(editingProduct.code);
+            setName(editingProduct.product_name);
+            setPrice(String(editingProduct.product_price));
+        } else {
+            setCode('');
+            setName('');
+            setPrice('');
+        }
+    }, [editingProduct]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await addProduct({ code, name, price: Number(price) });
+            if (editingProduct) {
+                await updateProduct(editingProduct.product_id, { code, name, price: Number(price) });
+            } else {
+                await addProduct({ code, name, price: Number(price) });
+            }
             onHide();
         } catch (err) {
-            alert('新增產品失敗');
+            alert(editingProduct ? '更新產品失敗' : '新增產品失敗');
         }
     };
 
     return (
         <Modal show={show} onHide={onHide}>
             <Modal.Header closeButton>
-                <Modal.Title>建立產品 1.2.6.3.1.1.1</Modal.Title>
+                <Modal.Title>{editingProduct ? '修改產品 1.2.6.3.1.1.1' : '建立產品 1.2.6.3.1.1.1'}</Modal.Title>
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>
