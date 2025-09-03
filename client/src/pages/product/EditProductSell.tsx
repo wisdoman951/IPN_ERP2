@@ -13,7 +13,6 @@ import {
 } from "../../services/ProductSellService";
 import { getStoreId } from "../../services/LoginService";
 import { getStaffMembers, StaffMember } from "../../services/TherapyDropdownService";
-import { formatDateToChinese } from "../../utils/memberUtils"; // 用於顯示日期 (如果需要)
 
 // SelectedProduct interface 與 AddProductSell.tsx 保持一致
 interface SelectedProduct {
@@ -395,12 +394,13 @@ const EditProductSell: React.FC = () => {
 
             <Form.Group className="mb-3">
               <Form.Label>購買日期</Form.Label>
-              <Form.Control 
-                type="date" 
-                value={purchaseDate} 
+              <Form.Control
+                type="date"
+                lang="en-CA"
+                value={purchaseDate}
                 max={new Date().toISOString().split("T")[0]}
-                onChange={(e) => setPurchaseDate(e.target.value)} 
-                required 
+                onChange={(e) => setPurchaseDate(e.target.value)}
+                required
               />
               <Form.Text muted>選擇購買日期。會跳出日曆，無法選取未來日期。</Form.Text>
             </Form.Group>

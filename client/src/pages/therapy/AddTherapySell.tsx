@@ -119,7 +119,7 @@ const AddTherapySell: React.FC = () => {
         setFormData(prev => ({
           ...prev,
           memberId: editSale.Member_ID?.toString() || "",
-          memberCode: editSale.member_code || "",
+          memberCode: editSale.MemberCode || "",
           staffId: editSale.Staff_ID?.toString() || "",
           date: editSale.PurchaseDate?.split("T")[0] || prev.date,
           paymentMethod: editSale.PaymentMethod || prev.paymentMethod,
@@ -450,7 +450,7 @@ const AddTherapySell: React.FC = () => {
 
                 <Form.Group className="mb-3" controlId="date">
                   <Form.Label>購買日期</Form.Label>
-                  <Form.Control type="date" name="date" value={formData.date} onChange={handleChange} required />
+                  <Form.Control type="date" lang="en-CA" name="date" value={formData.date} onChange={handleChange} required />
                 </Form.Group>
 
                 <Form.Group className="mb-3" controlId="note">

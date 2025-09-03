@@ -413,7 +413,7 @@ const AddProductSell: React.FC = () => {
           <Col md={6}>
             <Form.Group className="mb-3">
               <Form.Label>購買日期</Form.Label>
-              <Form.Control type="date" value={purchaseDate} max={new Date().toISOString().split("T")[0]} onChange={(e) => setPurchaseDate(e.target.value)} required />
+              <Form.Control type="date" lang="en-CA" value={purchaseDate} max={new Date().toISOString().split("T")[0]} onChange={(e) => setPurchaseDate(e.target.value)} required />
               <Form.Text muted>選擇購買日期。會跳出日曆，無法選取未來日期。</Form.Text>
             </Form.Group>
 

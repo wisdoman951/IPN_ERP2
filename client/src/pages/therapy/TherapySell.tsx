@@ -11,7 +11,7 @@ import {
     deleteTherapySell,
     // exportTherapySells // Figma 中沒有匯出按鈕，暫時移除或按需保留
 } from "../../services/TherapySellService"; // 假設路徑正確
-import { formatDateToChinese } from "../../utils/memberUtils"; // 假設日期格式化
+import { formatDateToYYYYMMDD } from "../../utils/dateUtils";
 import { formatCurrency } from "../../utils/productSellUtils"; // 借用金額格式化
 import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
 
@@ -251,7 +251,7 @@ const TherapySell: React.FC = () => {
                 </td>
                 <td className="align-middle">{sale.MemberCode || "-"}</td>
                 <td className="align-middle">{sale.MemberName || "-"}</td>
-                <td className="align-middle">{formatDateToChinese(sale.PurchaseDate) || "-"}</td>
+                <td className="align-middle">{formatDateToYYYYMMDD(sale.PurchaseDate) || "-"}</td>
                 <td className="align-middle">{getDisplayName(sale)}</td>
                 <td className="text-center align-middle">{sale.Sessions || "-"}</td>
                 <td className="text-end align-middle">{formatCurrency(sale.Price) || "-"}</td>
