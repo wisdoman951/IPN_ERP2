@@ -91,12 +91,13 @@ def get_all_therapy_sells(store_id=None):
                 cursor.execute(query)
                 
             result = cursor.fetchall()
-            
+
             for record in result:
                 if record.get('PurchaseDate'):
                     date_obj = record['PurchaseDate']
                     if isinstance(date_obj, datetime):
-                         record['PurchaseDate'] = f"{date_obj.year - 1911}/{date_obj.month:02d}/{date_obj.day:02d}"
+                        # 將日期格式化為西元年
+                        record['PurchaseDate'] = f"{date_obj.year}/{date_obj.month:02d}/{date_obj.day:02d}"
             
             return result
     except Exception as e:
@@ -150,11 +151,11 @@ def search_therapy_sells(keyword, store_id=None):
                 
             result = cursor.fetchall()
             
-            # 轉換日期格式為民國年
+            # 轉換日期格式為西元年
             for record in result:
                 if record['PurchaseDate']:
                     date_obj = record['PurchaseDate']
-                    record['PurchaseDate'] = f"{date_obj.year - 1911}/{date_obj.month:02d}/{date_obj.day:02d}"
+                    record['PurchaseDate'] = f"{date_obj.year}/{date_obj.month:02d}/{date_obj.day:02d}"
             
             return result
     except Exception as e:
