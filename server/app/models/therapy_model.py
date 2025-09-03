@@ -483,11 +483,12 @@ def delete_therapy_sell(sale_id):
     conn.close()
 
 def get_all_therapies_for_dropdown():
-    """獲取所有療程的 ID 和名稱，用於下拉選單。"""
+    """獲取所有療程的編號、名稱及價格，用於下拉選單。"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            sql = "SELECT therapy_id, name, price FROM therapy ORDER BY name"
+            # 需要返回療程編號供前端使用
+            sql = "SELECT therapy_id, code, name, price FROM therapy ORDER BY name"
             cursor.execute(sql)
             return cursor.fetchall()
     finally:

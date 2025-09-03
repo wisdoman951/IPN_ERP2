@@ -273,7 +273,7 @@ const ProductBundleManagement: React.FC = () => {
                             ) : products.length > 0 ? (
                                 products.map(product => (
                                     <tr key={product.product_id}>
-                                        <td className="align-middle">{product.code}</td>
+                                        <td className="align-middle">{product.product_code}</td>
                                         <td className="align-middle">{product.product_name}</td>
                                         <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
                                         <td className="align-middle">

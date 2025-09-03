@@ -16,7 +16,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
 
     useEffect(() => {
         if (editingProduct) {
-            setCode(editingProduct.code);
+            setCode(editingProduct.product_code);
             setName(editingProduct.product_name);
             setPrice(String(editingProduct.product_price));
         } else {
