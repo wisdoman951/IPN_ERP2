@@ -248,7 +248,7 @@ const TherapyPackageSelection: React.FC = () => {
                                                     label={
                                                         <div style={{fontSize:'0.9rem'}}>
                                                             <strong>{pkg.TherapyContent || pkg.TherapyName}</strong>
-                                                            <div><small className="text-muted">產品編號: {pkg.TherapyCode} / 單價: NT$ {pkg.TherapyPrice.toLocaleString()}</small></div>
+                                                            <div><small className="text-muted">產品編號: {pkg.TherapyCode} / 單價: NT$ {Number(pkg.TherapyPrice ?? 0).toLocaleString()}</small></div>
                                                             {memberId && remainingMap.has(pkgKey) && (
                                                                 <div><small className="text-success">剩餘 {remainingMap.get(pkgKey)} 堂</small></div>
                                                             )}
