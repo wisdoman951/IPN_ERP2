@@ -1,6 +1,7 @@
 // client\src\services\TherapySellService.ts
 import axios from "axios";
 import { base_url } from "./BASE_URL";
+import { getAuthHeaders } from "./AuthUtils";
 
 // API 端點基礎路徑
 const API_URL = `${base_url}/therapy-sell`; // 所有此服務的 API 都基於此路徑
