@@ -30,7 +30,7 @@ const MemberInfo: React.FC = () => {
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
             <th>姓名</th>
-            <th>會員編號</th>
+            <th style={{ minWidth: '8ch' }}>會員編號</th>
             <th>生日</th>
             <th>年齡</th>
             <th>住址</th>
@@ -61,7 +61,7 @@ const MemberInfo: React.FC = () => {
                 </td>
                 <td className="align-middle">{member.Name}</td>
                 {/* 顯示資料庫中的 member_code */}
-                <td className="align-middle">{member.member_code ?? ""}</td>
+                <td className="align-middle" style={{ whiteSpace: 'nowrap' }}>{member.member_code ?? ""}</td>
                 <td className="align-middle">{formatGregorianBirthday(member.Birth, 'YYYY/MM/DD')}</td>
                 <td className="align-middle">{calculateAge(member.Birth)}</td>
                 <td className="align-middle">{member.Address}</td>
