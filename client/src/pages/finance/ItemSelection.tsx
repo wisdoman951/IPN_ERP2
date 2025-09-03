@@ -33,11 +33,21 @@ const ItemSelection: React.FC = () => {
                 console.log("從 API 獲取的產品資料 (productRes):", productRes);
 
                 if (Array.isArray(productRes)) {
-                    setProducts(productRes);
+                    const sortedProducts = [...productRes].sort((a, b) => {
+                        const codeA = a.product_code ? parseInt(a.product_code, 10) : 0;
+                        const codeB = b.product_code ? parseInt(b.product_code, 10) : 0;
+                        return codeB - codeA;
+                    });
+                    setProducts(sortedProducts);
                 }
 
                 if (therapyRes.success && Array.isArray(therapyRes.data)) {
-                    setTherapies(therapyRes.data);
+                    const sortedTherapies = [...therapyRes.data].sort((a, b) => {
+                        const codeA = a.TherapyCode ? parseInt(a.TherapyCode, 10) : 0;
+                        const codeB = b.TherapyCode ? parseInt(b.TherapyCode, 10) : 0;
+                        return codeB - codeA;
+                    });
+                    setTherapies(sortedTherapies);
                 }
             } catch (err) {
                 setError("載入品項資料時發生錯誤。");
@@ -116,7 +126,7 @@ const ItemSelection: React.FC = () => {
                             <ListGroup className="mt-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                                 {loading ? <Spinner animation="border" /> : products.map(p => (
                                     <ListGroup.Item key={`prod-${p.product_id}`} action onClick={() => handleSelectItem(p, 'Product')}>
-                                        {p.product_name} - {formatCurrency(p.product_price)}
+                                        [{p.product_code ?? ''}] {p.product_name} - {formatCurrency(p.product_price)}
                                     </ListGroup.Item>
                                 ))}
                             </ListGroup>
@@ -125,7 +135,7 @@ const ItemSelection: React.FC = () => {
                              <ListGroup className="mt-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
                                 {loading ? <Spinner animation="border" /> : therapies.map(t => (
                                     <ListGroup.Item key={`thr-${t.therapy_id}`} action onClick={() => handleSelectItem(t, 'Therapy')}>
-                                        {t.TherapyContent || t.TherapyName} - NT$ {t.TherapyPrice}
+                                        [{t.TherapyCode}] {t.TherapyContent || t.TherapyName} - NT$ {t.TherapyPrice}
                                     </ListGroup.Item>
                                 ))}
                             </ListGroup>
