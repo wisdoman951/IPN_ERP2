@@ -5,9 +5,8 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../../components/Header";
 import DynamicContainer from "../../../components/DynamicContainer";
 import MemberColumn from "../../../components/MemberColumn";
-import { addPureRecord, exportPureRecords } from "../../../services/PureMedicalRecordService";
+import { addPureRecord } from "../../../services/PureMedicalRecordService";
 import { getAllStaff } from "../../../services/TherapySellService"; // searchMemberById 已被 MemberColumn 內部處理
-import { downloadBlob } from "../../../utils/downloadBlob";
 import { calculateBMI, getTodayDateString } from "../../../utils/pureMedicalUtils";
 
 // 更新 interface 以匹配新的欄位名稱
@@ -199,35 +198,6 @@ const AddPureMedicalRecord: React.FC = () => {
     }
   };
 
-  // "刪除" 按鈕的功能 - 清空表單
-  const handleDeleteForm = () => {
-    if(window.confirm("您確定要清空目前表單的所有資料嗎？")){
-        setFormData(initialFormData); // 重置為初始空表單
-        localStorage.removeItem("pureMedicalFormData"); // 同時清除 localStorage
-        setError(null); // 清除錯誤訊息
-        // 使 MemberColumn 也清空
-        const memberColumnInstance = document.getElementById("member-column-internal-reset"); // 假設 MemberColumn 內部有一個可觸發重置的機制或按鈕
-        if (memberColumnInstance) {
-            // 這裡需要 MemberColumn 內部提供一個重置方法或依賴外部狀態清空
-            // 或者，直接操作 MemberColumn 的輸入框 (不推薦)
-            // 最好的方式是 MemberColumn 能接收一個重置信號或空的 memberId/name
-        }
-        // 簡易做法：直接清空 formData 中的姓名和會員資訊，MemberColumn 會響應
-        setFormData(prev => ({...initialFormData, 姓名: "", 會員ID: "", 會員代碼: ""}));
-
-    }
-  };
-
-  const handleExportCurrentData = async () => {
-    try {
-      const blob = await exportPureRecords();
-      downloadBlob(blob, '淨化健康紀錄.xlsx');
-    } catch (err) {
-      alert('匯出失敗');
-      console.error(err);
-    }
-  };
-  
   const handleTodayDate = () => {
     setFormData(prev => ({ ...prev, 日期: getTodayDateString() }));
   };
@@ -351,24 +321,8 @@ const AddPureMedicalRecord: React.FC = () => {
             </Card.Body>
         </Card>
         
-        {/* 5) 修改下方按鈕 */}
-        <div className="d-flex justify-content-end gap-3 mt-4"> {/* Figma 中按鈕靠右 */}
-            <Button
-                variant="info"
-                className="text-white"
-                onClick={handleExportCurrentData}
-                disabled={loading}
-            >
-                報表匯出
-            </Button>
-            <Button
-                variant="info"
-                className="text-white"
-                onClick={handleDeleteForm}
-                disabled={loading}
-            >
-                刪除
-            </Button>
+        {/* 底部按鈕 */}
+        <div className="d-flex justify-content-end gap-3 mt-4">
             <Button
                 variant="info"
                 className="text-white"
