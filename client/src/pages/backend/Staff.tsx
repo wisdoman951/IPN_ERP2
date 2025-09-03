@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Button, Container, Row, Col, Form, Table, Spinner, Modal, Alert } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
-import { getAllStaff, searchStaff, exportStaffToExcel, exportSelectedStaffToExcel } from "../../services/StaffService";
+import { getAllStaff, searchStaff, exportStaffToExcel, exportSelectedStaffToExcel, deleteMultipleStaff } from "../../services/StaffService";
 import Header from "../../components/Header"; // 1. 引入標準 Header
 import DynamicContainer from "../../components/DynamicContainer"; // 2. 引入標準容器
 import { downloadBlob } from "../../utils/downloadBlob";
@@ -109,12 +109,14 @@ const Staff: React.FC = () => {
     const confirmDelete = async () => {
         setLoading(true);
         try {
-            // Assuming deleteStaff can handle an array of IDs
-            // If not, you'd loop and call deleteStaff for each id
-            // await deleteMultipleStaff(selectedStaffIds);
-            alert("刪除成功");
-            setSelectedStaffIds([]);
-            await fetchStaffList();
+            const result = await deleteMultipleStaff(selectedStaffIds);
+            if (result.success) {
+                alert(result.message || "刪除成功");
+                setSelectedStaffIds([]);
+                await fetchStaffList();
+            } else {
+                setError(result.message || "刪除員工時發生錯誤");
+            }
         } catch (err) {
             console.error(err);
             setError("刪除員工時發生錯誤");
