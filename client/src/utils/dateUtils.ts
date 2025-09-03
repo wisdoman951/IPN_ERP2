@@ -31,3 +31,20 @@ export const formatDateToYYYYMMDD = (dateInput: string | Date | null | undefined
     return '-';
   }
 };
+
+/**
+ * 將日期字串或 Date 物件格式化為 HTML `<input type="date">` 可使用的 `YYYY-MM-DD` 格式。
+ * @param dateInput - 可以被 `new Date()` 解析的日期
+ * @returns `YYYY-MM-DD` 格式字串，若輸入無效則回傳空字串
+ */
+export const formatDateForInput = (dateInput: string | Date | null | undefined): string => {
+  if (!dateInput) return '';
+  try {
+    const date = new Date(dateInput);
+    if (isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+  } catch (error) {
+    console.error('日期格式化失敗:', error);
+    return '';
+  }
+};

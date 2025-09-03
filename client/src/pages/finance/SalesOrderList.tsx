@@ -8,6 +8,7 @@ import ScrollableTable from '../../components/ScrollableTable';
 import { SalesOrderListRow, getSalesOrders, deleteSalesOrders, exportSalesOrders, exportSelectedSalesOrders } from '../../services/SalesOrderService';
 import { formatCurrency } from '../../utils/productSellUtils'; // 借用金額格式化工具
 import { downloadBlob } from '../../utils/downloadBlob';
+import { formatDateToYYYYMMDD } from '../../utils/dateUtils';
 
 const SalesOrderList: React.FC = () => {
     const navigate = useNavigate();
@@ -103,7 +104,7 @@ const SalesOrderList: React.FC = () => {
             <tr key={order.order_id}>
                 <td className="text-center"><Form.Check type="checkbox" checked={selectedIds.includes(order.order_id)} onChange={(e) => handleCheckboxChange(order.order_id, e.target.checked)} /></td>
                 <td>{order.order_number}</td>
-                <td>{order.order_date}</td>
+                <td>{formatDateToYYYYMMDD(order.order_date)}</td>
                 <td>{order.member_name || 'N/A'}</td>
                 <td>{order.staff_name || 'N/A'}</td>
                 <td className="text-end">{formatCurrency(order.grand_total)}</td>
