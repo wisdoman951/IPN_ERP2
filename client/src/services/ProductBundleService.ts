@@ -40,12 +40,15 @@ export interface Product {
     product_id: number;
     product_name: string;
     product_price: number;
+    code: string;
 }
 
 export interface Therapy {
     therapy_id: number;
     name: string;
     price: number;
+    code: string;
+    content?: string;
 }
 
 
@@ -67,7 +70,7 @@ export const fetchAllBundles = async (): Promise<Bundle[]> => {
 /**
  * 新增一個產品組合
  */
-export const createBundle = async (payload: any) => {
+export const createBundle = async (payload: unknown) => {
     try {
         const response = await axios.post(`${API_URL}/`, payload, getAuthHeaders());
         return response.data;
@@ -93,7 +96,7 @@ export const getBundleDetails = async (bundleId: number): Promise<BundleDetails>
 /**
  * 更新一個現有的產品組合
  */
-export const updateBundle = async (bundleId: number, payload: any) => {
+export const updateBundle = async (bundleId: number, payload: unknown) => {
     try {
         const response = await axios.put(`${API_URL}/${bundleId}`, payload, getAuthHeaders());
         return response.data;

@@ -219,7 +219,7 @@ const ProductBundleManagement: React.FC = () => {
                     <Table striped bordered hover responsive>
                         <thead>
                             <tr>
-                                <th>編號</th>
+                                <th>產品編號</th>
                                 <th>項目名稱</th>
                                 <th>售價</th>
                             </tr>
@@ -230,7 +230,7 @@ const ProductBundleManagement: React.FC = () => {
                             ) : products.length > 0 ? (
                                 products.map(product => (
                                     <tr key={product.product_id}>
-                                        <td className="align-middle">{product.product_id}</td>
+                                        <td className="align-middle">{product.code}</td>
                                         <td className="align-middle">{product.product_name}</td>
                                         <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
                                     </tr>
@@ -246,7 +246,7 @@ const ProductBundleManagement: React.FC = () => {
                     <Table striped bordered hover responsive>
                         <thead>
                             <tr>
-                                <th>編號</th>
+                                <th>療程編號</th>
                                 <th>項目名稱</th>
                                 <th>售價</th>
                             </tr>
@@ -257,7 +257,7 @@ const ProductBundleManagement: React.FC = () => {
                             ) : therapies.length > 0 ? (
                                 therapies.map(therapy => (
                                     <tr key={therapy.therapy_id}>
-                                        <td className="align-middle">{therapy.therapy_id}</td>
+                                        <td className="align-middle">{therapy.code}</td>
                                         <td className="align-middle">{therapy.name}</td>
                                         <td className="align-middle">{`$${Number(therapy.price).toLocaleString()}`}</td>
                                     </tr>
