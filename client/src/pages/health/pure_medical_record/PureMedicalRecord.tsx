@@ -173,15 +173,6 @@ const PureMedicalRecord: React.FC = () => {
               刪除
             </Button>
           </Col>
-          <Col xs="auto">
-            <Button
-              variant="info"
-              className="text-white px-4"
-              onClick={() => navigate(-1)} // "確認" 按鈕的功能是返回
-            >
-              確認
-            </Button>
-          </Col>
         </Row>
       </Container>
     </>
