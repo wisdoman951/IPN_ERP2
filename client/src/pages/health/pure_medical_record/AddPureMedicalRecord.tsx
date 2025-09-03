@@ -189,7 +189,7 @@ const AddPureMedicalRecord: React.FC = () => {
       await addPureRecord(apiData);
       localStorage.removeItem("pureMedicalFormData");
       alert("資料已成功儲存");
-      navigate("/health-data-analysis/pure-medical-record");
+      navigate(-1);
     } catch (err) {
       console.error("提交淨化健康紀錄時出錯:", err);
       setError(err instanceof Error ? err.message : "提交資料時發生錯誤");
