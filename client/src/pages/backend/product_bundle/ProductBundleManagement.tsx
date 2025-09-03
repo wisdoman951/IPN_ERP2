@@ -7,6 +7,8 @@ import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
 import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
+import { deleteProduct } from '../../../services/ProductService';
+import { deleteTherapy } from '../../../services/TherapyService';
 
 const ProductBundleManagement: React.FC = () => {
     const [bundles, setBundles] = useState<Bundle[]>([]);
@@ -21,6 +23,8 @@ const ProductBundleManagement: React.FC = () => {
     const [editingBundle, setEditingBundle] = useState<Bundle | null>(null);
     const [showTherapyModal, setShowTherapyModal] = useState(false);
     const [showProductModal, setShowProductModal] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
+    const [editingTherapy, setEditingTherapy] = useState<TherapyItem | null>(null);
     const [stores, setStores] = useState<Store[]>([]);
     const [activeTab, setActiveTab] = useState<'bundle' | 'product' | 'therapy'>('bundle');
 
@@ -90,20 +94,34 @@ const ProductBundleManagement: React.FC = () => {
     };
 
     const handleShowTherapyModal = () => {
+        setEditingTherapy(null);
         setShowTherapyModal(true);
     };
 
     const handleShowProductModal = () => {
+        setEditingProduct(null);
         setShowProductModal(true);
+    };
+
+    const handleShowEditProductModal = (product: ProductItem) => {
+        setEditingProduct(product);
+        setShowProductModal(true);
+    };
+
+    const handleShowEditTherapyModal = (therapy: TherapyItem) => {
+        setEditingTherapy(therapy);
+        setShowTherapyModal(true);
     };
 
     const handleCloseTherapyModal = () => {
         setShowTherapyModal(false);
+        setEditingTherapy(null);
         fetchTherapies();
     };
 
     const handleCloseProductModal = () => {
         setShowProductModal(false);
+        setEditingProduct(null);
         fetchProducts();
     };
 
@@ -117,6 +135,30 @@ const ProductBundleManagement: React.FC = () => {
             setError('刪除失敗，請稍後再試。');
         }
         // 讓成功訊息顯示幾秒後自動消失
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handleDeleteProduct = async (productId: number) => {
+        setSuccessMessage(null);
+        try {
+            await deleteProduct(productId);
+            setSuccessMessage('刪除成功！');
+            fetchProducts();
+        } catch {
+            setError('刪除失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handleDeleteTherapy = async (therapyId: number) => {
+        setSuccessMessage(null);
+        try {
+            await deleteTherapy(therapyId);
+            setSuccessMessage('刪除成功！');
+            fetchTherapies();
+        } catch {
+            setError('刪除失敗，請稍後再試。');
+        }
         setTimeout(() => setSuccessMessage(null), 3000);
     };
 
@@ -222,21 +264,36 @@ const ProductBundleManagement: React.FC = () => {
                                 <th>產品編號</th>
                                 <th>項目名稱</th>
                                 <th>售價</th>
+                                <th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
                             {productLoading ? (
-                                <tr><td colSpan={3} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                             ) : products.length > 0 ? (
                                 products.map(product => (
                                     <tr key={product.product_id}>
                                         <td className="align-middle">{product.code}</td>
                                         <td className="align-middle">{product.product_name}</td>
                                         <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
+                                        <td className="align-middle">
+                                            <Button variant="link" onClick={() => handleShowEditProductModal(product)}>修改</Button>
+                                            <Button
+                                                variant="link"
+                                                className="text-danger"
+                                                onClick={() => {
+                                                    if (window.confirm(`確定要刪除「${product.product_name}」嗎？`)) {
+                                                        handleDeleteProduct(product.product_id);
+                                                    }
+                                                }}
+                                            >
+                                                刪除
+                                            </Button>
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
-                                <tr><td colSpan={3} className="text-center text-muted py-5">尚無資料</td></tr>
+                                <tr><td colSpan={4} className="text-center text-muted py-5">尚無資料</td></tr>
                             )}
                         </tbody>
                     </Table>
@@ -249,21 +306,36 @@ const ProductBundleManagement: React.FC = () => {
                                 <th>療程編號</th>
                                 <th>項目名稱</th>
                                 <th>售價</th>
+                                <th>操作</th>
                             </tr>
                         </thead>
                         <tbody>
                             {therapyLoading ? (
-                                <tr><td colSpan={3} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                             ) : therapies.length > 0 ? (
                                 therapies.map(therapy => (
                                     <tr key={therapy.therapy_id}>
                                         <td className="align-middle">{therapy.code}</td>
                                         <td className="align-middle">{therapy.name}</td>
                                         <td className="align-middle">{`$${Number(therapy.price).toLocaleString()}`}</td>
+                                        <td className="align-middle">
+                                            <Button variant="link" onClick={() => handleShowEditTherapyModal(therapy)}>修改</Button>
+                                            <Button
+                                                variant="link"
+                                                className="text-danger"
+                                                onClick={() => {
+                                                    if (window.confirm(`確定要刪除「${therapy.name}」嗎？`)) {
+                                                        handleDeleteTherapy(therapy.therapy_id);
+                                                    }
+                                                }}
+                                            >
+                                                刪除
+                                            </Button>
+                                        </td>
                                     </tr>
                                 ))
                             ) : (
-                                <tr><td colSpan={3} className="text-center text-muted py-5">尚無資料</td></tr>
+                                <tr><td colSpan={4} className="text-center text-muted py-5">尚無資料</td></tr>
                             )}
                         </tbody>
                     </Table>
@@ -285,10 +357,12 @@ const ProductBundleManagement: React.FC = () => {
             <AddTherapyModal
                 show={showTherapyModal}
                 onHide={handleCloseTherapyModal}
+                editingTherapy={editingTherapy}
             />
             <AddProductModal
                 show={showProductModal}
                 onHide={handleCloseProductModal}
+                editingProduct={editingProduct}
             />
         </>
     );

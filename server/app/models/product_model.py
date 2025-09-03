@@ -30,3 +30,39 @@ def create_product(data: dict):
         raise e
     finally:
         conn.close()
+
+
+def update_product(product_id: int, data: dict):
+    """更新產品資料"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = (
+                "UPDATE product SET code=%s, name=%s, price=%s WHERE product_id=%s"
+            )
+            cursor.execute(query, (
+                data.get("code"),
+                data.get("name"),
+                data.get("price"),
+                product_id,
+            ))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def delete_product(product_id: int):
+    """刪除產品資料"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM product WHERE product_id=%s", (product_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

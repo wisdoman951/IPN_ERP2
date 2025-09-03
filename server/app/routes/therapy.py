@@ -17,7 +17,9 @@ from app.models.therapy_model import (
     update_therapy_sell,
     delete_therapy_sell,
     get_all_therapies_for_dropdown,
-    create_therapy
+    create_therapy,
+    update_therapy,
+    delete_therapy
 )
 from app.middleware import auth_required, admin_required, get_user_from_token
 
@@ -340,4 +342,27 @@ def add_therapy_package():
     except Exception as e:
         if "Duplicate entry" in str(e):
             return jsonify({"error": "療程編號重複"}), 409
+        return jsonify({"error": str(e)}), 500
+
+
+@therapy_bp.route("/package/<int:therapy_id>", methods=["PUT"])
+@admin_required
+def update_therapy_package(therapy_id):
+    """更新療程套餐"""
+    data = request.json
+    try:
+        update_therapy(therapy_id, data)
+        return jsonify({"message": "療程更新成功"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@therapy_bp.route("/package/<int:therapy_id>", methods=["DELETE"])
+@admin_required
+def delete_therapy_package(therapy_id):
+    """刪除療程套餐"""
+    try:
+        delete_therapy(therapy_id)
+        return jsonify({"message": "療程刪除成功"})
+    except Exception as e:
         return jsonify({"error": str(e)}), 500

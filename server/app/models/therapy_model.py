@@ -517,3 +517,40 @@ def create_therapy(data: dict):
         raise e
     finally:
         conn.close()
+
+
+def update_therapy(therapy_id: int, data: dict):
+    """更新療程套餐資料"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = (
+                "UPDATE therapy SET code=%s, name=%s, price=%s, content=%s WHERE therapy_id=%s"
+            )
+            cursor.execute(query, (
+                data.get("code"),
+                data.get("name"),
+                data.get("price"),
+                data.get("content", None),
+                therapy_id,
+            ))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()
+
+
+def delete_therapy(therapy_id: int):
+    """刪除療程套餐"""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute("DELETE FROM therapy WHERE therapy_id=%s", (therapy_id,))
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        raise e
+    finally:
+        conn.close()

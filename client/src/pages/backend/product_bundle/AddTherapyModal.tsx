@@ -1,31 +1,49 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
-import { addTherapy } from '../../../services/TherapyService';
+import { addTherapy, updateTherapy } from '../../../services/TherapyService';
+import { Therapy } from '../../../services/ProductBundleService';
 
 interface AddTherapyModalProps {
     show: boolean;
     onHide: () => void;
+    editingTherapy?: Therapy | null;
 }
 
-const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide }) => {
+const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editingTherapy }) => {
     const [code, setCode] = useState('');
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
 
+    useEffect(() => {
+        if (editingTherapy) {
+            setCode(editingTherapy.code);
+            setName(editingTherapy.name);
+            setPrice(String(editingTherapy.price));
+        } else {
+            setCode('');
+            setName('');
+            setPrice('');
+        }
+    }, [editingTherapy]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await addTherapy({ code, name, price: Number(price) });
+            if (editingTherapy) {
+                await updateTherapy(editingTherapy.therapy_id, { code, name, price: Number(price) });
+            } else {
+                await addTherapy({ code, name, price: Number(price) });
+            }
             onHide();
         } catch (err) {
-            alert('新增療程失敗');
+            alert(editingTherapy ? '更新療程失敗' : '新增療程失敗');
         }
     };
 
     return (
         <Modal show={show} onHide={onHide}>
             <Modal.Header closeButton>
-                <Modal.Title>建立療程 1.2.6.3.1.1</Modal.Title>
+                <Modal.Title>{editingTherapy ? '修改療程 1.2.6.3.1.1' : '建立療程 1.2.6.3.1.1'}</Modal.Title>
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>
