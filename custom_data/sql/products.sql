@@ -303,3 +303,5 @@ INSERT INTO product (code, name, price) VALUES
 ('SAE0100', '98天魅力享瘦套組', 139000.00),
 ('SAY0100', '個人優惠套組', 68000.00),
 ('SBA0100', 'IPN系統-Mini Q', 98600.00);
+INSERT INTO product (code, name, price) VALUES
+('CCO0001', '澎湖限定充能月卡', 2999.00);
