@@ -29,7 +29,14 @@ const InventoryEntryForm = () => {
   });
 
   useEffect(() => {
-    getAllProducts().then((res) => setProducts(res));
+    getAllProducts().then((res) => {
+      const sorted = [...res].sort((a, b) => {
+        const codeA = a.product_code ? parseInt(a.product_code, 10) : 0;
+        const codeB = b.product_code ? parseInt(b.product_code, 10) : 0;
+        return codeB - codeA;
+      });
+      setProducts(sorted);
+    });
     getAllStaffs().then((res) => setStaffs(res));
 
     if (editingId) {
@@ -129,10 +136,10 @@ const InventoryEntryForm = () => {
                   onChange={handleChange}
                 >
                   <option value="">-- 選擇品項 --</option>
-                  {products.map((p, index) => {
+                  {products.map((p) => {
                     const key = p.product_id;
                     const value = p.product_id;
-                    const label = `[${p.product_id}] ${p.product_name}`;
+                    const label = `[${p.product_code ?? ""}] ${p.product_name}`;
                     return (
                       <option key={key} value={value}>
                         {label}

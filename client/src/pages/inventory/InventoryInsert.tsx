@@ -1,18 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
-import { getAllProducts } from "../../services/ProductSellService";
+import { getAllProducts, Product } from "../../services/ProductSellService";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import { addInventoryItem } from "../../services/InventoryService";
-
-interface Product {
-  product_id: number;
-  product_name: string;
-  product_price: number;
-  inventory_id: number;
-  quantity: number;
-  sale_category?: string;
-}
 
 const InventoryInsert = () => {
   const navigate = useNavigate();
@@ -26,8 +17,12 @@ const InventoryInsert = () => {
 
   useEffect(() => {
     getAllProducts().then((res) => {
-      console.log("產品資料:", res);
-      setProducts(res);
+      const sorted = [...res].sort((a, b) => {
+        const codeA = a.product_code ? parseInt(a.product_code, 10) : 0;
+        const codeB = b.product_code ? parseInt(b.product_code, 10) : 0;
+        return codeB - codeA;
+      });
+      setProducts(sorted);
     });
   }, []);
 
@@ -78,7 +73,7 @@ const InventoryInsert = () => {
                           <option value="">-- 選擇品項 --</option>
                           {products.map((p) => (
                             <option key={p.product_id} value={p.product_id}>
-                              [{p.product_id}] {p.product_name}
+                              [{p.product_code ?? ""}] {p.product_name}
                             </option>
                           ))}
                         </Form.Select>
