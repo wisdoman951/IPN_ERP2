@@ -1,12 +1,11 @@
 // src/pages/therapy/TherapyPackageSelection.tsx
 import React, { useState, useEffect } from 'react';
-import { Container, Form, Button, ListGroup, Spinner, Alert, Row, Col, Card, InputGroup } from 'react-bootstrap';
+import { Container, Form, Button, ListGroup, Spinner, Alert, Row, Col, Card, InputGroup, Tabs, Tab } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 import DynamicContainer from '../../components/DynamicContainer';
 import {
     getAllTherapyPackages as fetchAllTherapyPackagesService,
-    searchTherapyPackages, // 假設您有此服務函數用於後端搜尋
     TherapyPackage as TherapyPackageBaseType,
     fetchRemainingSessionsBulk
 } from '../../services/TherapySellService';
@@ -22,12 +21,12 @@ const TherapyPackageSelection: React.FC = () => {
     const [allPackages, setAllPackages] = useState<TherapyPackageBaseType[]>([]);
     const [displayedPackages, setDisplayedPackages] = useState<TherapyPackageBaseType[]>([]);
     const [selectedPackagesMap, setSelectedPackagesMap] = useState<Map<string, PackageInSelection>>(new Map());
-    const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [pageError, setPageError] = useState<string | null>(null); // 用於此頁面特定的錯誤，如堂數無效
     const [memberId, setMemberId] = useState<string>('');
     const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
+    const [activeTab, setActiveTab] = useState<'therapy' | 'bundle'>('therapy');
 
 
     useEffect(() => {
@@ -106,7 +105,7 @@ const TherapyPackageSelection: React.FC = () => {
 
             const combined = [...packages, ...bundlePackages];
             setAllPackages(combined);
-            setDisplayedPackages(combined);
+            setDisplayedPackages(combined.filter(pkg => pkg.type === activeTab));
         } catch (err: any) {
             setPageError(err.message || "載入療程套餐時發生嚴重錯誤");
             setAllPackages([]); setDisplayedPackages([]);
@@ -139,20 +138,18 @@ const TherapyPackageSelection: React.FC = () => {
         fetchRemaining();
     }, [memberId, allPackages]);
 
-    useEffect(() => { // 前端篩選
-        if (searchTerm.trim() === "") {
-            setDisplayedPackages(allPackages);
-        } else {
+    useEffect(() => {
+        let filtered = allPackages.filter(pkg => pkg.type === activeTab);
+        if (searchTerm.trim() !== "") {
             const lowerSearchTerm = searchTerm.toLowerCase();
-            setDisplayedPackages(
-                allPackages.filter(pkg =>
-                    (pkg.TherapyName?.toLowerCase() || '').includes(lowerSearchTerm) ||
-                    (pkg.TherapyContent?.toLowerCase() || '').includes(lowerSearchTerm) ||
-                    (pkg.TherapyCode?.toLowerCase() || '').includes(lowerSearchTerm)
-                )
+            filtered = filtered.filter(pkg =>
+                (pkg.TherapyName?.toLowerCase() || '').includes(lowerSearchTerm) ||
+                (pkg.TherapyContent?.toLowerCase() || '').includes(lowerSearchTerm) ||
+                (pkg.TherapyCode?.toLowerCase() || '').includes(lowerSearchTerm)
             );
         }
-    }, [searchTerm, allPackages]);
+        setDisplayedPackages(filtered);
+    }, [searchTerm, allPackages, activeTab]);
 
     const getPkgKey = (pkg: TherapyPackageBaseType) =>
         pkg.type === 'bundle' ? `b-${pkg.bundle_id}` : `t-${pkg.therapy_id}`;
@@ -210,7 +207,6 @@ const TherapyPackageSelection: React.FC = () => {
     const content = (
         <Container className="my-4">
             {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
-             {error && <Alert variant="warning" >{error}</Alert>} {/* API 載入錯誤 */}
             <Card>
                 <Card.Header as="h5">選擇療程並設定堂數</Card.Header>
                 <Card.Body>
@@ -225,10 +221,15 @@ const TherapyPackageSelection: React.FC = () => {
                         </Col>
                     </Row>
 
+                    <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'therapy' | 'bundle') || 'therapy')} className="mb-3">
+                        <Tab eventKey="therapy" title="療程" />
+                        <Tab eventKey="bundle" title="療程組合" />
+                    </Tabs>
+
                     {loading && (
                         <div className="text-center p-5"><Spinner animation="border" variant="info" /> <p className="mt-2">載入中...</p></div>
                     )}
-                    {!loading && displayedPackages.length === 0 && !error && (
+                    {!loading && displayedPackages.length === 0 && (
                         <Alert variant="secondary">目前沒有符合條件的療程套餐。</Alert>
                     )}
                     {!loading && displayedPackages.length > 0 && (
