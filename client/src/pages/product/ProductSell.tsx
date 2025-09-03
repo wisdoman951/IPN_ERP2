@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import ScrollableTable from "../../components/ScrollableTable";
-import { formatDateToChinese } from "../../utils/memberUtils"; // 假設日期格式化函數適用
+import { formatDateToYYYYMMDD } from "../../utils/dateUtils";
 import { formatCurrency } from "../../utils/productSellUtils"; // formatDiscount 可能不再需要
 import { useProductSell } from "../../hooks/useProductSell";
 import { ProductSell as ProductSellType } from "../../services/ProductSellService"; // 匯入更新後的型別
@@ -141,7 +141,7 @@ const ProductSell: React.FC = () => {
                 </td>
                 <td className="align-middle">{sale.member_code || "-"}</td>
                 <td className="align-middle">{sale.member_name || "-"}</td>
-                <td className="align-middle">{formatDateToChinese(sale.date) || "-"}</td>
+                <td className="align-middle">{formatDateToYYYYMMDD(sale.date) || "-"}</td>
                 <td className="align-middle">{getDisplayName(sale)}</td>
                 <td className="text-center align-middle">{sale.quantity || "-"}</td>
                 <td className="text-end align-middle">
