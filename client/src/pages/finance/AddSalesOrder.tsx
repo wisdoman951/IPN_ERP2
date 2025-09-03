@@ -8,6 +8,7 @@ import { SalesOrderItemData, SalesOrderPayload, addSalesOrder, getSalesOrderById
 import { getAllMembers, Member } from '../../services/MemberService';
 import { getStaffMembers, StaffMember } from '../../services/TherapyDropdownService';
 import { getStoreName } from '../../services/AuthUtils';
+import { formatDateForInput } from '../../utils/dateUtils';
 import './printStyles.css';
 // 假設您有獲取會員、員工、產品、療程的服務
 // import { searchMembers } from '../../services/MemberService';
@@ -148,7 +149,7 @@ const AddSalesOrder: React.FC = () => {
                 try {
                     const detail = await getSalesOrderById(idNum);
                     setOrderNumber(detail.order_number);
-                    setOrderDate(detail.order_date);
+                    setOrderDate(formatDateForInput(detail.order_date));
                     setMemberId(detail.member_id ? String(detail.member_id) : "");
                     setStaffId(detail.staff_id ? String(detail.staff_id) : "");
                     setStoreId(detail.store_id);
@@ -226,7 +227,7 @@ const AddSalesOrder: React.FC = () => {
             }));
             const orderPayload: SalesOrderPayload = {
                 order_number: orderNumber,
-                order_date: orderDate,
+                order_date: formatDateForInput(orderDate),
                 member_id: memberId ? parseInt(memberId) : null,
                 staff_id: staffId ? parseInt(staffId) : null,
                 store_id: storeId ?? 0,
