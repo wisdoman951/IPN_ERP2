@@ -39,7 +39,7 @@ const ProductSell: React.FC = () => {
     useEffect(() => {
         const loadBundles = async () => {
             try {
-                const bundles = await fetchAllBundles();
+                const bundles = await fetchAllBundles("");
                 const map: Record<number, { name: string; contents: string }> = {};
                 bundles.forEach((b: Bundle) => {
                     map[b.bundle_id] = { name: b.name || b.bundle_contents, contents: b.bundle_contents };
