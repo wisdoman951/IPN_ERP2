@@ -11,6 +11,7 @@ from app.routes.health_check import health_check_bp
 from app.routes.staff import staff_bp
 from app.routes.pure_medical_record import pure_medical_bp
 from app.routes.product_bundle import product_bundle_bp
+from app.routes.therapy_bundle import therapy_bundle_bp
 from app.routes.product import product_bp
 from .routes.sales_order_routes import sales_order_bp
 from app.routes.store import store_bp
@@ -68,6 +69,7 @@ def create_app():
     app.register_blueprint(stress_test, url_prefix='/api/stress-test')
     app.register_blueprint(staff_bp, url_prefix='/api/staff')
     app.register_blueprint(product_bundle_bp, url_prefix='/api/product-bundles')
+    app.register_blueprint(therapy_bundle_bp, url_prefix='/api/therapy-bundles')
     app.register_blueprint(product_bp, url_prefix='/api/product')
     app.register_blueprint(store_bp, url_prefix='/api/stores')
 

@@ -6,15 +6,18 @@ import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
 import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
+import { fetchAllTherapyBundles, TherapyBundle } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
 import { deleteProduct } from '../../../services/ProductService';
 import { deleteTherapy } from '../../../services/TherapyService';
 
 const ProductBundleManagement: React.FC = () => {
     const [bundles, setBundles] = useState<Bundle[]>([]);
+    const [therapyBundles, setTherapyBundles] = useState<TherapyBundle[]>([]);
     const [products, setProducts] = useState<ProductItem[]>([]);
     const [therapies, setTherapies] = useState<TherapyItem[]>([]);
     const [bundleLoading, setBundleLoading] = useState(true);
+    const [therapyBundleLoading, setTherapyBundleLoading] = useState(true);
     const [productLoading, setProductLoading] = useState(true);
     const [therapyLoading, setTherapyLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -26,8 +29,9 @@ const ProductBundleManagement: React.FC = () => {
     const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
     const [editingTherapy, setEditingTherapy] = useState<TherapyItem | null>(null);
     const [stores, setStores] = useState<Store[]>([]);
-    const [activeTab, setActiveTab] = useState<'bundle' | 'product' | 'therapy'>('bundle');
+    const [activeTab, setActiveTab] = useState<'bundle' | 'therapy_bundle' | 'product' | 'therapy'>('bundle');
     const [bundleSearch, setBundleSearch] = useState('');
+    const [therapyBundleSearch, setTherapyBundleSearch] = useState('');
     const [productSearch, setProductSearch] = useState('');
     const [therapySearch, setTherapySearch] = useState('');
 
@@ -42,6 +46,20 @@ const ProductBundleManagement: React.FC = () => {
             setError(error.response?.data?.error || '無法獲取組合列表');
         } finally {
             setBundleLoading(false);
+        }
+    }, []);
+
+    const fetchTherapyBundlesData = useCallback(async () => {
+        setTherapyBundleLoading(true);
+        setError(null);
+        try {
+            const data = await fetchAllTherapyBundles();
+            setTherapyBundles(data);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            setError(error.response?.data?.error || '無法獲取療程組合列表');
+        } finally {
+            setTherapyBundleLoading(false);
         }
     }, []);
 
@@ -73,9 +91,10 @@ const ProductBundleManagement: React.FC = () => {
 
     useEffect(() => {
         fetchBundles();
+        fetchTherapyBundlesData();
         fetchProducts();
         fetchTherapies();
-    }, [fetchBundles, fetchProducts, fetchTherapies]);
+    }, [fetchBundles, fetchTherapyBundlesData, fetchProducts, fetchTherapies]);
 
     useEffect(() => {
         fetchAllStores().then(setStores).catch(() => {});
@@ -170,6 +189,11 @@ const ProductBundleManagement: React.FC = () => {
         bundle.name.toLowerCase().includes(bundleSearch.toLowerCase())
     );
 
+    const filteredTherapyBundles = therapyBundles.filter(bundle =>
+        bundle.bundle_code.toLowerCase().includes(therapyBundleSearch.toLowerCase()) ||
+        bundle.name.toLowerCase().includes(therapyBundleSearch.toLowerCase())
+    );
+
     const filteredProducts = products.filter(product =>
         product.product_code.toLowerCase().includes(productSearch.toLowerCase()) ||
         product.product_name.toLowerCase().includes(productSearch.toLowerCase())
@@ -193,7 +217,7 @@ const ProductBundleManagement: React.FC = () => {
                             className="text-white px-4"
                             onClick={handleShowAddModal}
                         >
-                            新增組合
+                            新增產品組合
                         </Button>
                         <Button
                             variant="info"
@@ -217,8 +241,9 @@ const ProductBundleManagement: React.FC = () => {
             {successMessage && <Container><Alert variant="success">{successMessage}</Alert></Container>}
 
             <Container>
-                <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'bundle' | 'product' | 'therapy') || 'bundle')} className="mb-3">
-                    <Tab eventKey="bundle" title="組合" />
+                <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'bundle' | 'therapy_bundle' | 'product' | 'therapy') || 'bundle')} className="mb-3">
+                    <Tab eventKey="bundle" title="產品組合" />
+                    <Tab eventKey="therapy_bundle" title="療程組合" />
                     <Tab eventKey="product" title="產品" />
                     <Tab eventKey="therapy" title="療程" />
                 </Tabs>
@@ -281,6 +306,55 @@ const ProductBundleManagement: React.FC = () => {
                                     ))
                                 ) : (
                                     <tr><td colSpan={6} className="text-center text-muted py-5">尚無資料</td></tr>
+                                )}
+                            </tbody>
+                        </Table>
+                    </>
+                )}
+
+                {activeTab === 'therapy_bundle' && (
+                    <>
+                        <Row className="mb-3">
+                            <Col xs={12} md={4}>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="輸入編號或組合名稱搜尋"
+                                    value={therapyBundleSearch}
+                                    onChange={(e) => setTherapyBundleSearch(e.target.value)}
+                                />
+                            </Col>
+                        </Row>
+                        <Table striped bordered hover responsive>
+                            <thead>
+                                <tr>
+                                    <th>編號</th>
+                                    <th>項目 (組合名稱)</th>
+                                    <th>組合內容</th>
+                                    <th>限定分店</th>
+                                    <th>售價</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {therapyBundleLoading ? (
+                                    <tr><td colSpan={5} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                ) : filteredTherapyBundles.length > 0 ? (
+                                    filteredTherapyBundles.map(bundle => (
+                                        <tr key={bundle.bundle_id}>
+                                            <td className="align-middle">{bundle.bundle_code}</td>
+                                            <td className="align-middle">{bundle.name}</td>
+                                            <td className="align-middle">{bundle.bundle_contents || '---'}</td>
+                                            <td className="align-middle">
+                                                {bundle.visible_store_ids && bundle.visible_store_ids.length > 0
+                                                    ? bundle.visible_store_ids
+                                                        .map(id => stores.find(s => s.store_id === id)?.store_name || id)
+                                                        .join(', ')
+                                                    : '---'}
+                                            </td>
+                                            <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={5} className="text-center text-muted py-5">尚無資料</td></tr>
                                 )}
                             </tbody>
                         </Table>
