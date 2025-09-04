@@ -24,7 +24,7 @@ export interface StaffMember {
 // 獲取療程套餐 (選項資料)
 export const getTherapyPackages = async (): Promise<TherapyPackage[]> => {
     try {
-        const response = await axios.get(`${API_URL}/packages`);
+        const response = await axios.get(`${API_URL}/packages`, { headers: getAuthHeaders() });
         
         // 處理可能的欄位變更
         if (response.data && Array.isArray(response.data)) {
