@@ -59,21 +59,29 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
             query += " GROUP BY pb.bundle_id ORDER BY pb.bundle_id DESC"
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
-            filtered = []
+
+            # 將可見分店欄位從 JSON 轉換為整數列表，以便後續比對
             for row in result:
-                store_ids = None
                 if row.get('visible_store_ids'):
                     try:
                         store_ids = json.loads(row['visible_store_ids'])
-                        if isinstance(store_ids, (int, str)):
+                        if isinstance(store_ids, int):
+                            store_ids = [store_ids]
+                        elif isinstance(store_ids, str):
                             store_ids = [int(store_ids)]
+                        else:
+                            store_ids = [int(s) for s in store_ids]
+                        row['visible_store_ids'] = store_ids
                     except Exception:
-                        pass
+                        row['visible_store_ids'] = []
+                else:
+                    row['visible_store_ids'] = []
+
             if store_id is not None:
                 result = [
                     row
                     for row in result
-                    if not row.get('visible_store_ids')
+                    if not row['visible_store_ids']
                     or store_id in row['visible_store_ids']
                 ]
             return result
