@@ -494,7 +494,7 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
             params.append(status)
         query += " GROUP BY p.product_id, p.code, p.name, p.price, p.visible_store_ids ORDER BY p.name"
         cursor.execute(query, tuple(params))
-        result = cursor.fetchall()
+    result = cursor.fetchall()
     conn.close()
     filtered = []
     for row in result:
@@ -502,6 +502,8 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
         if row.get('visible_store_ids'):
             try:
                 store_ids = json.loads(row['visible_store_ids'])
+                if isinstance(store_ids, (int, str)):
+                    store_ids = [int(store_ids)]
             except Exception:
                 store_ids = None
         if store_id is None or not store_ids or int(store_id) in store_ids:
@@ -563,6 +565,8 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
         if row.get('visible_store_ids'):
             try:
                 store_ids = json.loads(row['visible_store_ids'])
+                if isinstance(store_ids, (int, str)):
+                    store_ids = [int(store_ids)]
             except Exception:
                 store_ids = None
         if store_id is None or not store_ids or int(store_id) in store_ids:

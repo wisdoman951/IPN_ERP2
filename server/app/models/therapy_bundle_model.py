@@ -51,6 +51,8 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                 if row.get('visible_store_ids'):
                     try:
                         store_ids = json.loads(row['visible_store_ids'])
+                        if isinstance(store_ids, (int, str)):
+                            store_ids = [int(store_ids)]
                     except Exception:
                         pass
             if store_id is not None:

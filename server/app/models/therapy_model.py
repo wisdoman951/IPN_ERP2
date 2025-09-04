@@ -502,6 +502,8 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
                 if row.get('visible_store_ids'):
                     try:
                         store_ids = json.loads(row['visible_store_ids'])
+                        if isinstance(store_ids, (int, str)):
+                            store_ids = [int(store_ids)]
                     except Exception:
                         store_ids = None
                 if store_id is None or not store_ids or int(store_id) in store_ids:
