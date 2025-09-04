@@ -9,7 +9,7 @@ def connect_to_db():
     return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
 
 
-def get_all_therapy_bundles():
+def get_all_therapy_bundles(status: str | None = None):
     """獲取所有療程組合列表"""
     conn = connect_to_db()
     try:
@@ -23,6 +23,7 @@ def get_all_therapy_bundles():
                     tb.calculated_price,
                     tb.visible_store_ids,
                     tb.created_at,
+                    tb.status,
                     IFNULL(
                         GROUP_CONCAT(
                             CONCAT(t.name, ' x', tbi.quantity)
@@ -36,12 +37,13 @@ def get_all_therapy_bundles():
                     therapy_bundle_items tbi ON tb.bundle_id = tbi.bundle_id
                 LEFT JOIN
                     therapy t ON tbi.item_id = t.therapy_id
-                GROUP BY
-                    tb.bundle_id
-                ORDER BY
-                    tb.bundle_id DESC;
             """
-            cursor.execute(query)
+            params = []
+            if status:
+                query += " WHERE tb.status = %s"
+                params.append(status)
+            query += " GROUP BY tb.bundle_id ORDER BY tb.bundle_id DESC"
+            cursor.execute(query, tuple(params))
             result = cursor.fetchall()
             for row in result:
                 if row.get('visible_store_ids'):
@@ -60,8 +62,8 @@ def create_therapy_bundle(data: dict):
     try:
         with conn.cursor() as cursor:
             bundle_query = """
-                INSERT INTO therapy_bundles (bundle_code, name, calculated_price, selling_price, visible_store_ids)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO therapy_bundles (bundle_code, name, calculated_price, selling_price, visible_store_ids, status)
+                VALUES (%s, %s, %s, %s, %s, 'PUBLISHED')
             """
             bundle_values = (
                 data['bundle_code'],

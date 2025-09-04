@@ -18,7 +18,8 @@ product_bundle_bp = Blueprint(
 def get_bundles():
     """獲取產品組合列表"""
     try:
-        bundles = get_all_product_bundles()
+        status = request.args.get("status")
+        bundles = get_all_product_bundles(status)
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching product bundles: {e}")

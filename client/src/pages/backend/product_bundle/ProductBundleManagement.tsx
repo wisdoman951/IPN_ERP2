@@ -37,12 +37,16 @@ const ProductBundleManagement: React.FC = () => {
     const [therapyBundleSearch, setTherapyBundleSearch] = useState('');
     const [productSearch, setProductSearch] = useState('');
     const [therapySearch, setTherapySearch] = useState('');
+    const [bundleStatus, setBundleStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
+    const [therapyBundleStatus, setTherapyBundleStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
+    const [productStatus, setProductStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
+    const [therapyStatus, setTherapyStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
 
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
         setError(null);
         try {
-            const data = await fetchAllBundles();
+            const data = await fetchAllBundles(bundleStatus);
             setBundles(data);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
@@ -50,13 +54,13 @@ const ProductBundleManagement: React.FC = () => {
         } finally {
             setBundleLoading(false);
         }
-    }, []);
+    }, [bundleStatus]);
 
     const fetchTherapyBundlesData = useCallback(async () => {
         setTherapyBundleLoading(true);
         setError(null);
         try {
-            const data = await fetchAllTherapyBundles();
+            const data = await fetchAllTherapyBundles(therapyBundleStatus);
             setTherapyBundles(data);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
@@ -64,12 +68,12 @@ const ProductBundleManagement: React.FC = () => {
         } finally {
             setTherapyBundleLoading(false);
         }
-    }, []);
+    }, [therapyBundleStatus]);
 
     const fetchProducts = useCallback(async () => {
         setProductLoading(true);
         try {
-            const data = await fetchProductsForDropdown();
+            const data = await fetchProductsForDropdown(productStatus);
             setProducts(data);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
@@ -77,12 +81,12 @@ const ProductBundleManagement: React.FC = () => {
         } finally {
             setProductLoading(false);
         }
-    }, []);
+    }, [productStatus]);
 
     const fetchTherapies = useCallback(async () => {
         setTherapyLoading(true);
         try {
-            const data = await fetchTherapiesForDropdown();
+            const data = await fetchTherapiesForDropdown(therapyStatus);
             setTherapies(data);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
@@ -90,7 +94,7 @@ const ProductBundleManagement: React.FC = () => {
         } finally {
             setTherapyLoading(false);
         }
-    }, []);
+    }, [therapyStatus]);
 
     useEffect(() => {
         fetchBundles();
@@ -297,6 +301,12 @@ const ProductBundleManagement: React.FC = () => {
                                     onChange={(e) => setBundleSearch(e.target.value)}
                                 />
                             </Col>
+                            <Col xs={12} md={2} className="mt-2 mt-md-0">
+                                <Form.Select value={bundleStatus} onChange={(e) => setBundleStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
+                                    <option value="PUBLISHED">上架中</option>
+                                    <option value="UNPUBLISHED">下架中</option>
+                                </Form.Select>
+                            </Col>
                         </Row>
                         <Table striped bordered hover responsive>
                             <thead>
@@ -360,6 +370,12 @@ const ProductBundleManagement: React.FC = () => {
                                     value={therapyBundleSearch}
                                     onChange={(e) => setTherapyBundleSearch(e.target.value)}
                                 />
+                            </Col>
+                            <Col xs={12} md={2} className="mt-2 mt-md-0">
+                                <Form.Select value={therapyBundleStatus} onChange={(e) => setTherapyBundleStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
+                                    <option value="PUBLISHED">上架中</option>
+                                    <option value="UNPUBLISHED">下架中</option>
+                                </Form.Select>
                             </Col>
                         </Row>
                         <Table striped bordered hover responsive>
@@ -425,6 +441,12 @@ const ProductBundleManagement: React.FC = () => {
                                     onChange={(e) => setProductSearch(e.target.value)}
                                 />
                             </Col>
+                            <Col xs={12} md={2} className="mt-2 mt-md-0">
+                                <Form.Select value={productStatus} onChange={(e) => setProductStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
+                                    <option value="PUBLISHED">上架中</option>
+                                    <option value="UNPUBLISHED">下架中</option>
+                                </Form.Select>
+                            </Col>
                         </Row>
                         <Table striped bordered hover responsive>
                             <thead>
@@ -478,6 +500,12 @@ const ProductBundleManagement: React.FC = () => {
                                     value={therapySearch}
                                     onChange={(e) => setTherapySearch(e.target.value)}
                                 />
+                            </Col>
+                            <Col xs={12} md={2} className="mt-2 mt-md-0">
+                                <Form.Select value={therapyStatus} onChange={(e) => setTherapyStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
+                                    <option value="PUBLISHED">上架中</option>
+                                    <option value="UNPUBLISHED">下架中</option>
+                                </Form.Select>
                             </Col>
                         </Row>
                         <Table striped bordered hover responsive>

@@ -16,7 +16,8 @@ therapy_bundle_bp = Blueprint(
 def get_bundles():
     """獲取療程組合列表"""
     try:
-        bundles = get_all_therapy_bundles()
+        status = request.args.get("status")
+        bundles = get_all_therapy_bundles(status)
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching therapy bundles: {e}")

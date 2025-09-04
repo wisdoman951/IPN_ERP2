@@ -40,9 +40,12 @@ export interface Therapy {
     content?: string;
 }
 
-export const fetchAllTherapyBundles = async (): Promise<TherapyBundle[]> => {
+export const fetchAllTherapyBundles = async (status: string = 'PUBLISHED'): Promise<TherapyBundle[]> => {
     try {
-        const response = await axios.get(`${API_URL}/`, getAuthHeaders());
+        const response = await axios.get(`${API_URL}/`, {
+            ...getAuthHeaders(),
+            params: { status }
+        });
         return response.data;
     } catch (error) {
         console.error("獲取療程組合列表失敗:", error);
@@ -90,9 +93,12 @@ export const deleteTherapyBundle = async (bundleId: number) => {
     }
 };
 
-export const fetchTherapiesForDropdown = async (): Promise<Therapy[]> => {
+export const fetchTherapiesForDropdown = async (status: string = 'PUBLISHED'): Promise<Therapy[]> => {
     try {
-        const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, getAuthHeaders());
+        const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, {
+            ...getAuthHeaders(),
+            params: { status }
+        });
         return response.data;
     } catch (error) {
         console.error("Service: 獲取療程下拉選單失敗:", error);
