@@ -19,8 +19,18 @@ def get_bundles():
     """獲取產品組合列表"""
     try:
         status = request.args.get("status")
-        store_id = request.headers.get('X-Store-ID')
-        bundles = get_all_product_bundles(status, int(store_id) if store_id else None)
+        # 總店或具備 admin 權限的使用者應能查看所有組合，不受門市限制
+        store_level = request.headers.get('X-Store-Level')
+        store_id_header = request.headers.get('X-Store-ID')
+
+        store_id = None
+        if store_level not in ["總店", "admin"] and store_id_header:
+            try:
+                store_id = int(store_id_header)
+            except (TypeError, ValueError):
+                store_id = None
+
+        bundles = get_all_product_bundles(status, store_id)
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching product bundles: {e}")
