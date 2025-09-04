@@ -297,6 +297,7 @@ const AddTherapySell: React.FC = () => {
   const handlePrint = async () => {
     const success = await processSale();
     if (success) {
+      alert('銷售資料已儲存，跳轉至列印頁面。');
       const itemsForOrder: SalesOrderItemData[] = therapyPackages.map(pkg => ({
         therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
         item_code: pkg.TherapyCode || '',
