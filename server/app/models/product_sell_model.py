@@ -110,10 +110,12 @@ def insert_product_sell(data: dict):
                 item_totals = []
                 total_price = Decimal('0')
                 for item in bundle_items:
-                    cursor.execute("SELECT name, price FROM product WHERE product_id = %s", (item['item_id'],))
+                    cursor.execute("SELECT name, price, status FROM product WHERE product_id = %s", (item['item_id'],))
                     price_row = cursor.fetchone()
-                    unit_price = Decimal(str(price_row['price'])) if price_row and price_row.get('price') is not None else Decimal('0')
-                    product_name = price_row['name'] if price_row and price_row.get('name') is not None else None
+                    if not price_row or price_row.get('status') != 'PUBLISHED':
+                        raise ValueError("品項已下架")
+                    unit_price = Decimal(str(price_row['price'])) if price_row.get('price') is not None else Decimal('0')
+                    product_name = price_row.get('name')
                     quantity = int(item.get('quantity', 0)) * bundle_qty
                     item_total = unit_price * quantity
                     item_totals.append((item, unit_price, product_name, quantity, item_total))
@@ -144,9 +146,11 @@ def insert_product_sell(data: dict):
                 conn.commit()
                 return conn.insert_id()
             else:
-                cursor.execute("SELECT name FROM product WHERE product_id = %s", (data['product_id'],))
+                cursor.execute("SELECT name, status FROM product WHERE product_id = %s", (data['product_id'],))
                 name_row = cursor.fetchone()
-                data['product_name'] = name_row['name'] if name_row and name_row.get('name') is not None else None
+                if not name_row or name_row.get('status') != 'PUBLISHED':
+                    raise ValueError("品項已下架")
+                data['product_name'] = name_row.get('name')
                 cursor.execute(insert_query, data)
                 quantity_change = -int(data['quantity'])
                 update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
@@ -382,6 +386,10 @@ def update_product_sell(sell_id: int, data: dict):
             new_product_id = int(data.get("product_id", original_product_id))
             new_quantity = int(data.get("quantity", original_quantity))
             new_store_id = int(data.get("store_id", original_store_id)) # 假設 store_id 也可能變更
+            cursor.execute("SELECT status FROM product WHERE product_id = %s", (new_product_id,))
+            status_row = cursor.fetchone()
+            if not status_row or status_row.get('status') != 'PUBLISHED':
+                raise ValueError("品項已下架")
 
             inventory_adjusted = False
             if new_product_id != original_product_id or new_quantity != original_quantity or new_store_id != original_store_id:
@@ -448,7 +456,7 @@ def delete_product_sell(sell_id: int):
         if conn:
             conn.close()
 
-def get_all_products_with_inventory(store_id=None):
+def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISHED'):
     """
     獲取所有產品及其匯總後的庫存數量。
     - 使用 SUM() 和 GROUP BY 確保每個產品只返回一筆紀錄，包含其總庫存。
@@ -468,8 +476,6 @@ def get_all_products_with_inventory(store_id=None):
                 0 AS inventory_id
             FROM product p
             LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
-            GROUP BY p.product_id, p.code, p.name, p.price
-            ORDER BY p.name
         """
 
         params = []
@@ -480,13 +486,16 @@ def get_all_products_with_inventory(store_id=None):
             params.append(store_id)
 
         query = base_query.format(store_join=store_join)
-
+        if status:
+            query += " WHERE p.status = %s"
+            params.append(status)
+        query += " GROUP BY p.product_id, p.code, p.name, p.price ORDER BY p.name"
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()
     conn.close()
     return result
 
-def search_products_with_inventory(keyword, store_id=None):
+def search_products_with_inventory(keyword, store_id=None, status: str | None = 'PUBLISHED'):
     """
     根據關鍵字搜尋產品及其匯總後的庫存信息。
     邏輯同上，但增加了關鍵字和 store_id 的過濾。
@@ -494,7 +503,7 @@ def search_products_with_inventory(keyword, store_id=None):
     conn = connect_to_db()
     with conn.cursor() as cursor:
         like_keyword = f"%{keyword}%"
-        
+
         base_query = """
             SELECT
                 p.product_id,
@@ -518,6 +527,9 @@ def search_products_with_inventory(keyword, store_id=None):
         if keyword:
             conditions.append("(p.name LIKE %s OR p.code LIKE %s)")
             params.extend([like_keyword, like_keyword])
+        if status:
+            conditions.append("p.status = %s")
+            params.append(status)
 
         query = base_query.format(store_join=store_join)
 

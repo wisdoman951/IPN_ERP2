@@ -57,9 +57,12 @@ export interface Therapy {
 /**
  * 獲取所有產品組合列表
  */
-export const fetchAllBundles = async (): Promise<Bundle[]> => {
+export const fetchAllBundles = async (status: string = 'PUBLISHED'): Promise<Bundle[]> => {
     try {
-        const response = await axios.get(`${API_URL}/`, getAuthHeaders());
+        const response = await axios.get(`${API_URL}/`, {
+            ...getAuthHeaders(),
+            params: { status }
+        });
         return response.data;
     } catch (error) {
         console.error("獲取產品組合列表失敗:", error);
@@ -122,9 +125,12 @@ export const deleteBundle = async (bundleId: number) => {
 /**
  * 獲取所有產品，用於下拉選單
  */
-export const fetchProductsForDropdown = async (): Promise<Product[]> => {
+export const fetchProductsForDropdown = async (status: string = 'PUBLISHED'): Promise<Product[]> => {
     try {
-        const response = await axios.get(`${API_URL_PRODUCTS}/products`, getAuthHeaders());
+        const response = await axios.get(`${API_URL_PRODUCTS}/products`, {
+            ...getAuthHeaders(),
+            params: { status }
+        });
         return response.data;
     } catch(error) {
         console.error("Service: 獲取產品下拉選單失敗:", error);
@@ -135,9 +141,12 @@ export const fetchProductsForDropdown = async (): Promise<Product[]> => {
 /**
  * 獲取所有療程，用於下拉選單
  */
-export const fetchTherapiesForDropdown = async (): Promise<Therapy[]> => {
+export const fetchTherapiesForDropdown = async (status: string = 'PUBLISHED'): Promise<Therapy[]> => {
     try {
-        const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, getAuthHeaders());
+        const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, {
+            ...getAuthHeaders(),
+            params: { status }
+        });
         return response.data;
     } catch(error) {
         console.error("Service: 獲取療程下拉選單失敗:", error);

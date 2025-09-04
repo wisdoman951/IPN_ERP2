@@ -482,14 +482,18 @@ def delete_therapy_sell(sale_id):
     conn.commit()
     conn.close()
 
-def get_all_therapies_for_dropdown():
+def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED'):
     """獲取所有療程的編號、名稱及價格，用於下拉選單。"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            # 需要返回療程編號供前端使用
-            sql = "SELECT therapy_id, code, name, price FROM therapy ORDER BY name"
-            cursor.execute(sql)
+            sql = "SELECT therapy_id, code, name, price FROM therapy"
+            params = []
+            if status:
+                sql += " WHERE status = %s"
+                params.append(status)
+            sql += " ORDER BY name"
+            cursor.execute(sql, tuple(params))
             return cursor.fetchall()
     finally:
         conn.close()
@@ -501,8 +505,8 @@ def create_therapy(data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "INSERT INTO therapy (code, name, price, content) "
-                "VALUES (%s, %s, %s, %s)"
+                "INSERT INTO therapy (code, name, price, content, status) "
+                "VALUES (%s, %s, %s, %s, 'PUBLISHED')"
             )
             cursor.execute(query, (
                 data.get("code"),

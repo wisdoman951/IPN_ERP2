@@ -8,7 +8,7 @@ def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
-def get_all_therapy_packages():
+def get_all_therapy_packages(status: str | None = 'PUBLISHED'):
     """獲取所有療程套餐"""
     conn = connect_to_db()
     try:
@@ -16,9 +16,13 @@ def get_all_therapy_packages():
             query = """
                 SELECT therapy_id, code as TherapyCode, price as TherapyPrice, name as TherapyName, content as TherapyContent
                 FROM therapy
-                ORDER BY code
             """
-            cursor.execute(query)
+            params = []
+            if status:
+                query += " WHERE status = %s"
+                params.append(status)
+            query += " ORDER BY code"
+            cursor.execute(query, tuple(params))
             result = cursor.fetchall()
             return result
     except Exception as e:
@@ -27,7 +31,7 @@ def get_all_therapy_packages():
     finally:
         conn.close()
 
-def search_therapy_packages(keyword):
+def search_therapy_packages(keyword, status: str | None = 'PUBLISHED'):
     """搜尋療程套餐"""
     conn = connect_to_db()
     try:
@@ -35,11 +39,16 @@ def search_therapy_packages(keyword):
             query = """
                 SELECT therapy_id, code as TherapyCode, price as TherapyPrice, name as TherapyName, content as TherapyContent
                 FROM therapy
-                WHERE code LIKE %s OR name LIKE %s OR content LIKE %s
-                ORDER BY code
+                WHERE (code LIKE %s OR name LIKE %s OR content LIKE %s)
             """
+            params = []
             like = f"%{keyword}%"
-            cursor.execute(query, (like, like, like))
+            params.extend([like, like, like])
+            if status:
+                query += " AND status = %s"
+                params.append(status)
+            query += " ORDER BY code"
+            cursor.execute(query, tuple(params))
             result = cursor.fetchall()
             return result
     except Exception as e:
@@ -248,10 +257,12 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "sale_category": data_item.get("saleCategory"),
                             "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]",
                         }
-                        cursor.execute("SELECT name, price FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
+                        cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
                         price_row = cursor.fetchone()
-                        unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
-                        item_values["therapy_name"] = price_row["name"] if price_row and price_row.get("name") is not None else None
+                        if not price_row or price_row.get("status") != 'PUBLISHED':
+                            raise ValueError("品項已下架")
+                        unit_price = price_row["price"] if price_row.get("price") is not None else 0
+                        item_values["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
                         item_values["final_price"] = unit_price * item_values["amount"] - item_values["discount"]
                         logging.debug(
                             f"--- [MODEL] Values for SQL for bundle item {index + 1}: {item_values}"
@@ -276,10 +287,12 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     "sale_category": data_item.get("saleCategory"),
                     "note": data_item.get("note", "")
                 }
-                cursor.execute("SELECT name, price FROM therapy WHERE therapy_id = %s", (values_dict["therapy_id"],))
+                cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (values_dict["therapy_id"],))
                 price_row = cursor.fetchone()
-                unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
-                values_dict["therapy_name"] = price_row["name"] if price_row and price_row.get("name") is not None else None
+                if not price_row or price_row.get("status") != 'PUBLISHED':
+                    raise ValueError("品項已下架")
+                unit_price = price_row["price"] if price_row.get("price") is not None else 0
+                values_dict["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
                 values_dict["final_price"] = unit_price * values_dict["amount"] - values_dict["discount"]
                 logging.debug(f"--- [MODEL] Values for SQL for item {index + 1}: {values_dict}")
                 cursor.execute(insert_query, values_dict)
@@ -348,6 +361,10 @@ def update_therapy_sell(sale_id, data):
                 return {"error": "找不到要更新的銷售記錄"}
 
             therapy_id = data.get("therapy_id") or existing_record.get("therapy_id")
+            cursor.execute("SELECT status FROM therapy WHERE therapy_id = %s", (therapy_id,))
+            status_row = cursor.fetchone()
+            if not status_row or status_row.get('status') != 'PUBLISHED':
+                return {"error": "品項已下架"}
 
             member_id = data.get("memberId", existing_record.get("member_id"))
             store_id = data.get("storeId", existing_record.get("store_id"))

@@ -13,6 +13,7 @@ from app.routes.pure_medical_record import pure_medical_bp
 from app.routes.product_bundle import product_bundle_bp
 from app.routes.therapy_bundle import therapy_bundle_bp
 from app.routes.product import product_bp
+from app.routes.items import items_bp
 from .routes.sales_order_routes import sales_order_bp
 from app.routes.store import store_bp
 
@@ -72,6 +73,7 @@ def create_app():
     app.register_blueprint(therapy_bundle_bp, url_prefix='/api/therapy-bundles')
     app.register_blueprint(product_bp, url_prefix='/api/product')
     app.register_blueprint(store_bp, url_prefix='/api/stores')
+    app.register_blueprint(items_bp, url_prefix='/api/items')
 
     # 註冊產品銷售路由
     from app.routes.product_sell import product_sell_bp
