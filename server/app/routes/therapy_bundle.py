@@ -17,7 +17,8 @@ def get_bundles():
     """獲取療程組合列表"""
     try:
         status = request.args.get("status")
-        bundles = get_all_therapy_bundles(status)
+        store_id = request.headers.get('X-Store-ID')
+        bundles = get_all_therapy_bundles(status, int(store_id) if store_id else None)
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching therapy bundles: {e}")

@@ -45,10 +45,12 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
             query += " GROUP BY tb.bundle_id ORDER BY tb.bundle_id DESC"
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
+            filtered = []
             for row in result:
+                store_ids = None
                 if row.get('visible_store_ids'):
                     try:
-                        row['visible_store_ids'] = json.loads(row['visible_store_ids'])
+                        store_ids = json.loads(row['visible_store_ids'])
                     except Exception:
                         pass
             if store_id is not None:
