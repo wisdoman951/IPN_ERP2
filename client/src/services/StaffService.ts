@@ -192,6 +192,42 @@ export const deleteMultipleStaff = async (staffIds: number[]) => {
   }
 };
 
+// 清除員工帳號與密碼（將 account、password、permission 設為 null）
+export const clearStaffAccount = async (staffId: number) => {
+  try {
+    const response = await axios.put(
+      `${API_URL}/account/${staffId}`,
+      { account: null, password: null, permission: null },
+      { headers: getAuthHeaders() }
+    );
+    return { success: true, data: response.data };
+  } catch (error) {
+    console.error(`清除員工帳號 ${staffId} 失敗:`, error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "清除失敗",
+    };
+  }
+};
+
+// 批量清除員工帳號
+export const clearMultipleStaffAccounts = async (staffIds: number[]) => {
+  try {
+    const results = await Promise.all(staffIds.map(id => clearStaffAccount(id)));
+    const allSuccessful = results.every(r => r.success);
+    return {
+      success: allSuccessful,
+      message: allSuccessful ? "全部成功刪除" : "有部分刪除失敗",
+    };
+  } catch (error) {
+    console.error("批量清除帳號失敗:", error);
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "發生錯誤",
+    };
+  }
+};
+
 // 分店清單
 export const getAllStores = async () => {
   try {

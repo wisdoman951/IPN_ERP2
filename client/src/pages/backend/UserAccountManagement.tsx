@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Row, Col, Form, Button, Table, Spinner, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { getStaffAccounts, deleteMultipleStaff, StaffAccount, exportStaffAccounts, exportSelectedStaffAccounts } from '../../services/StaffService';
+import { getStaffAccounts, clearMultipleStaffAccounts, StaffAccount, exportStaffAccounts, exportSelectedStaffAccounts } from '../../services/StaffService';
 import Header from '../../components/Header'; // 1. 引入 Header
 import DynamicContainer from '../../components/DynamicContainer'; // 2. 引入 DynamicContainer
 
@@ -57,7 +57,7 @@ const UserAccountManagement: React.FC = () => {
         if (!window.confirm(`確定要刪除選中的 ${selectedIds.length} 個帳號嗎？`)) return;
         try {
             setLoading(true);
-            const result = await deleteMultipleStaff(selectedIds);
+            const result = await clearMultipleStaffAccounts(selectedIds);
             alert(result.success ? '刪除成功！' : result.message || '刪除失敗');
             setSelectedIds([]);
             fetchAccounts(keyword);
