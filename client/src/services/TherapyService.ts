@@ -211,9 +211,51 @@ export const deleteTherapy = async (therapyId: number) => {
                 "X-Store-Level": "admin",
             },
         });
-        return response.data;
+    return response.data;
     } catch (error) {
         console.error("刪除療程失敗：", error);
+        throw error;
+    }
+};
+
+export const publishTherapy = async (therapyId: number) => {
+    try {
+        const token = localStorage.getItem("token");
+        const response = await axios.patch(
+            `${base_url}/items/therapy/${therapyId}/publish`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "X-Store-ID": "1",
+                    "X-Store-Level": "admin",
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error("上架療程失敗：", error);
+        throw error;
+    }
+};
+
+export const unpublishTherapy = async (therapyId: number) => {
+    try {
+        const token = localStorage.getItem("token");
+        const response = await axios.patch(
+            `${base_url}/items/therapy/${therapyId}/unpublish`,
+            {},
+            {
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                    "X-Store-ID": "1",
+                    "X-Store-Level": "admin",
+                },
+            }
+        );
+        return response.data;
+    } catch (error) {
+        console.error("下架療程失敗：", error);
         throw error;
     }
 };

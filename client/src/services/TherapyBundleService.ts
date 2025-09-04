@@ -105,3 +105,37 @@ export const fetchTherapiesForDropdown = async (status: string = 'PUBLISHED'): P
         throw error;
     }
 };
+
+/**
+ * 上架指定療程組合
+ */
+export const publishTherapyBundle = async (bundleId: number) => {
+    try {
+        const response = await axios.patch(
+            `${base_url}/items/therapy_bundle/${bundleId}/publish`,
+            {},
+            getAuthHeaders()
+        );
+        return response.data;
+    } catch (error) {
+        console.error("上架療程組合失敗:", error);
+        throw error;
+    }
+};
+
+/**
+ * 下架指定療程組合
+ */
+export const unpublishTherapyBundle = async (bundleId: number) => {
+    try {
+        const response = await axios.patch(
+            `${base_url}/items/therapy_bundle/${bundleId}/unpublish`,
+            {},
+            getAuthHeaders()
+        );
+        return response.data;
+    } catch (error) {
+        console.error("下架療程組合失敗:", error);
+        throw error;
+    }
+};

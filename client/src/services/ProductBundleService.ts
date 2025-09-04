@@ -153,3 +153,37 @@ export const fetchTherapiesForDropdown = async (status: string = 'PUBLISHED'): P
         throw error;
     }
 };
+
+/**
+ * 上架指定產品組合
+ */
+export const publishBundle = async (bundleId: number) => {
+    try {
+        const response = await axios.patch(
+            `${base_url}/items/product_bundle/${bundleId}/publish`,
+            {},
+            getAuthHeaders()
+        );
+        return response.data;
+    } catch (error) {
+        console.error("上架產品組合失敗:", error);
+        throw error;
+    }
+};
+
+/**
+ * 下架指定產品組合
+ */
+export const unpublishBundle = async (bundleId: number) => {
+    try {
+        const response = await axios.patch(
+            `${base_url}/items/product_bundle/${bundleId}/unpublish`,
+            {},
+            getAuthHeaders()
+        );
+        return response.data;
+    } catch (error) {
+        console.error("下架產品組合失敗:", error);
+        throw error;
+    }
+};
