@@ -70,11 +70,11 @@ def insert_product_sell(data: dict):
         with conn.cursor() as cursor:
             insert_query = """
                 INSERT INTO product_sell (
-                    member_id, staff_id, store_id, product_id, date, quantity,
+                    member_id, staff_id, store_id, product_id, product_name, date, quantity,
                     unit_price, discount_amount, final_price, payment_method,
                     sale_category, note
                 ) VALUES (
-                    %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(date)s, %(quantity)s,
+                    %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(product_name)s, %(date)s, %(quantity)s,
                     %(unit_price)s, %(discount_amount)s, %(final_price)s, %(payment_method)s,
                     %(sale_category)s, %(note)s
                 )
@@ -93,6 +93,7 @@ def insert_product_sell(data: dict):
                         "staff_id": data.get('staff_id'),
                         "store_id": data.get('store_id'),
                         "product_id": None,
+                        "product_name": None,
                         "date": data.get('date'),
                         "quantity": bundle_qty,
                         "unit_price": float(data.get('unit_price', 0)),
@@ -109,16 +110,17 @@ def insert_product_sell(data: dict):
                 item_totals = []
                 total_price = Decimal('0')
                 for item in bundle_items:
-                    cursor.execute("SELECT price FROM product WHERE product_id = %s", (item['item_id'],))
+                    cursor.execute("SELECT name, price FROM product WHERE product_id = %s", (item['item_id'],))
                     price_row = cursor.fetchone()
                     unit_price = Decimal(str(price_row['price'])) if price_row and price_row.get('price') is not None else Decimal('0')
+                    product_name = price_row['name'] if price_row and price_row.get('name') is not None else None
                     quantity = int(item.get('quantity', 0)) * bundle_qty
                     item_total = unit_price * quantity
-                    item_totals.append((item, unit_price, quantity, item_total))
+                    item_totals.append((item, unit_price, product_name, quantity, item_total))
                     total_price += item_total
                 discount_total = Decimal(str(data.get('discount_amount') or 0))
 
-                for item, unit_price, quantity, item_total in item_totals:
+                for item, unit_price, product_name, quantity, item_total in item_totals:
                     discount_amount = (item_total / total_price * discount_total) if total_price > 0 else Decimal('0')
                     final_price = item_total - discount_amount
                     item_data = {
@@ -126,6 +128,7 @@ def insert_product_sell(data: dict):
                         "staff_id": data.get('staff_id'),
                         "store_id": data.get('store_id'),
                         "product_id": item['item_id'],
+                        "product_name": product_name,
                         "date": data.get('date'),
                         "quantity": quantity,
                         "unit_price": float(unit_price),
@@ -141,6 +144,9 @@ def insert_product_sell(data: dict):
                 conn.commit()
                 return conn.insert_id()
             else:
+                cursor.execute("SELECT name FROM product WHERE product_id = %s", (data['product_id'],))
+                name_row = cursor.fetchone()
+                data['product_name'] = name_row['name'] if name_row and name_row.get('name') is not None else None
                 cursor.execute(insert_query, data)
                 quantity_change = -int(data['quantity'])
                 update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
