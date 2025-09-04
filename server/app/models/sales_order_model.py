@@ -39,9 +39,20 @@ def _validate_item_ids(cursor, product_id: int | None, therapy_id: int | None):
         )
         t_row = cursor.fetchone()
         if t_row is None:
-            raise ValueError(f"療程ID {therapy_id} 不存在")
-        if t_row.get('status') != 'PUBLISHED':
-            raise ValueError("品項已下架")
+            cursor.execute(
+                "SELECT bundle_id, status FROM therapy_bundles WHERE bundle_id = %s",
+                (therapy_id,),
+            )
+            tb_row = cursor.fetchone()
+            if tb_row is None:
+                raise ValueError(f"療程ID {therapy_id} 不存在")
+            if tb_row.get('status') != 'PUBLISHED':
+                raise ValueError("品項已下架")
+            bundle_id = therapy_id
+            therapy_id = None
+        else:
+            if t_row.get('status') != 'PUBLISHED':
+                raise ValueError("品項已下架")
     return product_id, therapy_id, bundle_id
 
 def connect_to_db():

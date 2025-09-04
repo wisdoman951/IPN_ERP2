@@ -9,7 +9,7 @@ def connect_to_db():
     return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
 
 
-def get_all_therapy_bundles(status: str | None = None):
+def get_all_therapy_bundles(status: str | None = None, store_id: int | None = None):
     """獲取所有療程組合列表"""
     conn = connect_to_db()
     try:
@@ -51,6 +51,13 @@ def get_all_therapy_bundles(status: str | None = None):
                         row['visible_store_ids'] = json.loads(row['visible_store_ids'])
                     except Exception:
                         pass
+            if store_id is not None:
+                result = [
+                    row
+                    for row in result
+                    if not row.get('visible_store_ids')
+                    or store_id in row['visible_store_ids']
+                ]
             return result
     finally:
         conn.close()

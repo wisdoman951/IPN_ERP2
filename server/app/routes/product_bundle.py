@@ -5,7 +5,7 @@ from app.models.product_bundle_model import (
     get_all_product_bundles, create_product_bundle, 
     get_bundle_details_by_id, update_product_bundle, delete_product_bundle
 )
-from app.middleware import admin_required
+from app.middleware import admin_required, auth_required, get_user_from_token
 
 # Blueprint 的建立方式不變
 product_bundle_bp = Blueprint(
@@ -23,6 +23,20 @@ def get_bundles():
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching product bundles: {e}")
+        return jsonify({"error": "無法獲取產品組合列表"}), 500
+
+
+@product_bundle_bp.route("/available", methods=["GET"])
+@auth_required
+def get_available_bundles():
+    """根據店家權限取得可用的產品組合列表"""
+    try:
+        user = get_user_from_token(request)
+        store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
+        bundles = get_all_product_bundles(status="PUBLISHED", store_id=store_id)
+        return jsonify(bundles)
+    except Exception as e:
+        print(f"Error fetching available product bundles: {e}")
         return jsonify({"error": "無法獲取產品組合列表"}), 500
 
 @product_bundle_bp.route("/", methods=["POST"])

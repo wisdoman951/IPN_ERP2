@@ -1,10 +1,11 @@
 import axios from "axios";
 import { base_url } from "./BASE_URL";
+import { getAuthHeaders as getTokenHeaders } from "./AuthUtils";
 
 const API_URL = `${base_url}/therapy-bundles`;
 const API_URL_THERAPIES = `${base_url}/therapy`;
 
-const getAuthHeaders = () => {
+const getAdminHeaders = () => {
     const token = localStorage.getItem("token");
     return {
         headers: {
@@ -43,7 +44,7 @@ export interface Therapy {
 export const fetchAllTherapyBundles = async (status: string = 'PUBLISHED'): Promise<TherapyBundle[]> => {
     try {
         const response = await axios.get(`${API_URL}/`, {
-            ...getAuthHeaders(),
+            ...getAdminHeaders(),
             params: { status }
         });
         return response.data;
@@ -55,7 +56,7 @@ export const fetchAllTherapyBundles = async (status: string = 'PUBLISHED'): Prom
 
 export const createTherapyBundle = async (payload: unknown) => {
     try {
-        const response = await axios.post(`${API_URL}/`, payload, getAuthHeaders());
+        const response = await axios.post(`${API_URL}/`, payload, getAdminHeaders());
         return response.data;
     } catch (error) {
         console.error("新增療程組合失敗:", error);
@@ -65,7 +66,7 @@ export const createTherapyBundle = async (payload: unknown) => {
 
 export const getTherapyBundleDetails = async (bundleId: number): Promise<TherapyBundleDetails> => {
     try {
-        const response = await axios.get(`${API_URL}/${bundleId}`, getAuthHeaders());
+        const response = await axios.get(`${API_URL}/${bundleId}`, getAdminHeaders());
         return response.data;
     } catch (error) {
         console.error("獲取療程組合詳情失敗:", error);
@@ -75,7 +76,7 @@ export const getTherapyBundleDetails = async (bundleId: number): Promise<Therapy
 
 export const updateTherapyBundle = async (bundleId: number, payload: unknown) => {
     try {
-        const response = await axios.put(`${API_URL}/${bundleId}`, payload, getAuthHeaders());
+        const response = await axios.put(`${API_URL}/${bundleId}`, payload, getAdminHeaders());
         return response.data;
     } catch (error) {
         console.error("更新療程組合失敗:", error);
@@ -86,7 +87,7 @@ export const updateTherapyBundle = async (bundleId: number, payload: unknown) =>
 export const deleteTherapyBundle = async (bundleId: number, account: string) => {
     try {
         const response = await axios.delete(`${API_URL}/${bundleId}`, {
-            ...getAuthHeaders(),
+            ...getAdminHeaders(),
             params: { deleted_by: account }
         });
         return response.data;
@@ -99,7 +100,7 @@ export const deleteTherapyBundle = async (bundleId: number, account: string) => 
 export const fetchTherapiesForDropdown = async (status: string = 'PUBLISHED'): Promise<Therapy[]> => {
     try {
         const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, {
-            ...getAuthHeaders(),
+            ...getAdminHeaders(),
             params: { status }
         });
         return response.data;
@@ -117,7 +118,7 @@ export const publishTherapyBundle = async (bundleId: number) => {
         const response = await axios.patch(
             `${base_url}/items/therapy_bundle/${bundleId}/publish`,
             {},
-            getAuthHeaders()
+            getAdminHeaders()
         );
         return response.data;
     } catch (error) {
@@ -134,11 +135,23 @@ export const unpublishTherapyBundle = async (bundleId: number) => {
         const response = await axios.patch(
             `${base_url}/items/therapy_bundle/${bundleId}/unpublish`,
             {},
-            getAuthHeaders()
+            getAdminHeaders()
         );
         return response.data;
     } catch (error) {
         console.error("下架療程組合失敗:", error);
         throw error;
+    }
+};
+
+export const fetchTherapyBundlesForSale = async (): Promise<TherapyBundle[]> => {
+    try {
+        const response = await axios.get(`${API_URL}/available`, {
+            headers: getTokenHeaders(),
+        });
+        return response.data;
+    } catch (error) {
+        console.error("取得可用療程組合失敗:", error);
+        return [];
     }
 };
