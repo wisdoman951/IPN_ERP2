@@ -5,16 +5,20 @@ import DynamicContainer from '../../../components/DynamicContainer';
 import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
+import TherapyBundleModal from './TherapyBundleModal';
 import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
+import { fetchAllTherapyBundles, deleteTherapyBundle, TherapyBundle } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
 import { deleteProduct } from '../../../services/ProductService';
 import { deleteTherapy } from '../../../services/TherapyService';
 
 const ProductBundleManagement: React.FC = () => {
     const [bundles, setBundles] = useState<Bundle[]>([]);
+    const [therapyBundles, setTherapyBundles] = useState<TherapyBundle[]>([]);
     const [products, setProducts] = useState<ProductItem[]>([]);
     const [therapies, setTherapies] = useState<TherapyItem[]>([]);
     const [bundleLoading, setBundleLoading] = useState(true);
+    const [therapyBundleLoading, setTherapyBundleLoading] = useState(true);
     const [productLoading, setProductLoading] = useState(true);
     const [therapyLoading, setTherapyLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -25,9 +29,12 @@ const ProductBundleManagement: React.FC = () => {
     const [showProductModal, setShowProductModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
     const [editingTherapy, setEditingTherapy] = useState<TherapyItem | null>(null);
+    const [showTherapyBundleModal, setShowTherapyBundleModal] = useState(false);
+    const [editingTherapyBundle, setEditingTherapyBundle] = useState<TherapyBundle | null>(null);
     const [stores, setStores] = useState<Store[]>([]);
-    const [activeTab, setActiveTab] = useState<'bundle' | 'product' | 'therapy'>('bundle');
+    const [activeTab, setActiveTab] = useState<'bundle' | 'therapy_bundle' | 'product' | 'therapy'>('bundle');
     const [bundleSearch, setBundleSearch] = useState('');
+    const [therapyBundleSearch, setTherapyBundleSearch] = useState('');
     const [productSearch, setProductSearch] = useState('');
     const [therapySearch, setTherapySearch] = useState('');
 
@@ -42,6 +49,20 @@ const ProductBundleManagement: React.FC = () => {
             setError(error.response?.data?.error || '無法獲取組合列表');
         } finally {
             setBundleLoading(false);
+        }
+    }, []);
+
+    const fetchTherapyBundlesData = useCallback(async () => {
+        setTherapyBundleLoading(true);
+        setError(null);
+        try {
+            const data = await fetchAllTherapyBundles();
+            setTherapyBundles(data);
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            setError(error.response?.data?.error || '無法獲取療程組合列表');
+        } finally {
+            setTherapyBundleLoading(false);
         }
     }, []);
 
@@ -73,9 +94,10 @@ const ProductBundleManagement: React.FC = () => {
 
     useEffect(() => {
         fetchBundles();
+        fetchTherapyBundlesData();
         fetchProducts();
         fetchTherapies();
-    }, [fetchBundles, fetchProducts, fetchTherapies]);
+    }, [fetchBundles, fetchTherapyBundlesData, fetchProducts, fetchTherapies]);
 
     useEffect(() => {
         fetchAllStores().then(setStores).catch(() => {});
@@ -101,6 +123,11 @@ const ProductBundleManagement: React.FC = () => {
         setShowTherapyModal(true);
     };
 
+    const handleShowTherapyBundleModal = () => {
+        setEditingTherapyBundle(null);
+        setShowTherapyBundleModal(true);
+    };
+
     const handleShowProductModal = () => {
         setEditingProduct(null);
         setShowProductModal(true);
@@ -116,10 +143,21 @@ const ProductBundleManagement: React.FC = () => {
         setShowTherapyModal(true);
     };
 
+    const handleShowEditTherapyBundleModal = (bundle: TherapyBundle) => {
+        setEditingTherapyBundle(bundle);
+        setShowTherapyBundleModal(true);
+    };
+
     const handleCloseTherapyModal = () => {
         setShowTherapyModal(false);
         setEditingTherapy(null);
         fetchTherapies();
+    };
+
+    const handleCloseTherapyBundleModal = () => {
+        setShowTherapyBundleModal(false);
+        setEditingTherapyBundle(null);
+        fetchTherapyBundlesData();
     };
 
     const handleCloseProductModal = () => {
@@ -165,9 +203,26 @@ const ProductBundleManagement: React.FC = () => {
         setTimeout(() => setSuccessMessage(null), 3000);
     };
 
+    const handleDeleteTherapyBundle = async (bundleId: number) => {
+        setSuccessMessage(null);
+        try {
+            await deleteTherapyBundle(bundleId);
+            setSuccessMessage('刪除成功！');
+            fetchTherapyBundlesData();
+        } catch {
+            setError('刪除失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
     const filteredBundles = bundles.filter(bundle =>
         bundle.bundle_code.toLowerCase().includes(bundleSearch.toLowerCase()) ||
         bundle.name.toLowerCase().includes(bundleSearch.toLowerCase())
+    );
+
+    const filteredTherapyBundles = therapyBundles.filter(bundle =>
+        bundle.bundle_code.toLowerCase().includes(therapyBundleSearch.toLowerCase()) ||
+        bundle.name.toLowerCase().includes(therapyBundleSearch.toLowerCase())
     );
 
     const filteredProducts = products.filter(product =>
@@ -193,7 +248,14 @@ const ProductBundleManagement: React.FC = () => {
                             className="text-white px-4"
                             onClick={handleShowAddModal}
                         >
-                            新增組合
+                            新增產品組合
+                        </Button>
+                        <Button
+                            variant="info"
+                            className="text-white px-4"
+                            onClick={handleShowTherapyBundleModal}
+                        >
+                            新增療程組合
                         </Button>
                         <Button
                             variant="info"
@@ -217,8 +279,9 @@ const ProductBundleManagement: React.FC = () => {
             {successMessage && <Container><Alert variant="success">{successMessage}</Alert></Container>}
 
             <Container>
-                <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'bundle' | 'product' | 'therapy') || 'bundle')} className="mb-3">
-                    <Tab eventKey="bundle" title="組合" />
+                <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'bundle' | 'therapy_bundle' | 'product' | 'therapy') || 'bundle')} className="mb-3">
+                    <Tab eventKey="bundle" title="產品組合" />
+                    <Tab eventKey="therapy_bundle" title="療程組合" />
                     <Tab eventKey="product" title="產品" />
                     <Tab eventKey="therapy" title="療程" />
                 </Tabs>
@@ -271,6 +334,70 @@ const ProductBundleManagement: React.FC = () => {
                                                     onClick={() => {
                                                         if (window.confirm(`確定要刪除「${bundle.name}」嗎？`)) {
                                                             handleDelete(bundle.bundle_id);
+                                                        }
+                                                    }}
+                                                >
+                                                    刪除
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={6} className="text-center text-muted py-5">尚無資料</td></tr>
+                                )}
+                            </tbody>
+                        </Table>
+                    </>
+                )}
+
+                {activeTab === 'therapy_bundle' && (
+                    <>
+                        <Row className="mb-3">
+                            <Col xs={12} md={4}>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="輸入編號或組合名稱搜尋"
+                                    value={therapyBundleSearch}
+                                    onChange={(e) => setTherapyBundleSearch(e.target.value)}
+                                />
+                            </Col>
+                        </Row>
+                        <Table striped bordered hover responsive>
+                            <thead>
+                                <tr>
+                                    <th>編號</th>
+                                    <th>項目 (組合名稱)</th>
+                                    <th>組合內容</th>
+                                    <th>限定分店</th>
+                                    <th>售價</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {therapyBundleLoading ? (
+                                    <tr><td colSpan={5} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                ) : filteredTherapyBundles.length > 0 ? (
+                                    filteredTherapyBundles.map(bundle => (
+                                        <tr key={bundle.bundle_id}>
+                                            <td className="align-middle">{bundle.bundle_code}</td>
+                                            <td className="align-middle">{bundle.name}</td>
+                                            <td className="align-middle">{bundle.bundle_contents || '---'}</td>
+                                            <td className="align-middle">
+                                                {bundle.visible_store_ids && bundle.visible_store_ids.length > 0
+                                                    ? bundle.visible_store_ids
+                                                        .map(id => stores.find(s => s.store_id === id)?.store_name || id)
+                                                        .join(', ')
+                                                    : '---'}
+                                            </td>
+                                            <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
+                                            <td className="align-middle">
+                                                <Button variant="link" onClick={() => handleShowEditTherapyBundleModal(bundle)}>修改</Button>
+                                                <Button
+                                                    variant="link"
+                                                    className="text-danger"
+                                                    onClick={() => {
+                                                        if (window.confirm(`確定要刪除「${bundle.name}」嗎？`)) {
+                                                            handleDeleteTherapyBundle(bundle.bundle_id);
                                                         }
                                                     }}
                                                 >
@@ -407,6 +534,12 @@ const ProductBundleManagement: React.FC = () => {
                 onHide={handleCloseModal}
                 onSaveSuccess={fetchBundles}
                 editingBundle={editingBundle}
+            />
+            <TherapyBundleModal
+                show={showTherapyBundleModal}
+                onHide={handleCloseTherapyBundleModal}
+                onSaveSuccess={fetchTherapyBundlesData}
+                editingBundle={editingTherapyBundle}
             />
             <AddTherapyModal
                 show={showTherapyModal}
