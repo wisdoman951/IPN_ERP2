@@ -9,7 +9,7 @@ export interface SalesOrderItemData {
     product_id?: number | null;
     therapy_id?: number | null;
     item_description: string;
-    item_type: 'Product' | 'Therapy';
+    item_type: 'Product' | 'Therapy' | 'ProductBundle' | 'TherapyBundle';
     item_code?: string;
     unit: string;
     unit_price: number;
