@@ -15,24 +15,33 @@ def _validate_item_ids(cursor, product_id: int | None, therapy_id: int | None):
     """
     bundle_id = None
     if product_id is not None:
-        cursor.execute("SELECT product_id FROM product WHERE product_id = %s", (product_id,))
-        if cursor.fetchone() is None:
+        cursor.execute("SELECT product_id, status FROM product WHERE product_id = %s", (product_id,))
+        row = cursor.fetchone()
+        if row is None:
             cursor.execute(
-                "SELECT bundle_id FROM product_bundles WHERE bundle_id = %s",
+                "SELECT bundle_id, status FROM product_bundles WHERE bundle_id = %s",
                 (product_id,),
             )
             bundle_row = cursor.fetchone()
             if bundle_row is None:
                 raise ValueError(f"產品或組合ID {product_id} 不存在")
+            if bundle_row.get('status') != 'PUBLISHED':
+                raise ValueError("品項已下架")
             bundle_id = product_id
             product_id = None
+        else:
+            if row.get('status') != 'PUBLISHED':
+                raise ValueError("品項已下架")
     if therapy_id is not None:
         cursor.execute(
-            "SELECT therapy_id FROM therapy WHERE therapy_id = %s",
+            "SELECT therapy_id, status FROM therapy WHERE therapy_id = %s",
             (therapy_id,),
         )
-        if cursor.fetchone() is None:
+        t_row = cursor.fetchone()
+        if t_row is None:
             raise ValueError(f"療程ID {therapy_id} 不存在")
+        if t_row.get('status') != 'PUBLISHED':
+            raise ValueError("品項已下架")
     return product_id, therapy_id, bundle_id
 
 def connect_to_db():

@@ -86,7 +86,7 @@ export const updateProduct = async (
   }
 };
 
-export const deleteProduct = async (productId: number) => {
+export const deleteProduct = async (productId: number, account: string) => {
   try {
     const token = localStorage.getItem("token");
     const response = await axios.delete(`${API_URL}/${productId}`, {
@@ -95,10 +95,53 @@ export const deleteProduct = async (productId: number) => {
         "X-Store-ID": "1",
         "X-Store-Level": "admin",
       },
+      params: { deleted_by: account },
     });
     return response.data;
   } catch (error) {
     console.error("刪除產品失敗：", error);
+    throw error;
+  }
+};
+
+export const publishProduct = async (productId: number) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.patch(
+      `${base_url}/items/product/${productId}/publish`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Store-ID": "1",
+          "X-Store-Level": "admin",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("上架產品失敗：", error);
+    throw error;
+  }
+};
+
+export const unpublishProduct = async (productId: number) => {
+  try {
+    const token = localStorage.getItem("token");
+    const response = await axios.patch(
+      `${base_url}/items/product/${productId}/unpublish`,
+      {},
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "X-Store-ID": "1",
+          "X-Store-Level": "admin",
+        },
+      }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("下架產品失敗：", error);
     throw error;
   }
 };

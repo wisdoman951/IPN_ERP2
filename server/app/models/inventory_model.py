@@ -546,12 +546,13 @@ def get_product_list():
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT 
-                    p.product_id AS Product_ID, 
-                    p.name AS ProductName, 
-                    p.code AS ProductCode, 
+                SELECT
+                    p.product_id AS Product_ID,
+                    p.name AS ProductName,
+                    p.code AS ProductCode,
                     p.price AS ProductPrice
                 FROM product p
+                WHERE p.status = 'PUBLISHED'
                 ORDER BY p.name
             """
             cursor.execute(query)
