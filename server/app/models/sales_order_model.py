@@ -59,11 +59,27 @@ def create_sales_order(order_data: dict):
                 )
             """
             for item in items_data:
+                # 讀取與清理產品 / 療程 ID，避免傳入空字串或無效值
+                raw_product_id = item.get("product_id")
+                raw_therapy_id = item.get("therapy_id")
+                product_id = int(raw_product_id) if raw_product_id else None
+                therapy_id = int(raw_therapy_id) if raw_therapy_id else None
+
+                # 若提供了 product_id 或 therapy_id，先驗證其在資料庫中是否存在
+                if product_id is not None:
+                    cursor.execute("SELECT product_id FROM product WHERE product_id = %s", (product_id,))
+                    if cursor.fetchone() is None:
+                        raise ValueError(f"產品ID {product_id} 不存在")
+                if therapy_id is not None:
+                    cursor.execute("SELECT therapy_id FROM therapy WHERE therapy_id = %s", (therapy_id,))
+                    if cursor.fetchone() is None:
+                        raise ValueError(f"療程ID {therapy_id} 不存在")
+
                 # 確保所有必要的鍵都存在，即使其值為 None
                 item_for_sql = {
                     "order_id": order_id,
-                    "product_id": item.get("product_id"),
-                    "therapy_id": item.get("therapy_id"),
+                    "product_id": product_id,
+                    "therapy_id": therapy_id,
                     "item_description": item.get("item_description"),
                     "item_type": item.get("item_type"),
                     "unit": item.get("unit"),
@@ -82,6 +98,11 @@ def create_sales_order(order_data: dict):
         error_msg = f"後端處理錯誤：提交的數據中缺少必要的鍵 '{ke.args[0]}'"
         print(f"--- [MODEL] {error_msg} ---")
         traceback.print_exc()
+        return {"success": False, "error": error_msg}
+    except ValueError as ve:
+        if conn: conn.rollback()
+        error_msg = str(ve)
+        print(f"--- [MODEL] {error_msg} ---")
         return {"success": False, "error": error_msg}
     except Exception as e:
         if conn: conn.rollback()
@@ -139,10 +160,24 @@ def update_sales_order(order_id: int, order_data: dict):
                 )
             """
             for item in order_data.get("items", []):
+                raw_product_id = item.get("product_id")
+                raw_therapy_id = item.get("therapy_id")
+                product_id = int(raw_product_id) if raw_product_id else None
+                therapy_id = int(raw_therapy_id) if raw_therapy_id else None
+
+                if product_id is not None:
+                    cursor.execute("SELECT product_id FROM product WHERE product_id = %s", (product_id,))
+                    if cursor.fetchone() is None:
+                        raise ValueError(f"產品ID {product_id} 不存在")
+                if therapy_id is not None:
+                    cursor.execute("SELECT therapy_id FROM therapy WHERE therapy_id = %s", (therapy_id,))
+                    if cursor.fetchone() is None:
+                        raise ValueError(f"療程ID {therapy_id} 不存在")
+
                 item_for_sql = {
                     "order_id": order_id,
-                    "product_id": item.get("product_id"),
-                    "therapy_id": item.get("therapy_id"),
+                    "product_id": product_id,
+                    "therapy_id": therapy_id,
                     "item_description": item.get("item_description"),
                     "item_type": item.get("item_type"),
                     "unit": item.get("unit"),
@@ -156,6 +191,11 @@ def update_sales_order(order_id: int, order_data: dict):
 
         conn.commit()
         return {"success": True, "order_id": order_id, "message": "銷售單更新成功"}
+    except ValueError as ve:
+        if conn:
+            conn.rollback()
+        print(f"--- [MODEL] {ve} ---")
+        return {"success": False, "error": str(ve)}
     except Exception as e:
         if conn:
             conn.rollback()
