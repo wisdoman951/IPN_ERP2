@@ -79,8 +79,16 @@ const AddTherapySell: React.FC = () => {
     };
 
     const restoreState = () => {
-      const formStateData = localStorage.getItem('addTherapySellFormState');
-      const storedPkgs = localStorage.getItem('selectedTherapyPackagesWithSessions');
+      let formStateData: string | null = null;
+      let storedPkgs: string | null = null;
+
+      if (!isEditMode) {
+        formStateData = localStorage.getItem('addTherapySellFormState');
+        storedPkgs = localStorage.getItem('selectedTherapyPackagesWithSessions');
+      } else {
+        localStorage.removeItem('addTherapySellFormState');
+        localStorage.removeItem('selectedTherapyPackagesWithSessions');
+      }
 
       if (formStateData) {
         try {
