@@ -59,6 +59,20 @@ def delete_product(product_id: int):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            # 先取得產品名稱，保存到銷售紀錄中以供日後查詢
+            cursor.execute(
+                "SELECT name FROM product WHERE product_id=%s",
+                (product_id,),
+            )
+            result = cursor.fetchone()
+            product_name = result["name"] if result else None
+
+            if product_name:
+                cursor.execute(
+                    "UPDATE product_sell SET product_name = %s WHERE product_id=%s",
+                    (product_name, product_id),
+                )
+
             # 將 product_sell 中引用此產品的紀錄設為 NULL，以保留銷售歷史
             cursor.execute(
                 "UPDATE product_sell SET product_id = NULL WHERE product_id=%s",

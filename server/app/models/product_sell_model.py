@@ -15,7 +15,8 @@ def get_all_product_sells(store_id=None):
             SELECT
                 ps.product_sell_id, ps.member_id, m.member_code AS member_code,
                 m.name as member_name, ps.store_id,
-                st.store_name as store_name, ps.product_id, p.name as product_name,
+                st.store_name as store_name, ps.product_id,
+                COALESCE(p.name, ps.product_name) as product_name,
                 ps.quantity, ps.unit_price, ps.discount_amount, ps.final_price,
                 ps.payment_method, sf.name as staff_name, ps.sale_category, ps.date, ps.note
             FROM product_sell ps
@@ -44,7 +45,7 @@ def get_product_sell_by_id(sell_id: int):
         query = """
             SELECT
                 ps.*, m.member_code AS member_code, m.name AS member_name,
-                st.store_name, p.name AS product_name, sf.name AS staff_name
+                st.store_name, COALESCE(p.name, ps.product_name) AS product_name, sf.name AS staff_name
             FROM product_sell ps
             LEFT JOIN member m ON ps.member_id = m.member_id
             LEFT JOIN store st ON ps.store_id = st.store_id
@@ -533,7 +534,7 @@ def export_product_sells(store_id=None):
             SELECT
                 ps.product_sell_id, ps.member_id, m.member_code AS member_code,
                 m.name as member_name, ps.store_id,
-                st.store_name, ps.product_id, p.name as product_name, ps.quantity,
+                st.store_name, ps.product_id, COALESCE(p.name, ps.product_name) as product_name, ps.quantity,
                 ps.unit_price, ps.discount_amount, ps.final_price, ps.payment_method,
                 sf.name as staff_name, ps.sale_category, DATE_FORMAT(ps.date, '%%Y-%%m-%%d') as date, ps.note
             FROM product_sell ps
@@ -562,7 +563,7 @@ def search_product_sells(keyword, store_id=None):
             SELECT
                 ps.product_sell_id, ps.member_id, m.member_code AS member_code,
                 m.name as member_name, ps.store_id,
-                st.store_name, ps.product_id, p.name as product_name, ps.quantity,
+                st.store_name, ps.product_id, COALESCE(p.name, ps.product_name) as product_name, ps.quantity,
                 ps.unit_price, ps.discount_amount, ps.final_price, ps.payment_method,
                 sf.name as staff_name, ps.sale_category, DATE_FORMAT(ps.date, '%%Y-%%m-%%d') as date, ps.note
             FROM product_sell ps

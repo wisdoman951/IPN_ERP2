@@ -26,6 +26,13 @@ def stub_app_module(monkeypatch):
     utils_module = types.ModuleType("app.utils")
     utils_module.get_store_based_where_condition = lambda *args, **kwargs: ""
 
+    pymysql_module = types.ModuleType("pymysql")
+    cursors_module = types.ModuleType("pymysql.cursors")
+    cursors_module.DictCursor = object
+    pymysql_module.cursors = cursors_module
+    sys.modules["pymysql"] = pymysql_module
+    sys.modules["pymysql.cursors"] = cursors_module
+
     sys.modules["app"] = app_module
     sys.modules["app.config"] = config_module
     sys.modules["app.utils"] = utils_module
@@ -33,6 +40,8 @@ def stub_app_module(monkeypatch):
     sys.modules.pop("app.config", None)
     sys.modules.pop("app.utils", None)
     sys.modules.pop("app", None)
+    sys.modules.pop("pymysql", None)
+    sys.modules.pop("pymysql.cursors", None)
 
 
 class FakeCursor:
@@ -43,6 +52,9 @@ class FakeCursor:
         self.queries.append(sql.strip())
         # 模擬刪除成功
         return 1
+
+    def fetchone(self):
+        return {"name": "Mock"}
 
     def __enter__(self):
         return self
@@ -105,9 +117,11 @@ def test_delete_product_preserves_sales(monkeypatch):
     product_model.delete_product(1)
 
     queries = fake_conn.cursor_obj.queries
-    # 應先將 product_sell 的 product_id 設為 NULL，然後刪除 product
-    assert queries[0].startswith("UPDATE product_sell SET product_id = NULL"), "product sells not preserved"
-    assert queries[1].startswith("DELETE FROM product"), "product not deleted"
+    # 應先取得名稱並保存，接著將 product_id 設為 NULL，最後刪除產品
+    assert queries[0].startswith("SELECT name FROM product"), "product name not fetched"
+    assert queries[1].startswith("UPDATE product_sell SET product_name"), "product name not archived"
+    assert queries[2].startswith("UPDATE product_sell SET product_id = NULL"), "product sells not preserved"
+    assert queries[3].startswith("DELETE FROM product"), "product not deleted"
 
 
 def test_delete_therapy_preserves_sales(monkeypatch):
@@ -119,7 +133,8 @@ def test_delete_therapy_preserves_sales(monkeypatch):
     therapy_model.delete_therapy(1)
 
     queries = fake_conn.cursor_obj.queries
-    # 應先將 therapy_sell 的 therapy_id 設為 NULL，然後刪除 therapy
-    assert queries[0].startswith("UPDATE therapy_sell SET therapy_id = NULL"), "therapy sells not preserved"
-    assert queries[1].startswith("DELETE FROM therapy"), "therapy not deleted"
-
+    # 應先取得療程名稱並保存，接著將 therapy_id 設為 NULL，最後刪除療程
+    assert queries[0].startswith("SELECT name FROM therapy"), "therapy name not fetched"
+    assert queries[1].startswith("UPDATE therapy_sell SET therapy_name"), "therapy name not archived"
+    assert queries[2].startswith("UPDATE therapy_sell SET therapy_id = NULL"), "therapy sells not preserved"
+    assert queries[3].startswith("DELETE FROM therapy"), "therapy not deleted"

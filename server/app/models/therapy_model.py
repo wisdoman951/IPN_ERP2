@@ -548,6 +548,20 @@ def delete_therapy(therapy_id: int):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            # 先取得療程名稱，保存於銷售紀錄中
+            cursor.execute(
+                "SELECT name FROM therapy WHERE therapy_id=%s",
+                (therapy_id,),
+            )
+            result = cursor.fetchone()
+            therapy_name = result["name"] if result else None
+
+            if therapy_name:
+                cursor.execute(
+                    "UPDATE therapy_sell SET therapy_name = %s WHERE therapy_id=%s",
+                    (therapy_name, therapy_id),
+                )
+
             # 先將 therapy_sell 中引用此療程的紀錄設為 NULL，避免銷售紀錄被刪除
             cursor.execute(
                 "UPDATE therapy_sell SET therapy_id = NULL WHERE therapy_id=%s",
