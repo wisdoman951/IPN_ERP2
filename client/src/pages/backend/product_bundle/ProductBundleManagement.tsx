@@ -458,7 +458,7 @@ const ProductBundleManagement: React.FC = () => {
                                                 {bundleStatus === 'PUBLISHED' ? (
                                                     <Button
                                                         variant="link"
-                                                        className="text-warning"
+                                                        className="text-orange"
                                                         onClick={() => {
                                                             if (window.confirm(`確定要下架「${bundle.name}」嗎？`)) {
                                                                 handleUnpublishBundle(bundle.bundle_id);
@@ -553,7 +553,7 @@ const ProductBundleManagement: React.FC = () => {
                                                 {therapyBundleStatus === 'PUBLISHED' ? (
                                                     <Button
                                                         variant="link"
-                                                        className="text-warning"
+                                                        className="text-orange"
                                                         onClick={() => {
                                                             if (window.confirm(`確定要下架「${bundle.name}」嗎？`)) {
                                                                 handleUnpublishTherapyBundle(bundle.bundle_id);
@@ -638,7 +638,7 @@ const ProductBundleManagement: React.FC = () => {
                                                 {productStatus === 'PUBLISHED' ? (
                                                     <Button
                                                         variant="link"
-                                                        className="text-warning"
+                                                        className="text-orange"
                                                         onClick={() => {
                                                             if (window.confirm(`確定要下架「${product.product_name}」嗎？`)) {
                                                                 handleUnpublishProduct(product.product_id);
@@ -723,7 +723,7 @@ const ProductBundleManagement: React.FC = () => {
                                                 {therapyStatus === 'PUBLISHED' ? (
                                                     <Button
                                                         variant="link"
-                                                        className="text-warning"
+                                                        className="text-orange"
                                                         onClick={() => {
                                                             if (window.confirm(`確定要下架「${therapy.name}」嗎？`)) {
                                                                 handleUnpublishTherapy(therapy.therapy_id);
