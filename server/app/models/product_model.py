@@ -55,10 +55,31 @@ def update_product(product_id: int, data: dict):
 
 
 def delete_product(product_id: int):
-    """刪除產品資料"""
+    """刪除產品資料並保留相關的銷售紀錄"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            # 先取得產品名稱，保存到銷售紀錄中以供日後查詢
+            cursor.execute(
+                "SELECT name FROM product WHERE product_id=%s",
+                (product_id,),
+            )
+            result = cursor.fetchone()
+            product_name = result["name"] if result else None
+
+            if product_name:
+                cursor.execute(
+                    "UPDATE product_sell SET product_name = %s WHERE product_id=%s",
+                    (product_name, product_id),
+                )
+
+            # 將 product_sell 中引用此產品的紀錄設為 NULL，以保留銷售歷史
+            cursor.execute(
+                "UPDATE product_sell SET product_id = NULL WHERE product_id=%s",
+                (product_id,),
+            )
+
+            # 再刪除產品本身
             cursor.execute("DELETE FROM product WHERE product_id=%s", (product_id,))
         conn.commit()
     except Exception as e:

@@ -381,6 +381,7 @@ CREATE TABLE `product_sell` (
   `staff_id` int DEFAULT NULL,
   `store_id` int NOT NULL,
   `product_id` int DEFAULT NULL,
+  `product_name` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `date` date NOT NULL,
   `quantity` int NOT NULL,
   `unit_price` decimal(10,2) NOT NULL,
@@ -596,10 +597,11 @@ CREATE TABLE `therapy_record` (
 DROP TABLE IF EXISTS `therapy_sell`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `therapy_sell` (
-  `therapy_sell_id` int NOT NULL AUTO_INCREMENT,
-  `therapy_id` int DEFAULT NULL,
-  `member_id` int DEFAULT NULL,
+  CREATE TABLE `therapy_sell` (
+    `therapy_sell_id` int NOT NULL AUTO_INCREMENT,
+    `therapy_id` int DEFAULT NULL,
+    `therapy_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+    `member_id` int DEFAULT NULL,
   `store_id` int DEFAULT NULL,
   `staff_id` int DEFAULT NULL,
   `date` date DEFAULT NULL,
