@@ -320,7 +320,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    CASE WHEN ps.note LIKE '%[bundle:%' THEN '套組銷售' ELSE NULL END AS Category
+                    CASE WHEN ps.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE NULL END AS Category
                 FROM product_sell ps
                 LEFT JOIN product p ON ps.product_id = p.product_id
                 LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
@@ -370,7 +370,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    CASE WHEN ts.note LIKE '%[bundle:%' THEN '套組銷售' ELSE NULL END AS Category
+                    CASE WHEN ts.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE NULL END AS Category
                 FROM therapy_sell ts
                 LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
                 LEFT JOIN staff sf ON ts.staff_id = sf.staff_id
