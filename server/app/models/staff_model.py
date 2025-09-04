@@ -680,50 +680,35 @@ def update_staff(staff_id, data):
     return success
 
 def delete_staff(staff_id):
-    """刪除員工"""
+    """
+    刪除員工帳號
+
+    原本的刪除流程會一併移除員工以及相關的外鍵資料，
+    但在員工仍被其他表格參考時會觸發外鍵限制錯誤。
+    目前需求改為僅將帳號與密碼設為 NULL，保留其餘員工資料。
+    """
     connection = connect_to_db()
     success = False
-    
+
     try:
         with connection.cursor() as cursor:
-            # 0. 刪除對應的登入帳號資料 (若存在)
+            # 移除 store_account 中對應的登入資料（若存在）
             cursor.execute("DELETE FROM store_account WHERE account = %s", (str(staff_id),))
 
-            # 1. 取得外鍵 ID
+            # 將員工表中的 account、password 設為 NULL
             cursor.execute(
-                "SELECT family_information_id, emergency_contact_id, work_experience_id, hiring_information_id FROM staff WHERE staff_id = %s",
+                "UPDATE staff SET account = NULL, password = NULL WHERE staff_id = %s",
                 (staff_id,),
             )
-            fk_ids = cursor.fetchone()
 
-            # 2. 刪除基本資料
-            cursor.execute("DELETE FROM staff WHERE staff_id = %s", (staff_id,))
+            if cursor.rowcount == 0:
+                # 若無資料被更新，可能是帳號原本就為 NULL；確認員工是否存在
+                cursor.execute("SELECT 1 FROM staff WHERE staff_id = %s", (staff_id,))
+                success = cursor.fetchone() is not None
+            else:
+                success = True
 
-            # 3. 刪除相關表格資料
-            if fk_ids:
-                if fk_ids.get("family_information_id"):
-                    cursor.execute(
-                        "DELETE FROM family_information WHERE family_information_id = %s",
-                        (fk_ids["family_information_id"],),
-                    )
-                if fk_ids.get("emergency_contact_id"):
-                    cursor.execute(
-                        "DELETE FROM emergency_contact WHERE emergency_contact_id = %s",
-                        (fk_ids["emergency_contact_id"],),
-                    )
-                if fk_ids.get("work_experience_id"):
-                    cursor.execute(
-                        "DELETE FROM work_experience WHERE work_experience_id = %s",
-                        (fk_ids["work_experience_id"],),
-                    )
-                if fk_ids.get("hiring_information_id"):
-                    cursor.execute(
-                        "DELETE FROM hiring_information WHERE hiring_information_id = %s",
-                        (fk_ids["hiring_information_id"],),
-                    )
-            
             connection.commit()
-            success = True
     except Exception as e:
         if connection:
             connection.rollback()
@@ -731,7 +716,7 @@ def delete_staff(staff_id):
     finally:
         if connection:
             connection.close()
-    
+
     return success
 
 def get_store_list():
@@ -797,7 +782,7 @@ def get_all_stores():
             conn.close()
 
 def get_all_staff_with_accounts():
-    """獲取所有員工及其帳號資訊，用於總部管理頁面"""
+    """獲取所有已建立帳號的員工資訊，用於總部管理頁面"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -805,6 +790,7 @@ def get_all_staff_with_accounts():
             SELECT s.staff_id, s.name, s.phone, s.account, s.password, s.permission, s.reset_requested, st.store_name
             FROM staff s
             LEFT JOIN store st ON s.store_id = st.store_id
+            WHERE s.account IS NOT NULL
             ORDER BY s.staff_id DESC
             """
             cursor.execute(query)
@@ -814,7 +800,7 @@ def get_all_staff_with_accounts():
             conn.close()
 
 def search_staff_with_accounts(keyword):
-    """搜尋員工及其帳號資訊"""
+    """搜尋已建立帳號的員工資訊"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -823,7 +809,9 @@ def search_staff_with_accounts(keyword):
             SELECT s.staff_id, s.name, s.phone, s.account, s.password, s.permission, s.reset_requested, st.store_name
             FROM staff s
             LEFT JOIN store st ON s.store_id = st.store_id
-            WHERE s.name LIKE %s OR s.phone LIKE %s OR s.account LIKE %s OR CAST(s.staff_id AS CHAR) LIKE %s
+            WHERE s.account IS NOT NULL AND (
+                s.name LIKE %s OR s.phone LIKE %s OR s.account LIKE %s OR CAST(s.staff_id AS CHAR) LIKE %s
+            )
             ORDER BY s.staff_id DESC
             """
             cursor.execute(query, (like_keyword, like_keyword, like_keyword, like_keyword))

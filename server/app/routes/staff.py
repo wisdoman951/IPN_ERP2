@@ -292,13 +292,13 @@ def update_staff_route(staff_id):
 @staff_bp.route("/delete/<int:staff_id>", methods=["DELETE"])
 @auth_required
 def delete_staff_route(staff_id):
-    """刪除員工"""
+    """刪除員工帳號（將帳號與密碼設為 NULL）"""
     try:
         success = delete_staff(staff_id)
         if success:
-            return jsonify({"message": "員工刪除成功"}), 200
+            return jsonify({"message": "員工帳號刪除成功"}), 200
         else:
-            return jsonify({"error": "員工刪除失敗"}), 400
+            return jsonify({"error": "員工帳號刪除失敗"}), 400
     except Exception as e:
         print(f"刪除員工失敗: {e}")
         return jsonify({"error": str(e)}), 500
