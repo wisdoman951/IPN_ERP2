@@ -325,7 +325,9 @@ def get_therapy_list():
     """提供給前端下拉選單使用的療程列表"""
     try:
         status = request.args.get("status", 'PUBLISHED')
-        therapy_list = get_all_therapies_for_dropdown(status)
+        user = get_user_from_token(request)
+        store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
+        therapy_list = get_all_therapies_for_dropdown(status, store_id)
         return jsonify(therapy_list)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

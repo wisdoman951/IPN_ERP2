@@ -1,4 +1,5 @@
 import pymysql
+import json
 from app.config import DB_CONFIG
 from pymysql.cursors import DictCursor
 
@@ -14,13 +15,14 @@ def create_product(data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "INSERT INTO product (code, name, price, status) "
-                "VALUES (%s, %s, %s, 'PUBLISHED')"
+                "INSERT INTO product (code, name, price, visible_store_ids, status) "
+                "VALUES (%s, %s, %s, %s, 'PUBLISHED')"
             )
             cursor.execute(query, (
                 data.get("code"),
                 data.get("name"),
                 data.get("price"),
+                json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
             ))
             product_id = conn.insert_id()
         conn.commit()
@@ -38,12 +40,13 @@ def update_product(product_id: int, data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "UPDATE product SET code=%s, name=%s, price=%s WHERE product_id=%s"
+                "UPDATE product SET code=%s, name=%s, price=%s, visible_store_ids=%s WHERE product_id=%s"
             )
             cursor.execute(query, (
                 data.get("code"),
                 data.get("name"),
                 data.get("price"),
+                json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
                 product_id,
             ))
         conn.commit()

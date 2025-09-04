@@ -620,18 +620,26 @@ const ProductBundleManagement: React.FC = () => {
                                 <tr>
                                     <th>產品編號</th>
                                     <th>項目名稱</th>
+                                    <th>限定分店</th>
                                     <th>售價</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {productLoading ? (
-                                    <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                    <tr><td colSpan={5} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                                 ) : filteredProducts.length > 0 ? (
                                     filteredProducts.map(product => (
                                         <tr key={product.product_id}>
                                             <td className="align-middle">{product.product_code}</td>
                                             <td className="align-middle">{product.product_name}</td>
+                                            <td className="align-middle">
+                                                {product.visible_store_ids && product.visible_store_ids.length > 0
+                                                    ? product.visible_store_ids
+                                                        .map(id => stores.find(s => s.store_id === id)?.store_name || id)
+                                                        .join(', ')
+                                                    : '---'}
+                                            </td>
                                             <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditProductModal(product)}>修改</Button>
@@ -675,7 +683,7 @@ const ProductBundleManagement: React.FC = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan={4} className="text-center text-muted py-5">尚無資料</td></tr>
+                                    <tr><td colSpan={5} className="text-center text-muted py-5">尚無資料</td></tr>
                                 )}
                             </tbody>
                         </Table>
@@ -705,18 +713,26 @@ const ProductBundleManagement: React.FC = () => {
                                 <tr>
                                     <th>療程編號</th>
                                     <th>項目名稱</th>
+                                    <th>限定分店</th>
                                     <th>售價</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {therapyLoading ? (
-                                    <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                    <tr><td colSpan={5} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                                 ) : filteredTherapies.length > 0 ? (
                                     filteredTherapies.map(therapy => (
                                         <tr key={therapy.therapy_id}>
                                             <td className="align-middle">{therapy.code}</td>
                                             <td className="align-middle">{therapy.name}</td>
+                                            <td className="align-middle">
+                                                {therapy.visible_store_ids && therapy.visible_store_ids.length > 0
+                                                    ? therapy.visible_store_ids
+                                                        .map(id => stores.find(s => s.store_id === id)?.store_name || id)
+                                                        .join(', ')
+                                                    : '---'}
+                                            </td>
                                             <td className="align-middle">{`$${Number(therapy.price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditTherapyModal(therapy)}>修改</Button>
@@ -760,7 +776,7 @@ const ProductBundleManagement: React.FC = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan={4} className="text-center text-muted py-5">尚無資料</td></tr>
+                                    <tr><td colSpan={5} className="text-center text-muted py-5">尚無資料</td></tr>
                                 )}
                             </tbody>
                         </Table>
@@ -790,11 +806,13 @@ const ProductBundleManagement: React.FC = () => {
                 show={showTherapyModal}
                 onHide={handleCloseTherapyModal}
                 editingTherapy={editingTherapy}
+                stores={stores}
             />
             <AddProductModal
                 show={showProductModal}
                 onHide={handleCloseProductModal}
                 editingProduct={editingProduct}
+                stores={stores}
             />
         </>
     );

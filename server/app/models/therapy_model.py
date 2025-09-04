@@ -1,4 +1,5 @@
 import pymysql
+import json
 from datetime import date, datetime
 from app.config import DB_CONFIG
 from app.utils import get_store_based_where_condition
@@ -482,19 +483,32 @@ def delete_therapy_sell(sale_id):
     conn.commit()
     conn.close()
 
-def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED'):
+def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: int | None = None):
     """獲取所有療程的編號、名稱及價格，用於下拉選單。"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            sql = "SELECT therapy_id, code, name, price FROM therapy"
+            sql = "SELECT therapy_id, code, name, price, visible_store_ids FROM therapy"
             params = []
             if status:
                 sql += " WHERE status = %s"
                 params.append(status)
             sql += " ORDER BY name"
             cursor.execute(sql, tuple(params))
-            return cursor.fetchall()
+            result = cursor.fetchall()
+            filtered = []
+            for row in result:
+                store_ids = None
+                if row.get('visible_store_ids'):
+                    try:
+                        store_ids = json.loads(row['visible_store_ids'])
+                    except Exception:
+                        store_ids = None
+                if store_id is None or not store_ids or int(store_id) in store_ids:
+                    if store_ids is not None:
+                        row['visible_store_ids'] = store_ids
+                    filtered.append(row)
+            return filtered
     finally:
         conn.close()
 
@@ -505,14 +519,15 @@ def create_therapy(data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "INSERT INTO therapy (code, name, price, content, status) "
-                "VALUES (%s, %s, %s, %s, 'PUBLISHED')"
+                "INSERT INTO therapy (code, name, price, content, visible_store_ids, status) "
+                "VALUES (%s, %s, %s, %s, %s, 'PUBLISHED')"
             )
             cursor.execute(query, (
                 data.get("code"),
                 data.get("name"),
                 data.get("price"),
                 data.get("content", None),
+                json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
             ))
             therapy_id = conn.insert_id()
         conn.commit()
@@ -530,13 +545,14 @@ def update_therapy(therapy_id: int, data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "UPDATE therapy SET code=%s, name=%s, price=%s, content=%s WHERE therapy_id=%s"
+                "UPDATE therapy SET code=%s, name=%s, price=%s, content=%s, visible_store_ids=%s WHERE therapy_id=%s"
             )
             cursor.execute(query, (
                 data.get("code"),
                 data.get("name"),
                 data.get("price"),
                 data.get("content", None),
+                json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
                 therapy_id,
             ))
         conn.commit()
