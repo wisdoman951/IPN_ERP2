@@ -28,6 +28,8 @@ const ProductBundleManagement: React.FC = () => {
     const [stores, setStores] = useState<Store[]>([]);
     const [activeTab, setActiveTab] = useState<'bundle' | 'product' | 'therapy'>('bundle');
     const [bundleSearch, setBundleSearch] = useState('');
+    const [productSearch, setProductSearch] = useState('');
+    const [therapySearch, setTherapySearch] = useState('');
 
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
@@ -164,7 +166,18 @@ const ProductBundleManagement: React.FC = () => {
     };
 
     const filteredBundles = bundles.filter(bundle =>
+        bundle.bundle_code.toLowerCase().includes(bundleSearch.toLowerCase()) ||
         bundle.name.toLowerCase().includes(bundleSearch.toLowerCase())
+    );
+
+    const filteredProducts = products.filter(product =>
+        product.product_code.toLowerCase().includes(productSearch.toLowerCase()) ||
+        product.product_name.toLowerCase().includes(productSearch.toLowerCase())
+    );
+
+    const filteredTherapies = therapies.filter(therapy =>
+        therapy.code.toLowerCase().includes(therapySearch.toLowerCase()) ||
+        therapy.name.toLowerCase().includes(therapySearch.toLowerCase())
     );
 
     const content = (
@@ -216,7 +229,7 @@ const ProductBundleManagement: React.FC = () => {
                             <Col xs={12} md={4}>
                                 <Form.Control
                                     type="text"
-                                    placeholder="輸入組合名稱搜尋"
+                                    placeholder="輸入編號或組合名稱搜尋"
                                     value={bundleSearch}
                                     onChange={(e) => setBundleSearch(e.target.value)}
                                 />
@@ -275,87 +288,111 @@ const ProductBundleManagement: React.FC = () => {
                 )}
 
                 {activeTab === 'product' && (
-                    <Table striped bordered hover responsive>
-                        <thead>
-                            <tr>
-                                <th>產品編號</th>
-                                <th>項目名稱</th>
-                                <th>售價</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {productLoading ? (
-                                <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
-                            ) : products.length > 0 ? (
-                                products.map(product => (
-                                    <tr key={product.product_id}>
-                                        <td className="align-middle">{product.product_code}</td>
-                                        <td className="align-middle">{product.product_name}</td>
-                                        <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
-                                        <td className="align-middle">
-                                            <Button variant="link" onClick={() => handleShowEditProductModal(product)}>修改</Button>
-                                            <Button
-                                                variant="link"
-                                                className="text-danger"
-                                                onClick={() => {
-                                                    if (window.confirm(`確定要刪除「${product.product_name}」嗎？`)) {
-                                                        handleDeleteProduct(product.product_id);
-                                                    }
-                                                }}
-                                            >
-                                                刪除
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr><td colSpan={4} className="text-center text-muted py-5">尚無資料</td></tr>
-                            )}
-                        </tbody>
-                    </Table>
+                    <>
+                        <Row className="mb-3">
+                            <Col xs={12} md={4}>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="輸入產品編號或名稱搜尋"
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                />
+                            </Col>
+                        </Row>
+                        <Table striped bordered hover responsive>
+                            <thead>
+                                <tr>
+                                    <th>產品編號</th>
+                                    <th>項目名稱</th>
+                                    <th>售價</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {productLoading ? (
+                                    <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                ) : filteredProducts.length > 0 ? (
+                                    filteredProducts.map(product => (
+                                        <tr key={product.product_id}>
+                                            <td className="align-middle">{product.product_code}</td>
+                                            <td className="align-middle">{product.product_name}</td>
+                                            <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
+                                            <td className="align-middle">
+                                                <Button variant="link" onClick={() => handleShowEditProductModal(product)}>修改</Button>
+                                                <Button
+                                                    variant="link"
+                                                    className="text-danger"
+                                                    onClick={() => {
+                                                        if (window.confirm(`確定要刪除「${product.product_name}」嗎？`)) {
+                                                            handleDeleteProduct(product.product_id);
+                                                        }
+                                                    }}
+                                                >
+                                                    刪除
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={4} className="text-center text-muted py-5">尚無資料</td></tr>
+                                )}
+                            </tbody>
+                        </Table>
+                    </>
                 )}
 
                 {activeTab === 'therapy' && (
-                    <Table striped bordered hover responsive>
-                        <thead>
-                            <tr>
-                                <th>療程編號</th>
-                                <th>項目名稱</th>
-                                <th>售價</th>
-                                <th>操作</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {therapyLoading ? (
-                                <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
-                            ) : therapies.length > 0 ? (
-                                therapies.map(therapy => (
-                                    <tr key={therapy.therapy_id}>
-                                        <td className="align-middle">{therapy.code}</td>
-                                        <td className="align-middle">{therapy.name}</td>
-                                        <td className="align-middle">{`$${Number(therapy.price).toLocaleString()}`}</td>
-                                        <td className="align-middle">
-                                            <Button variant="link" onClick={() => handleShowEditTherapyModal(therapy)}>修改</Button>
-                                            <Button
-                                                variant="link"
-                                                className="text-danger"
-                                                onClick={() => {
-                                                    if (window.confirm(`確定要刪除「${therapy.name}」嗎？`)) {
-                                                        handleDeleteTherapy(therapy.therapy_id);
-                                                    }
-                                                }}
-                                            >
-                                                刪除
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                ))
-                            ) : (
-                                <tr><td colSpan={4} className="text-center text-muted py-5">尚無資料</td></tr>
-                            )}
-                        </tbody>
-                    </Table>
+                    <>
+                        <Row className="mb-3">
+                            <Col xs={12} md={4}>
+                                <Form.Control
+                                    type="text"
+                                    placeholder="輸入療程編號或名稱搜尋"
+                                    value={therapySearch}
+                                    onChange={(e) => setTherapySearch(e.target.value)}
+                                />
+                            </Col>
+                        </Row>
+                        <Table striped bordered hover responsive>
+                            <thead>
+                                <tr>
+                                    <th>療程編號</th>
+                                    <th>項目名稱</th>
+                                    <th>售價</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {therapyLoading ? (
+                                    <tr><td colSpan={4} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                ) : filteredTherapies.length > 0 ? (
+                                    filteredTherapies.map(therapy => (
+                                        <tr key={therapy.therapy_id}>
+                                            <td className="align-middle">{therapy.code}</td>
+                                            <td className="align-middle">{therapy.name}</td>
+                                            <td className="align-middle">{`$${Number(therapy.price).toLocaleString()}`}</td>
+                                            <td className="align-middle">
+                                                <Button variant="link" onClick={() => handleShowEditTherapyModal(therapy)}>修改</Button>
+                                                <Button
+                                                    variant="link"
+                                                    className="text-danger"
+                                                    onClick={() => {
+                                                        if (window.confirm(`確定要刪除「${therapy.name}」嗎？`)) {
+                                                            handleDeleteTherapy(therapy.therapy_id);
+                                                        }
+                                                    }}
+                                                >
+                                                    刪除
+                                                </Button>
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr><td colSpan={4} className="text-center text-muted py-5">尚無資料</td></tr>
+                                )}
+                            </tbody>
+                        </Table>
+                    </>
                 )}
             </Container>
         </>
