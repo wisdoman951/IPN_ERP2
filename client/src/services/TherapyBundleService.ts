@@ -83,9 +83,12 @@ export const updateTherapyBundle = async (bundleId: number, payload: unknown) =>
     }
 };
 
-export const deleteTherapyBundle = async (bundleId: number) => {
+export const deleteTherapyBundle = async (bundleId: number, account: string) => {
     try {
-        const response = await axios.delete(`${API_URL}/${bundleId}`, getAuthHeaders());
+        const response = await axios.delete(`${API_URL}/${bundleId}`, {
+            ...getAuthHeaders(),
+            params: { deleted_by: account }
+        });
         return response.data;
     } catch (error) {
         console.error("刪除療程組合失敗:", error);

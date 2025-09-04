@@ -201,7 +201,7 @@ export const updateTherapy = async (
     }
 };
 
-export const deleteTherapy = async (therapyId: number) => {
+export const deleteTherapy = async (therapyId: number, account: string) => {
     try {
         const token = localStorage.getItem("token");
         const response = await axios.delete(`${API_URL}/package/${therapyId}`, {
@@ -210,6 +210,7 @@ export const deleteTherapy = async (therapyId: number) => {
                 "X-Store-ID": "1",
                 "X-Store-Level": "admin",
             },
+            params: { deleted_by: account },
         });
     return response.data;
     } catch (error) {

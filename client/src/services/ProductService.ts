@@ -86,7 +86,7 @@ export const updateProduct = async (
   }
 };
 
-export const deleteProduct = async (productId: number) => {
+export const deleteProduct = async (productId: number, account: string) => {
   try {
     const token = localStorage.getItem("token");
     const response = await axios.delete(`${API_URL}/${productId}`, {
@@ -95,6 +95,7 @@ export const deleteProduct = async (productId: number) => {
         "X-Store-ID": "1",
         "X-Store-Level": "admin",
       },
+      params: { deleted_by: account },
     });
     return response.data;
   } catch (error) {

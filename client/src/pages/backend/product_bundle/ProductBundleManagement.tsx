@@ -170,10 +170,25 @@ const ProductBundleManagement: React.FC = () => {
         fetchProducts();
     };
 
+    const confirmDeletion = (): string | null => {
+        if (!window.confirm('是否確認要刪除產品資料，將一併刪除銷售資料！')) {
+            return null;
+        }
+        const account = localStorage.getItem('account');
+        const input = window.prompt('請輸入登入帳號以確認刪除');
+        if (!account || input !== account) {
+            alert('帳號驗證失敗，刪除已取消');
+            return null;
+        }
+        return account;
+    };
+
     const handleDelete = async (bundleId: number) => {
+        const account = confirmDeletion();
+        if (!account) return;
         setSuccessMessage(null); // 清除舊的成功訊息
         try {
-            await deleteBundle(bundleId);
+            await deleteBundle(bundleId, account);
             setSuccessMessage('刪除成功！');
             fetchBundles(); // 重新載入列表
         } catch {
@@ -184,9 +199,11 @@ const ProductBundleManagement: React.FC = () => {
     };
 
     const handleDeleteProduct = async (productId: number) => {
+        const account = confirmDeletion();
+        if (!account) return;
         setSuccessMessage(null);
         try {
-            await deleteProduct(productId);
+            await deleteProduct(productId, account);
             setSuccessMessage('刪除成功！');
             fetchProducts();
         } catch {
@@ -196,9 +213,11 @@ const ProductBundleManagement: React.FC = () => {
     };
 
     const handleDeleteTherapy = async (therapyId: number) => {
+        const account = confirmDeletion();
+        if (!account) return;
         setSuccessMessage(null);
         try {
-            await deleteTherapy(therapyId);
+            await deleteTherapy(therapyId, account);
             setSuccessMessage('刪除成功！');
             fetchTherapies();
         } catch {
@@ -208,9 +227,11 @@ const ProductBundleManagement: React.FC = () => {
     };
 
     const handleDeleteTherapyBundle = async (bundleId: number) => {
+        const account = confirmDeletion();
+        if (!account) return;
         setSuccessMessage(null);
         try {
-            await deleteTherapyBundle(bundleId);
+            await deleteTherapyBundle(bundleId, account);
             setSuccessMessage('刪除成功！');
             fetchTherapyBundlesData();
         } catch {

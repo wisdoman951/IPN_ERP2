@@ -112,9 +112,12 @@ export const updateBundle = async (bundleId: number, payload: unknown) => {
 /**
  * 刪除一個產品組合
  */
-export const deleteBundle = async (bundleId: number) => {
+export const deleteBundle = async (bundleId: number, account: string) => {
     try {
-        const response = await axios.delete(`${API_URL}/${bundleId}`, getAuthHeaders());
+        const response = await axios.delete(`${API_URL}/${bundleId}`, {
+            ...getAuthHeaders(),
+            params: { deleted_by: account }
+        });
         return response.data;
     } catch (error) {
         console.error("刪除組合失敗:", error);
