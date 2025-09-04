@@ -6,6 +6,7 @@ import traceback
 
 
 def _validate_item_ids(cursor, product_id: int | None, therapy_id: int | None):
+
     """Confirm provided product/bundle and therapy IDs exist.
 
     Returns a tuple of (sanitized_product_id, therapy_id, bundle_id).
@@ -195,7 +196,6 @@ def update_sales_order(order_id: int, order_data: dict):
                 note = item.get("note")
                 if bundle_id is not None:
                     note = f"{note or ''} [bundle:{bundle_id}]"
-
                 item_for_sql = {
                     "order_id": order_id,
                     "product_id": product_id,

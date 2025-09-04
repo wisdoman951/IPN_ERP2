@@ -41,7 +41,6 @@ import TherapyPackageSelection from "./pages/therapy/TherapyPackageSelection";
 import ProductSell from "./pages/product/ProductSell";
 import AddProductSell from "./pages/product/AddProductSell";
 import ProductSelection from "./pages/product/ProductSelection";
-import EditProductSell from './pages/product/EditProductSell'; 
 
 // Inventory
 import InventoryManagement from "./pages/inventory/InventoryManagement";
@@ -135,8 +134,8 @@ const App: React.FC = () => {
                     {/* Product */}
                     <Route path="/product-sell" element={<ProtectedRoute element={<ProductSell />} />} />
                     <Route path="/add-product-sell" element={<ProtectedRoute element={<AddProductSell />} />} />
+                    <Route path="/add-product-sell/:sellId" element={<ProtectedRoute element={<AddProductSell />} />} />
                     <Route path="/product-selection" element={<ProtectedRoute element={<ProductSelection />} />} />
-                    <Route path="/product-sell/edit/:sellId" element={<EditProductSell />} />
 
                     {/* Inventory */}
                     <Route path="/inventory" element={<ProtectedRoute element={<InventoryManagement />} />} />
