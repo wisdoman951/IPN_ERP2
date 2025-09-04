@@ -60,7 +60,7 @@ const TherapyPackageSelection: React.FC = () => {
                 const formState = JSON.parse(formStateData);
                 if (Array.isArray(formState.selectedTherapyPackages)) {
                     const initialMap = new Map<string, PackageInSelection>();
-                    formState.selectedTherapyPackages.forEach((pkgFromState: any) => {
+                    formState.selectedTherapyPackages.forEach((pkgFromState: PackageInSelection) => {
                         const key = pkgFromState.type === 'bundle'
                             ? `b-${pkgFromState.bundle_id}`
                             : `t-${pkgFromState.therapy_id}`;
@@ -106,13 +106,12 @@ const TherapyPackageSelection: React.FC = () => {
             const combined = [...packages, ...bundlePackages];
             setAllPackages(combined);
             setDisplayedPackages(combined.filter(pkg => pkg.type === activeTab));
-        } catch (err: any) {
-            setPageError(err.message || "載入療程套餐時發生嚴重錯誤");
+        } catch (err: unknown) {
+            setPageError((err as Error).message || "載入療程套餐時發生嚴重錯誤");
             setAllPackages([]); setDisplayedPackages([]);
         } finally { setLoading(false); }
     };
-
-    useEffect(() => { fetchPackages(); }, []);
+    useEffect(() => { fetchPackages(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     useEffect(() => {
         const fetchRemaining = async () => {
@@ -122,12 +121,12 @@ const TherapyPackageSelection: React.FC = () => {
             }
             try {
                 const res = await fetchRemainingSessionsBulk(memberId);
-                const dataMap = (res && res.data ? res.data : res) || {};
+                const dataMap = ((res && res.data ? res.data : res) || {}) as Record<string, unknown>;
                 const map = new Map<string, number>();
                 Object.entries(dataMap).forEach(([id, remaining]) => {
                     const numericId = Number(id);
-                    if (!isNaN(numericId) && remaining !== undefined) {
-                        map.set(`t-${numericId}`, Number(remaining as any));
+                    if (!isNaN(numericId) && typeof remaining === 'number') {
+                        map.set(`t-${numericId}`, remaining);
                     }
                 });
                 setRemainingMap(map);
@@ -247,9 +246,16 @@ const TherapyPackageSelection: React.FC = () => {
                                                     className="mb-2 mb-sm-0"
                                                     id={`pkg-select-${pkgKey}`}
                                                     label={
-                                                        <div style={{fontSize:'0.9rem'}}>
-                                                            <strong>{pkg.TherapyContent || pkg.TherapyName}</strong>
-                                                            <div><small className="text-muted">產品編號: {pkg.TherapyCode} / 單價: NT$ {Number(pkg.TherapyPrice ?? 0).toLocaleString()}</small></div>
+                                                        <div style={{ fontSize: '0.9rem' }}>
+                                                            <strong>{pkg.TherapyName || pkg.TherapyContent}</strong>
+                                                            {pkg.TherapyContent && pkg.TherapyContent !== pkg.TherapyName && (
+                                                                <div><small className="text-muted">{pkg.TherapyContent}</small></div>
+                                                            )}
+                                                            <div>
+                                                                <small className="text-muted">
+                                                                    產品編號: {pkg.TherapyCode} / 單價: NT$ {Number(pkg.TherapyPrice ?? 0).toLocaleString()}
+                                                                </small>
+                                                            </div>
                                                             {memberId && remainingMap.has(pkgKey) && (
                                                                 <div><small className="text-success">剩餘 {remainingMap.get(pkgKey)} 堂</small></div>
                                                             )}
