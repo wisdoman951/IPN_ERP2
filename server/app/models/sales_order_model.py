@@ -4,6 +4,36 @@ from app.config import DB_CONFIG
 from datetime import datetime
 import traceback
 
+
+def _validate_item_ids(cursor, product_id: int | None, therapy_id: int | None):
+    """Confirm provided product/bundle and therapy IDs exist.
+
+    Returns a tuple of (sanitized_product_id, therapy_id, bundle_id).
+    If the original product_id actually refers to a product bundle, the
+    sanitized product_id will be None and bundle_id will hold the original ID.
+    """
+    bundle_id = None
+    if product_id is not None:
+        cursor.execute("SELECT product_id FROM product WHERE product_id = %s", (product_id,))
+        if cursor.fetchone() is None:
+            cursor.execute(
+                "SELECT bundle_id FROM product_bundles WHERE bundle_id = %s",
+                (product_id,),
+            )
+            bundle_row = cursor.fetchone()
+            if bundle_row is None:
+                raise ValueError(f"產品或組合ID {product_id} 不存在")
+            bundle_id = product_id
+            product_id = None
+    if therapy_id is not None:
+        cursor.execute(
+            "SELECT therapy_id FROM therapy WHERE therapy_id = %s",
+            (therapy_id,),
+        )
+        if cursor.fetchone() is None:
+            raise ValueError(f"療程ID {therapy_id} 不存在")
+    return product_id, therapy_id, bundle_id
+
 def connect_to_db():
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
@@ -59,11 +89,23 @@ def create_sales_order(order_data: dict):
                 )
             """
             for item in items_data:
+                # 讀取與清理產品 / 療程 ID，避免傳入空字串或無效值
+                raw_product_id = item.get("product_id")
+                raw_therapy_id = item.get("therapy_id")
+                product_id = int(raw_product_id) if raw_product_id else None
+                therapy_id = int(raw_therapy_id) if raw_therapy_id else None
+
+                # 驗證提供的 ID 並取得清理後的結果
+                product_id, therapy_id, bundle_id = _validate_item_ids(cursor, product_id, therapy_id)
+                note = item.get("note")
+                if bundle_id is not None:
+                    note = f"{note or ''} [bundle:{bundle_id}]"
+
                 # 確保所有必要的鍵都存在，即使其值為 None
                 item_for_sql = {
                     "order_id": order_id,
-                    "product_id": item.get("product_id"),
-                    "therapy_id": item.get("therapy_id"),
+                    "product_id": product_id,
+                    "therapy_id": therapy_id,
                     "item_description": item.get("item_description"),
                     "item_type": item.get("item_type"),
                     "unit": item.get("unit"),
@@ -71,7 +113,7 @@ def create_sales_order(order_data: dict):
                     "quantity": item.get("quantity"),
                     "subtotal": item.get("subtotal"),
                     "category": item.get("category"),
-                    "note": item.get("note")
+                    "note": note
                 }
                 cursor.execute(item_query, item_for_sql)
         
@@ -82,6 +124,11 @@ def create_sales_order(order_data: dict):
         error_msg = f"後端處理錯誤：提交的數據中缺少必要的鍵 '{ke.args[0]}'"
         print(f"--- [MODEL] {error_msg} ---")
         traceback.print_exc()
+        return {"success": False, "error": error_msg}
+    except ValueError as ve:
+        if conn: conn.rollback()
+        error_msg = str(ve)
+        print(f"--- [MODEL] {error_msg} ---")
         return {"success": False, "error": error_msg}
     except Exception as e:
         if conn: conn.rollback()
@@ -139,10 +186,20 @@ def update_sales_order(order_id: int, order_data: dict):
                 )
             """
             for item in order_data.get("items", []):
+                raw_product_id = item.get("product_id")
+                raw_therapy_id = item.get("therapy_id")
+                product_id = int(raw_product_id) if raw_product_id else None
+                therapy_id = int(raw_therapy_id) if raw_therapy_id else None
+
+                product_id, therapy_id, bundle_id = _validate_item_ids(cursor, product_id, therapy_id)
+                note = item.get("note")
+                if bundle_id is not None:
+                    note = f"{note or ''} [bundle:{bundle_id}]"
+
                 item_for_sql = {
                     "order_id": order_id,
-                    "product_id": item.get("product_id"),
-                    "therapy_id": item.get("therapy_id"),
+                    "product_id": product_id,
+                    "therapy_id": therapy_id,
                     "item_description": item.get("item_description"),
                     "item_type": item.get("item_type"),
                     "unit": item.get("unit"),
@@ -150,12 +207,17 @@ def update_sales_order(order_id: int, order_data: dict):
                     "quantity": item.get("quantity"),
                     "subtotal": item.get("subtotal"),
                     "category": item.get("category"),
-                    "note": item.get("note"),
+                    "note": note,
                 }
                 cursor.execute(item_query, item_for_sql)
 
         conn.commit()
         return {"success": True, "order_id": order_id, "message": "銷售單更新成功"}
+    except ValueError as ve:
+        if conn:
+            conn.rollback()
+        print(f"--- [MODEL] {ve} ---")
+        return {"success": False, "error": str(ve)}
     except Exception as e:
         if conn:
             conn.rollback()
