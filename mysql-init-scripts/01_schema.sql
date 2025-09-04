@@ -285,6 +285,8 @@ CREATE TABLE `product` (
   `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `price` decimal(10,2) NOT NULL,
+  `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
+  `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`product_id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=307 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -324,6 +326,8 @@ CREATE TABLE `product_bundles` (
   `selling_price` decimal(12,2) DEFAULT NULL COMMENT '管理者手動設定的最終銷售價格',
   `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+  `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
+  `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`bundle_id`),
   UNIQUE KEY `bundle_code` (`bundle_code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -363,6 +367,8 @@ CREATE TABLE `therapy_bundles` (
   `selling_price` decimal(12,2) DEFAULT NULL COMMENT '管理者手動設定的最終銷售價格',
   `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+  `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
+  `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`bundle_id`),
   UNIQUE KEY `bundle_code` (`bundle_code`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -556,6 +562,8 @@ CREATE TABLE `therapy` (
   `name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `price` decimal(10,2) DEFAULT NULL,
   `content` text COLLATE utf8mb4_unicode_ci,
+  `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
+  `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`therapy_id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=200 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
