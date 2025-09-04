@@ -126,6 +126,7 @@ const AddProductSell: React.FC = () => {
             type: saleData.bundle_id ? 'bundle' : 'product',
             product_id: saleData.product_id || undefined,
             bundle_id: saleData.bundle_id || undefined,
+            code: saleData.product_code || '',
             name: saleData.product_name || "",
             price: saleData.unit_price || 0,
             quantity: saleData.quantity || 0,
