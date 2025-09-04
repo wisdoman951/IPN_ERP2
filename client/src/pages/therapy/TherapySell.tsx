@@ -13,7 +13,7 @@ import {
 } from "../../services/TherapySellService"; // 假設路徑正確
 import { formatDateToYYYYMMDD } from "../../utils/dateUtils";
 import { formatCurrency } from "../../utils/productSellUtils"; // 借用金額格式化
-import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
+import { fetchAllTherapyBundles, TherapyBundle } from "../../services/TherapyBundleService";
 
 // 更新 interface 以符合 Figma 需求
 export interface TherapySellRow { // 更改 interface 名稱以避免與組件名衝突
@@ -94,14 +94,14 @@ const TherapySell: React.FC = () => {
     useEffect(() => {
         const loadBundles = async () => {
             try {
-                const bundles = await fetchAllBundles();
+                const bundles = await fetchAllTherapyBundles();
                 const map: Record<number, { name: string; contents: string }> = {};
-                bundles.forEach((b: Bundle) => {
+                bundles.forEach((b: TherapyBundle) => {
                     map[b.bundle_id] = { name: b.name || b.bundle_contents, contents: b.bundle_contents };
                 });
                 setBundleMap(map);
             } catch (err) {
-                console.error("載入產品組合失敗", err);
+                console.error("載入療程組合失敗", err);
             }
         };
         loadBundles();
