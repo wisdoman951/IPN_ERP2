@@ -330,6 +330,45 @@ CREATE TABLE `product_bundles` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `therapy_bundle_items`
+--
+
+DROP TABLE IF EXISTS `therapy_bundle_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `therapy_bundle_items` (
+  `bundle_item_id` int NOT NULL AUTO_INCREMENT,
+  `bundle_id` int NOT NULL COMMENT '對應到 therapy_bundles.bundle_id',
+  `item_id` int NOT NULL COMMENT '對應到 product.product_id 或 therapy.therapy_id',
+  `item_type` enum('Product','Therapy') COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '標示此項目是產品還是療程',
+  `quantity` int NOT NULL DEFAULT '1' COMMENT '此項目在組合中的數量',
+  PRIMARY KEY (`bundle_item_id`),
+  KEY `bundle_id` (`bundle_id`),
+  CONSTRAINT `therapy_bundle_items_ibfk_1` FOREIGN KEY (`bundle_id`) REFERENCES `therapy_bundles` (`bundle_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `therapy_bundles`
+--
+
+DROP TABLE IF EXISTS `therapy_bundles`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `therapy_bundles` (
+  `bundle_id` int NOT NULL AUTO_INCREMENT,
+  `bundle_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '組合編號，由使用者自訂',
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '組合名稱/項目',
+  `calculated_price` decimal(12,2) DEFAULT NULL COMMENT '根據組合內項目自動試算的原始總價',
+  `selling_price` decimal(12,2) DEFAULT NULL COMMENT '管理者手動設定的最終銷售價格',
+  `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
+  PRIMARY KEY (`bundle_id`),
+  UNIQUE KEY `bundle_code` (`bundle_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `product_sell`
 --
 
