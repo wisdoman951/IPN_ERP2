@@ -37,7 +37,7 @@ const AddEditUserAccount: React.FC = () => {
 
     useEffect(() => {
         fetchStoresForDropdown()
-            .then(setStores)
+            .then(data => setStores(data.filter(store => store.store_name !== '總店')))
             .catch(() => setError("無法載入分店列表"));
     }, []);
 
