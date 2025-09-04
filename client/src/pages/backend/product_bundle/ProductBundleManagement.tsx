@@ -260,16 +260,16 @@ const ProductBundleManagement: React.FC = () => {
                         <Button
                             variant="info"
                             className="text-white px-4"
-                            onClick={handleShowTherapyModal}
+                            onClick={handleShowProductModal}
                         >
-                            新增療程
+                            新增產品
                         </Button>
                         <Button
                             variant="info"
                             className="text-white px-4"
-                            onClick={handleShowProductModal}
+                            onClick={handleShowTherapyModal}
                         >
-                            新增產品
+                            新增療程
                         </Button>
                     </Col>
                 </Row>
