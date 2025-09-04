@@ -306,7 +306,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
             prod_q = """
                 SELECT
                     ps.product_sell_id + 1000000 AS Inventory_ID,
-                    p.name AS Name,
+                    COALESCE(p.name, ps.product_name) AS Name,
                     NULL AS Unit,
                     ps.unit_price AS Price,
                     -ps.quantity AS quantity,
@@ -319,7 +319,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
-                    '' AS Voucher
+                    '' AS Voucher,
+                    CASE WHEN ps.note LIKE '%[bundle:%' THEN '套組銷售' ELSE NULL END AS Category
                 FROM product_sell ps
                 LEFT JOIN product p ON ps.product_id = p.product_id
                 LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
@@ -355,7 +356,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
             therapy_q = """
                 SELECT
                     ts.therapy_sell_id + 2000000 AS Inventory_ID,
-                    t.name AS Name,
+                    COALESCE(t.name, ts.therapy_name) AS Name,
                     NULL AS Unit,
                     t.price AS Price,
                     -ts.amount AS quantity,
@@ -368,7 +369,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
-                    '' AS Voucher
+                    '' AS Voucher,
+                    CASE WHEN ts.note LIKE '%[bundle:%' THEN '套組銷售' ELSE NULL END AS Category
                 FROM therapy_sell ts
                 LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
                 LEFT JOIN staff sf ON ts.staff_id = sf.staff_id
