@@ -183,10 +183,10 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
             insert_query = (
                 """
                     INSERT INTO therapy_sell (
-                        therapy_id, member_id, store_id, staff_id, date,
+                        therapy_id, therapy_name, member_id, store_id, staff_id, date,
                         amount, discount, final_price, payment_method, sale_category, note
                     ) VALUES (
-                        %(therapy_id)s, %(member_id)s, %(store_id)s, %(staff_id)s, %(date)s,
+                        %(therapy_id)s, %(therapy_name)s, %(member_id)s, %(store_id)s, %(staff_id)s, %(date)s,
                         %(amount)s, %(discount)s, %(final_price)s, %(payment_method)s, %(sale_category)s, %(note)s
                     )
                 """
@@ -213,6 +213,7 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     if not bundle_items:
                         empty_bundle_values = {
                             "therapy_id": None,
+                            "therapy_name": data_item.get("therapy_name") or data_item.get("therapyName"),
                             "member_id": data_item.get("memberId"),
                             "store_id": data_item.get("storeId"),
                             "staff_id": data_item.get("staffId"),
@@ -245,11 +246,12 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "discount": (data_item.get("discount", 0) * (item.get("quantity", 0) / total_qty)),
                             "payment_method": data_item.get("paymentMethod"),
                             "sale_category": data_item.get("saleCategory"),
-                            "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]"
+                            "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]",
                         }
-                        cursor.execute("SELECT price FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
+                        cursor.execute("SELECT name, price FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
                         price_row = cursor.fetchone()
                         unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
+                        item_values["therapy_name"] = price_row["name"] if price_row and price_row.get("name") is not None else None
                         item_values["final_price"] = unit_price * item_values["amount"] - item_values["discount"]
                         logging.debug(
                             f"--- [MODEL] Values for SQL for bundle item {index + 1}: {item_values}"
@@ -274,9 +276,10 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     "sale_category": data_item.get("saleCategory"),
                     "note": data_item.get("note", "")
                 }
-                cursor.execute("SELECT price FROM therapy WHERE therapy_id = %s", (values_dict["therapy_id"],))
+                cursor.execute("SELECT name, price FROM therapy WHERE therapy_id = %s", (values_dict["therapy_id"],))
                 price_row = cursor.fetchone()
                 unit_price = price_row["price"] if price_row and price_row.get("price") is not None else 0
+                values_dict["therapy_name"] = price_row["name"] if price_row and price_row.get("name") is not None else None
                 values_dict["final_price"] = unit_price * values_dict["amount"] - values_dict["discount"]
                 logging.debug(f"--- [MODEL] Values for SQL for item {index + 1}: {values_dict}")
                 cursor.execute(insert_query, values_dict)
