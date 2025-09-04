@@ -303,10 +303,58 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
             records.extend(cursor.fetchall())
 
             # -------- 產品銷售紀錄 --------
-            prod_q = """
+            # 產品銷售紀錄：需同時處理一般銷售與尚未拆解之套組項目
+            base_conditions = []
+            base_params = []
+            if store_id:
+                base_conditions.append("ps.store_id = %s")
+                base_params.append(store_id)
+            if start_date:
+                base_conditions.append("ps.date >= %s")
+                base_params.append(start_date)
+            if end_date:
+                base_conditions.append("ps.date <= %s")
+                base_params.append(end_date)
+            if sale_staff:
+                base_conditions.append("sf.name LIKE %s")
+                base_params.append(f"%{sale_staff}%")
+            if buyer:
+                base_conditions.append("mb.name LIKE %s")
+                base_params.append(f"%{buyer}%")
+            if product_id:
+                base_conditions.append("ps.product_id = %s")
+                base_params.append(product_id)
+            base_conditions.append("(ps.product_id IS NOT NULL OR ps.note NOT LIKE '%%[bundle:%%')")
+            base_where = " WHERE " + " AND ".join(base_conditions)
+
+            bundle_conditions = []
+            bundle_params = []
+            if store_id:
+                bundle_conditions.append("ps.store_id = %s")
+                bundle_params.append(store_id)
+            if start_date:
+                bundle_conditions.append("ps.date >= %s")
+                bundle_params.append(start_date)
+            if end_date:
+                bundle_conditions.append("ps.date <= %s")
+                bundle_params.append(end_date)
+            if sale_staff:
+                bundle_conditions.append("sf.name LIKE %s")
+                bundle_params.append(f"%{sale_staff}%")
+            if buyer:
+                bundle_conditions.append("mb.name LIKE %s")
+                bundle_params.append(f"%{buyer}%")
+            if product_id:
+                bundle_conditions.append("pbi.item_id = %s")
+                bundle_params.append(product_id)
+            bundle_conditions.append("ps.product_id IS NULL")
+            bundle_conditions.append("ps.note LIKE '%%[bundle:%%'")
+            bundle_where = " WHERE " + " AND ".join(bundle_conditions)
+
+            prod_q = f"""
                 SELECT
                     ps.product_sell_id + 1000000 AS Inventory_ID,
-                    p.name AS Name,
+                    COALESCE(p.name, ps.product_name) AS Name,
                     NULL AS Unit,
                     ps.unit_price AS Price,
                     -ps.quantity AS quantity,
@@ -319,43 +367,98 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
-                    '' AS Voucher
+                    '' AS Voucher,
+                    CASE WHEN ps.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE NULL END AS Category
                 FROM product_sell ps
                 LEFT JOIN product p ON ps.product_id = p.product_id
                 LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
                 LEFT JOIN store st ON ps.store_id = st.store_id
                 LEFT JOIN member mb ON ps.member_id = mb.member_id
+                {base_where}
+                UNION ALL
+                SELECT
+                    ps.product_sell_id + 1000000 + pbi.item_id AS Inventory_ID,
+                    pr.name AS Name,
+                    NULL AS Unit,
+                    pr.price AS Price,
+                    -(ps.quantity * pbi.quantity) AS quantity,
+                    0 AS stock_in,
+                    ps.quantity * pbi.quantity AS stock_out,
+                    0 AS stock_loan,
+                    ps.date AS Date,
+                    '' AS StaffName,
+                    '' AS Supplier,
+                    st.store_name AS StoreName,
+                    sf.name AS SaleStaff,
+                    mb.name AS Buyer,
+                    '' AS Voucher,
+                    '套組銷售' AS Category
+                FROM product_sell ps
+                JOIN product_bundle_items pbi
+                  ON pbi.bundle_id = SUBSTRING_INDEX(SUBSTRING(ps.note, LOCATE('[bundle:', ps.note) + 8), ']', 1)
+                 AND pbi.item_type = 'Product'
+                LEFT JOIN product pr ON pbi.item_id = pr.product_id
+                LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
+                LEFT JOIN store st ON ps.store_id = st.store_id
+                LEFT JOIN member mb ON ps.member_id = mb.member_id
+                {bundle_where}
             """
-            params = []
-            conditions = []
-            if store_id:
-                conditions.append("ps.store_id = %s")
-                params.append(store_id)
-            if start_date:
-                conditions.append("ps.date >= %s")
-                params.append(start_date)
-            if end_date:
-                conditions.append("ps.date <= %s")
-                params.append(end_date)
-            if sale_staff:
-                conditions.append("sf.name LIKE %s")
-                params.append(f"%{sale_staff}%")
-            if buyer:
-                conditions.append("mb.name LIKE %s")
-                params.append(f"%{buyer}%")
-            if product_id:
-                conditions.append("ps.product_id = %s")
-                params.append(product_id)
-            if conditions:
-                prod_q += " WHERE " + " AND ".join(conditions)
-            cursor.execute(prod_q, params)
+            cursor.execute(prod_q, base_params + bundle_params)
             records.extend(cursor.fetchall())
             
             # -------- 療程銷售紀錄 --------
-            therapy_q = """
+            # 療程銷售紀錄：同樣處理一般與套組項目
+            t_base_conditions = []
+            t_base_params = []
+            if store_id:
+                t_base_conditions.append("ts.store_id = %s")
+                t_base_params.append(store_id)
+            if start_date:
+                t_base_conditions.append("ts.date >= %s")
+                t_base_params.append(start_date)
+            if end_date:
+                t_base_conditions.append("ts.date <= %s")
+                t_base_params.append(end_date)
+            if sale_staff:
+                t_base_conditions.append("sf.name LIKE %s")
+                t_base_params.append(f"%{sale_staff}%")
+            if buyer:
+                t_base_conditions.append("mb.name LIKE %s")
+                t_base_params.append(f"%{buyer}%")
+            if product_id:
+                t_base_conditions.append("ts.therapy_id = %s")
+                t_base_params.append(product_id)
+            t_base_conditions.append("(ts.therapy_id IS NOT NULL OR ts.note NOT LIKE '%%[bundle:%%')")
+            t_base_where = " WHERE " + " AND ".join(t_base_conditions)
+
+            t_bundle_conditions = []
+            t_bundle_params = []
+            if store_id:
+                t_bundle_conditions.append("ts.store_id = %s")
+                t_bundle_params.append(store_id)
+            if start_date:
+                t_bundle_conditions.append("ts.date >= %s")
+                t_bundle_params.append(start_date)
+            if end_date:
+                t_bundle_conditions.append("ts.date <= %s")
+                t_bundle_params.append(end_date)
+            if sale_staff:
+                t_bundle_conditions.append("sf.name LIKE %s")
+                t_bundle_params.append(f"%{sale_staff}%")
+            if buyer:
+                t_bundle_conditions.append("mb.name LIKE %s")
+                t_bundle_params.append(f"%{buyer}%")
+            if product_id:
+                t_bundle_conditions.append("tbi.item_id = %s")
+                t_bundle_params.append(product_id)
+            t_bundle_conditions.append("ts.therapy_id IS NULL")
+            t_bundle_conditions.append("ts.note LIKE '%%[bundle:%%'")
+            t_bundle_where = " WHERE " + " AND ".join(t_bundle_conditions)
+
+            therapy_q = f"""
                 SELECT
                     ts.therapy_sell_id + 2000000 AS Inventory_ID,
-                    t.name AS Name,
+                    COALESCE(t.name, ts.therapy_name) AS Name,
                     NULL AS Unit,
                     t.price AS Price,
                     -ts.amount AS quantity,
@@ -368,36 +471,42 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     st.store_name AS StoreName,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
-                    '' AS Voucher
+                    '' AS Voucher,
+                    CASE WHEN ts.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE NULL END AS Category
                 FROM therapy_sell ts
                 LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
                 LEFT JOIN staff sf ON ts.staff_id = sf.staff_id
                 LEFT JOIN store st ON ts.store_id = st.store_id
                 LEFT JOIN member mb ON ts.member_id = mb.member_id
+                {t_base_where}
+                UNION ALL
+                SELECT
+                    ts.therapy_sell_id + 2000000 + tbi.item_id AS Inventory_ID,
+                    th.name AS Name,
+                    NULL AS Unit,
+                    th.price AS Price,
+                    -(ts.amount * tbi.quantity) AS quantity,
+                    0 AS stock_in,
+                    ts.amount * tbi.quantity AS stock_out,
+                    0 AS stock_loan,
+                    ts.date AS Date,
+                    '' AS StaffName,
+                    '' AS Supplier,
+                    st.store_name AS StoreName,
+                    sf.name AS SaleStaff,
+                    mb.name AS Buyer,
+                    '' AS Voucher,
+                    '套組銷售' AS Category
+                FROM therapy_sell ts
+                JOIN therapy_bundle_items tbi
+                  ON tbi.bundle_id = SUBSTRING_INDEX(SUBSTRING(ts.note, LOCATE('[bundle:', ts.note) + 8), ']', 1)
+                LEFT JOIN therapy th ON tbi.item_id = th.therapy_id
+                LEFT JOIN staff sf ON ts.staff_id = sf.staff_id
+                LEFT JOIN store st ON ts.store_id = st.store_id
+                LEFT JOIN member mb ON ts.member_id = mb.member_id
+                {t_bundle_where}
             """
-            params = []
-            conditions = []
-            if store_id:
-                conditions.append("ts.store_id = %s")
-                params.append(store_id)
-            if start_date:
-                conditions.append("ts.date >= %s")
-                params.append(start_date)
-            if end_date:
-                conditions.append("ts.date <= %s")
-                params.append(end_date)
-            if sale_staff:
-                conditions.append("sf.name LIKE %s")
-                params.append(f"%{sale_staff}%")
-            if buyer:
-                conditions.append("mb.name LIKE %s")
-                params.append(f"%{buyer}%")
-            if product_id:
-                conditions.append("ts.therapy_id = %s")
-                params.append(product_id)
-            if conditions:
-                therapy_q += " WHERE " + " AND ".join(conditions)
-            cursor.execute(therapy_q, params)
+            cursor.execute(therapy_q, t_base_params + t_bundle_params)
             records.extend(cursor.fetchall())
 
             if sale_staff:

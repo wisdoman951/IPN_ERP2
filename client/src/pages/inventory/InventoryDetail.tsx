@@ -27,6 +27,7 @@ interface RecordRow {
   Buyer?: string;
   Voucher?: string;
   Price?: number;
+  Category?: string;
 }
 
 const InventoryDetail: React.FC = () => {
@@ -187,7 +188,7 @@ const InventoryDetail: React.FC = () => {
                 <td>{r.Price ?? ''}</td>
                 <td>{r.quantity}</td>
                 <td>{r.Price ? Math.abs(r.Price * r.quantity) : ''}</td>
-                <td></td>
+                <td>{r.Category || ''}</td>
                 <td></td>
                 <td>{formatDate(r.Date)}</td>
                 <td>{r.Supplier ?? ''}</td>
