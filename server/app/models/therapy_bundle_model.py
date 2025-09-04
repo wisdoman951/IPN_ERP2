@@ -10,12 +10,7 @@ def connect_to_db():
 
 
 def get_all_therapy_bundles(status: str | None = None, store_id: int | None = None):
-    """獲取所有療程組合列表
-
-    Args:
-        status: 組合狀態過濾條件。
-        store_id: 若提供，僅返回 visible_store_ids 為空或包含該 store_id 的組合。
-    """
+    """獲取所有療程組合列表"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -59,12 +54,15 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                         if isinstance(store_ids, (int, str)):
                             store_ids = [int(store_ids)]
                     except Exception:
-                        store_ids = None
-                if store_id is None or not store_ids or int(store_id) in store_ids:
-                    if store_ids is not None:
-                        row['visible_store_ids'] = store_ids
-                    filtered.append(row)
-            return filtered
+                        pass
+            if store_id is not None:
+                result = [
+                    row
+                    for row in result
+                    if not row.get('visible_store_ids')
+                    or store_id in row['visible_store_ids']
+                ]
+            return result
     finally:
         conn.close()
 

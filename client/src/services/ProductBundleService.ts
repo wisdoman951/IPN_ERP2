@@ -1,12 +1,13 @@
 import axios from "axios";
 import { base_url } from "./BASE_URL";
+import { getAuthHeaders as getTokenHeaders } from "./AuthUtils";
 
 const API_URL = `${base_url}/product-bundles`;
 const API_URL_PRODUCTS = `${base_url}/product-sell`;
 const API_URL_THERAPIES = `${base_url}/therapy`;
 
-// 標準的 getAuthHeaders 函式
-const getAuthHeaders = () => {
+// 管理端使用的授權標頭
+const getAdminHeaders = () => {
     const token = localStorage.getItem("token");
     return {
         headers: {
@@ -62,7 +63,7 @@ export interface Therapy {
 export const fetchAllBundles = async (status: string = 'PUBLISHED'): Promise<Bundle[]> => {
     try {
         const response = await axios.get(`${API_URL}/`, {
-            ...getAuthHeaders(),
+            ...getAdminHeaders(),
             params: { status }
         });
         return response.data;
@@ -77,7 +78,7 @@ export const fetchAllBundles = async (status: string = 'PUBLISHED'): Promise<Bun
  */
 export const createBundle = async (payload: unknown) => {
     try {
-        const response = await axios.post(`${API_URL}/`, payload, getAuthHeaders());
+        const response = await axios.post(`${API_URL}/`, payload, getAdminHeaders());
         return response.data;
     } catch (error) {
         console.error("新增組合失敗:", error);
@@ -90,7 +91,7 @@ export const createBundle = async (payload: unknown) => {
  */
 export const getBundleDetails = async (bundleId: number): Promise<BundleDetails> => {
     try {
-        const response = await axios.get(`${API_URL}/${bundleId}`, getAuthHeaders());
+        const response = await axios.get(`${API_URL}/${bundleId}`, getAdminHeaders());
         return response.data;
     } catch (error) {
         console.error("獲取組合詳情失敗:", error);
@@ -103,7 +104,7 @@ export const getBundleDetails = async (bundleId: number): Promise<BundleDetails>
  */
 export const updateBundle = async (bundleId: number, payload: unknown) => {
     try {
-        const response = await axios.put(`${API_URL}/${bundleId}`, payload, getAuthHeaders());
+        const response = await axios.put(`${API_URL}/${bundleId}`, payload, getAdminHeaders());
         return response.data;
     } catch (error) {
         console.error("更新組合失敗:", error);
@@ -117,7 +118,7 @@ export const updateBundle = async (bundleId: number, payload: unknown) => {
 export const deleteBundle = async (bundleId: number, account: string) => {
     try {
         const response = await axios.delete(`${API_URL}/${bundleId}`, {
-            ...getAuthHeaders(),
+            ...getAdminHeaders(),
             params: { deleted_by: account }
         });
         return response.data;
@@ -133,7 +134,7 @@ export const deleteBundle = async (bundleId: number, account: string) => {
 export const fetchProductsForDropdown = async (status: string = 'PUBLISHED'): Promise<Product[]> => {
     try {
         const response = await axios.get(`${API_URL_PRODUCTS}/products`, {
-            ...getAuthHeaders(),
+            ...getAdminHeaders(),
             params: { status }
         });
         return response.data;
@@ -149,7 +150,7 @@ export const fetchProductsForDropdown = async (status: string = 'PUBLISHED'): Pr
 export const fetchTherapiesForDropdown = async (status: string = 'PUBLISHED'): Promise<Therapy[]> => {
     try {
         const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, {
-            ...getAuthHeaders(),
+            ...getAdminHeaders(),
             params: { status }
         });
         return response.data;
@@ -167,7 +168,7 @@ export const publishBundle = async (bundleId: number) => {
         const response = await axios.patch(
             `${base_url}/items/product_bundle/${bundleId}/publish`,
             {},
-            getAuthHeaders()
+            getAdminHeaders()
         );
         return response.data;
     } catch (error) {
@@ -184,11 +185,26 @@ export const unpublishBundle = async (bundleId: number) => {
         const response = await axios.patch(
             `${base_url}/items/product_bundle/${bundleId}/unpublish`,
             {},
-            getAuthHeaders()
+            getAdminHeaders()
         );
         return response.data;
     } catch (error) {
         console.error("下架產品組合失敗:", error);
         throw error;
+    }
+};
+
+/**
+ * 取得可供銷售單選擇的產品組合（依分店權限過濾）
+ */
+export const fetchProductBundlesForSale = async (): Promise<Bundle[]> => {
+    try {
+        const response = await axios.get(`${API_URL}/available`, {
+            headers: getTokenHeaders()
+        });
+        return response.data;
+    } catch (error) {
+        console.error("取得可用產品組合失敗:", error);
+        return [];
     }
 };

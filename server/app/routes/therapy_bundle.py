@@ -3,7 +3,7 @@ from app.models.therapy_bundle_model import (
     get_all_therapy_bundles, create_therapy_bundle,
     get_bundle_details_by_id, update_therapy_bundle, delete_therapy_bundle
 )
-from app.middleware import admin_required
+from app.middleware import admin_required, auth_required, get_user_from_token
 
 therapy_bundle_bp = Blueprint(
     "therapy_bundle",
@@ -87,3 +87,17 @@ def delete_single_bundle(bundle_id):
             return jsonify({"error": "刪除失敗"}), 400
     except Exception as e:
         return jsonify({"error": f"伺服器錯誤: {e}"}), 500
+
+
+@therapy_bundle_bp.route("/available", methods=["GET"])
+@auth_required
+def get_available_therapy_bundles():
+    """根據店家權限取得可用的療程組合列表"""
+    try:
+        user = get_user_from_token(request)
+        store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
+        bundles = get_all_therapy_bundles(status="PUBLISHED", store_id=store_id)
+        return jsonify(bundles)
+    except Exception as e:
+        print(f"Error fetching available therapy bundles: {e}")
+        return jsonify({"error": "無法獲取療程組合列表"}), 500

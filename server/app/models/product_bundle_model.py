@@ -5,15 +5,18 @@ import json
 from app.config import DB_CONFIG
 from pymysql.cursors import DictCursor
 
+
 def connect_to_db():
     """建立資料庫連線"""
     return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
 
+
 def get_all_product_bundles(status: str | None = None, store_id: int | None = None):
     """
     獲取所有產品組合列表。
-    若提供 store_id，僅返回 visible_store_ids 為空或包含該 store_id 的組合。
-    使用 GROUP_CONCAT 將每個組合的內容物（產品和療程名稱）合併成一個字串，以利前端直接顯示。
+    使用 GROUP_CONCAT 將每個組合的內容物（產品和療程名稱）合併成一個字串，
+    以利前端直接顯示。
+    會依據傳入的 store_id 過濾僅限於該分店可見的組合。
     """
     conn = connect_to_db()
     try:
@@ -65,12 +68,15 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                         if isinstance(store_ids, (int, str)):
                             store_ids = [int(store_ids)]
                     except Exception:
-                        store_ids = None
-                if store_id is None or not store_ids or int(store_id) in store_ids:
-                    if store_ids is not None:
-                        row['visible_store_ids'] = store_ids
-                    filtered.append(row)
-            return filtered
+                        pass
+            if store_id is not None:
+                result = [
+                    row
+                    for row in result
+                    if not row.get('visible_store_ids')
+                    or store_id in row['visible_store_ids']
+                ]
+            return result
     finally:
         conn.close()
 

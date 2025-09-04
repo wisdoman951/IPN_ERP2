@@ -8,6 +8,8 @@ import DynamicContainer from '../../components/DynamicContainer';
 import { SalesOrderItemData } from '../../services/SalesOrderService';
 import { Product, getAllProducts } from '../../services/ProductSellService'; // 假設從 ProductSellService 獲取
 import { TherapyPackage, getAllTherapyPackages } from '../../services/TherapySellService'; // 假設從 TherapySellService 獲取
+import { Bundle as ProductBundle, fetchProductBundlesForSale } from '../../services/ProductBundleService';
+import { TherapyBundle, fetchTherapyBundlesForSale } from '../../services/TherapyBundleService';
 export const formatCurrency = (amount: number | undefined): string => {
     if (amount === undefined || isNaN(amount)) return 'N/A';
     return amount.toLocaleString('zh-TW', { style: 'currency', currency: 'TWD' });
@@ -17,18 +19,22 @@ const ItemSelection: React.FC = () => {
 
     const [products, setProducts] = useState<Product[]>([]);
     const [therapies, setTherapies] = useState<TherapyPackage[]>([]);
+    const [productBundles, setProductBundles] = useState<ProductBundle[]>([]);
+    const [therapyBundles, setTherapyBundles] = useState<TherapyBundle[]>([]);
     const [selectedItems, setSelectedItems] = useState<SalesOrderItemData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // 載入所有可選品項 (產品和療程)
+    // 載入所有可選品項 (產品、療程及其組合)
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [productRes, therapyRes] = await Promise.all([
+                const [productRes, therapyRes, prodBundleRes, thrBundleRes] = await Promise.all([
                     getAllProducts(),
-                    getAllTherapyPackages() // 假設返回 ApiResponse
+                    getAllTherapyPackages(),
+                    fetchProductBundlesForSale(),
+                    fetchTherapyBundlesForSale()
                 ]);
                 console.log("從 API 獲取的產品資料 (productRes):", productRes);
 
@@ -49,6 +55,24 @@ const ItemSelection: React.FC = () => {
                     });
                     setTherapies(sortedTherapies);
                 }
+
+                if (Array.isArray(prodBundleRes)) {
+                    const sortedProdBundles = [...prodBundleRes].sort((a, b) => {
+                        const codeA = a.bundle_code ? parseInt(a.bundle_code, 10) : 0;
+                        const codeB = b.bundle_code ? parseInt(b.bundle_code, 10) : 0;
+                        return codeB - codeA;
+                    });
+                    setProductBundles(sortedProdBundles);
+                }
+
+                if (Array.isArray(thrBundleRes)) {
+                    const sortedThrBundles = [...thrBundleRes].sort((a, b) => {
+                        const codeA = a.bundle_code ? parseInt(a.bundle_code, 10) : 0;
+                        const codeB = b.bundle_code ? parseInt(b.bundle_code, 10) : 0;
+                        return codeB - codeA;
+                    });
+                    setTherapyBundles(sortedThrBundles);
+                }
             } catch (err) {
                 setError("載入品項資料時發生錯誤。");
             } finally {
@@ -57,9 +81,12 @@ const ItemSelection: React.FC = () => {
         };
         fetchData();
     }, []);
-    
-    // 處理選擇品項 (產品或療程)
-    const handleSelectItem = (item: Product | TherapyPackage, type: 'Product' | 'Therapy') => {
+
+    // 處理選擇品項 (產品、療程或組合)
+    const handleSelectItem = (
+        item: Product | TherapyPackage | ProductBundle | TherapyBundle,
+        type: 'Product' | 'Therapy' | 'ProductBundle' | 'TherapyBundle'
+    ) => {
         let newItem: SalesOrderItemData;
 
         if (type === 'Product') {
@@ -75,7 +102,7 @@ const ItemSelection: React.FC = () => {
                 unit_price: Number(product.product_price),
                 subtotal: Number(product.product_price),
             };
-        } else { // type === 'Therapy'
+        } else if (type === 'Therapy') {
             const therapy = item as TherapyPackage;
             newItem = {
                 product_id: null,
@@ -87,6 +114,32 @@ const ItemSelection: React.FC = () => {
                 quantity: 1,
                 unit_price: Number(therapy.TherapyPrice),
                 subtotal: Number(therapy.TherapyPrice),
+            };
+        } else if (type === 'ProductBundle') {
+            const bundle = item as ProductBundle;
+            newItem = {
+                product_id: bundle.bundle_id,
+                therapy_id: null,
+                item_description: bundle.name,
+                item_type: 'ProductBundle',
+                item_code: bundle.bundle_code,
+                unit: "組",
+                quantity: 1,
+                unit_price: Number(bundle.selling_price),
+                subtotal: Number(bundle.selling_price)
+            };
+        } else {
+            const bundle = item as TherapyBundle;
+            newItem = {
+                product_id: null,
+                therapy_id: bundle.bundle_id,
+                item_description: bundle.name,
+                item_type: 'TherapyBundle',
+                item_code: bundle.bundle_code,
+                unit: "組",
+                quantity: 1,
+                unit_price: Number(bundle.selling_price),
+                subtotal: Number(bundle.selling_price)
             };
         }
 
@@ -136,6 +189,24 @@ const ItemSelection: React.FC = () => {
                                 {loading ? <Spinner animation="border" /> : therapies.map(t => (
                                     <ListGroup.Item key={`thr-${t.therapy_id}`} action onClick={() => handleSelectItem(t, 'Therapy')}>
                                         [{t.TherapyCode}] {t.TherapyContent || t.TherapyName} - NT$ {t.TherapyPrice}
+                                    </ListGroup.Item>
+                                ))}
+                            </ListGroup>
+                        </Tab>
+                        <Tab eventKey="productBundles" title="產品組合">
+                            <ListGroup className="mt-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                {loading ? <Spinner animation="border" /> : productBundles.map(b => (
+                                    <ListGroup.Item key={`pb-${b.bundle_id}`} action onClick={() => handleSelectItem(b, 'ProductBundle')}>
+                                        [{b.bundle_code}] {b.name} - {formatCurrency(b.selling_price)}
+                                    </ListGroup.Item>
+                                ))}
+                            </ListGroup>
+                        </Tab>
+                        <Tab eventKey="therapyBundles" title="療程組合">
+                            <ListGroup className="mt-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                {loading ? <Spinner animation="border" /> : therapyBundles.map(b => (
+                                    <ListGroup.Item key={`tb-${b.bundle_id}`} action onClick={() => handleSelectItem(b, 'TherapyBundle')}>
+                                        [{b.bundle_code}] {b.name} - {formatCurrency(b.selling_price)}
                                     </ListGroup.Item>
                                 ))}
                             </ListGroup>
