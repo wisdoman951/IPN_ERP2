@@ -261,7 +261,7 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "staff_id": data_item.get("staffId"),
                             "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
                             "amount": bundle_qty,
-                            "discount": data_item.get("discount", 0),
+                            "discount": float(data_item.get("discount") or 0),
                             "final_price": float(data_item.get("final_price") or data_item.get("finalPrice") or 0),
                             "payment_method": data_item.get("paymentMethod"),
                             "sale_category": data_item.get("saleCategory"),
@@ -285,7 +285,7 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "staff_id": data_item.get("staffId"),
                             "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
                             "amount": int(item.get("quantity", 0)) * bundle_qty,
-                            "discount": (data_item.get("discount", 0) * (item.get("quantity", 0) / total_qty)),
+                            "discount": float(data_item.get("discount") or 0) * (item.get("quantity", 0) / total_qty),
                             "payment_method": data_item.get("paymentMethod"),
                             "sale_category": data_item.get("saleCategory"),
                             "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]",
@@ -294,8 +294,9 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                         price_row = cursor.fetchone()
                         if not price_row or price_row.get("status") != 'PUBLISHED':
                             raise ValueError("品項已下架")
-                        unit_price = price_row["price"] if price_row.get("price") is not None else 0
+                        unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
                         item_values["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
+                        item_values["discount"] = float(item_values.get("discount") or 0)
                         item_values["final_price"] = unit_price * item_values["amount"] - item_values["discount"]
                         logging.debug(
                             f"--- [MODEL] Values for SQL for bundle item {index + 1}: {item_values}"
@@ -315,7 +316,7 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     "staff_id": data_item.get("staffId"),
                     "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
                     "amount": data_item.get("amount"),
-                    "discount": data_item.get("discount", 0),
+                    "discount": float(data_item.get("discount") or 0),
                     "payment_method": data_item.get("paymentMethod"),
                     "sale_category": data_item.get("saleCategory"),
                     "note": data_item.get("note", "")
@@ -324,8 +325,9 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                 price_row = cursor.fetchone()
                 if not price_row or price_row.get("status") != 'PUBLISHED':
                     raise ValueError("品項已下架")
-                unit_price = price_row["price"] if price_row.get("price") is not None else 0
+                unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
                 values_dict["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
+                values_dict["discount"] = float(values_dict.get("discount") or 0)
                 values_dict["final_price"] = unit_price * values_dict["amount"] - values_dict["discount"]
                 logging.debug(f"--- [MODEL] Values for SQL for item {index + 1}: {values_dict}")
                 cursor.execute(insert_query, values_dict)
