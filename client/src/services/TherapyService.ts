@@ -164,7 +164,7 @@ export const getAllTherapiesForDropdown = async () => {
     return response.data;
 };
 
-export const addTherapy = async (data: { code: string; name: string; price: number }) => {
+export const addTherapy = async (data: { code: string; name: string; price: number; visible_store_ids?: number[] | null }) => {
     try {
         const token = localStorage.getItem("token");
         const response = await axios.post(`${API_URL}/package`, data, {
@@ -183,7 +183,7 @@ export const addTherapy = async (data: { code: string; name: string; price: numb
 
 export const updateTherapy = async (
     therapyId: number,
-    data: { code: string; name: string; price: number; content?: string }
+    data: { code: string; name: string; price: number; content?: string; visible_store_ids?: number[] | null }
 ) => {
     try {
         const token = localStorage.getItem("token");
