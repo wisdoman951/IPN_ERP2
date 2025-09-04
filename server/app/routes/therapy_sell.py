@@ -6,7 +6,7 @@ from app.models.therapy_sell_model import (
     get_all_members, get_all_staff, get_all_stores,
     get_remaining_sessions, get_remaining_sessions_bulk
 )
-from app.middleware import auth_required, get_user_from_token
+from app.middleware import auth_required, get_user_from_token, login_required
 import pandas as pd
 import io
 from datetime import datetime
@@ -44,21 +44,27 @@ def add_therapy_transaction_route():
 
 
 @therapy_sell.route('/packages', methods=['GET'])
+@login_required
 def get_packages():
     """獲取所有療程套餐"""
     try:
-        result = get_all_therapy_packages()
+        user = get_user_from_token(request)
+        store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
+        result = get_all_therapy_packages(store_id=store_id)
         return jsonify(result)
     except Exception as e:
         print(f"獲取療程套餐失敗: {e}")
         return jsonify({"error": str(e)}), 500
 
 @therapy_sell.route('/packages/search', methods=['GET'])
+@login_required
 def search_packages():
     """搜尋療程套餐"""
     try:
         keyword = request.args.get('keyword', '')
-        result = search_therapy_packages(keyword)
+        user = get_user_from_token(request)
+        store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
+        result = search_therapy_packages(keyword, store_id=store_id)
         return jsonify(result)
     except Exception as e:
         print(f"搜尋療程套餐失敗: {e}")
