@@ -114,6 +114,8 @@ def update_sale(sale_id):
             
         update_product_sell(sale_id, data)
         return jsonify({"message": "產品銷售記錄更新成功"}), 200
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -151,8 +153,8 @@ def get_products():
         if user and user.get('permission') != 'admin':
             target_store_id = user.get('store_id')
 
-        # 將解析出的 store_id 傳遞給 model function
-        products = get_all_products_with_inventory(store_id=target_store_id)
+        status = request.args.get("status", 'PUBLISHED')
+        products = get_all_products_with_inventory(store_id=target_store_id, status=status)
         return jsonify(products)
     except Exception as e:
         print(f"Error in get_products: {e}")
@@ -174,8 +176,8 @@ def search_product():
         if user and user.get('permission') != 'admin':
             target_store_id = user.get('store_id')
 
-        # 將關鍵字和 store_id 一起傳遞給 model function
-        products = search_products_with_inventory(keyword, store_id=target_store_id)
+        status = request.args.get("status", 'PUBLISHED')
+        products = search_products_with_inventory(keyword, store_id=target_store_id, status=status)
         return jsonify(products)
     except Exception as e:
         print(f"Error in search_product: {e}")

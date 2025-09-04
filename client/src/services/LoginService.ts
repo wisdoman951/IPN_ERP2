@@ -99,12 +99,15 @@ export const login = async (account: string, password: string): Promise<LoginRes
       }
     );
     
-    const data = response.data;
-   if (data.token) {
-     // --- 核心修改區域 ---
-     // 2. 在您原本儲存 token 的邏輯後面，加上這一行
+    const data = response.data;
+  if (data.token) {
+    // --- 核心修改區域 ---
+    // 2. 在您原本儲存 token 的邏輯後面，加上這一行
       localStorage.setItem('token', data.token);
       setUserRole(data.token); // <--- 就是這一行！它會讀取 token 並設定 'userRole'
+
+      // 儲存當前登入帳號以便撤銷時確認
+      localStorage.setItem('account', account);
 
       // 您原本的儲存邏輯，完全保留
       localStorage.setItem('store_id', data.store_id.toString());
@@ -161,6 +164,7 @@ export const logout = (): void => {
   localStorage.removeItem('permission');
   localStorage.removeItem('store_info');
   localStorage.removeItem('userRole');
+  localStorage.removeItem('account');
 
   // 清除可能存在的其他相關項目
   console.log('已登出系統');

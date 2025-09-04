@@ -40,9 +40,12 @@ export interface Therapy {
     content?: string;
 }
 
-export const fetchAllTherapyBundles = async (): Promise<TherapyBundle[]> => {
+export const fetchAllTherapyBundles = async (status: string = 'PUBLISHED'): Promise<TherapyBundle[]> => {
     try {
-        const response = await axios.get(`${API_URL}/`, getAuthHeaders());
+        const response = await axios.get(`${API_URL}/`, {
+            ...getAuthHeaders(),
+            params: { status }
+        });
         return response.data;
     } catch (error) {
         console.error("獲取療程組合列表失敗:", error);
@@ -80,9 +83,12 @@ export const updateTherapyBundle = async (bundleId: number, payload: unknown) =>
     }
 };
 
-export const deleteTherapyBundle = async (bundleId: number) => {
+export const deleteTherapyBundle = async (bundleId: number, account: string) => {
     try {
-        const response = await axios.delete(`${API_URL}/${bundleId}`, getAuthHeaders());
+        const response = await axios.delete(`${API_URL}/${bundleId}`, {
+            ...getAuthHeaders(),
+            params: { deleted_by: account }
+        });
         return response.data;
     } catch (error) {
         console.error("刪除療程組合失敗:", error);
@@ -90,12 +96,49 @@ export const deleteTherapyBundle = async (bundleId: number) => {
     }
 };
 
-export const fetchTherapiesForDropdown = async (): Promise<Therapy[]> => {
+export const fetchTherapiesForDropdown = async (status: string = 'PUBLISHED'): Promise<Therapy[]> => {
     try {
-        const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, getAuthHeaders());
+        const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, {
+            ...getAuthHeaders(),
+            params: { status }
+        });
         return response.data;
     } catch (error) {
         console.error("Service: 獲取療程下拉選單失敗:", error);
+        throw error;
+    }
+};
+
+/**
+ * 上架指定療程組合
+ */
+export const publishTherapyBundle = async (bundleId: number) => {
+    try {
+        const response = await axios.patch(
+            `${base_url}/items/therapy_bundle/${bundleId}/publish`,
+            {},
+            getAuthHeaders()
+        );
+        return response.data;
+    } catch (error) {
+        console.error("上架療程組合失敗:", error);
+        throw error;
+    }
+};
+
+/**
+ * 下架指定療程組合
+ */
+export const unpublishTherapyBundle = async (bundleId: number) => {
+    try {
+        const response = await axios.patch(
+            `${base_url}/items/therapy_bundle/${bundleId}/unpublish`,
+            {},
+            getAuthHeaders()
+        );
+        return response.data;
+    } catch (error) {
+        console.error("下架療程組合失敗:", error);
         throw error;
     }
 };

@@ -35,6 +35,8 @@ def add_sales_order_route():
         result = create_sales_order(order_data)
         status_code = 201 if result.get("success") else 400
         return jsonify(result), status_code
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 422
     except Exception as e:
         tb_str = traceback.format_exc()
         print(f"Error in add_sales_order_route: {e}\n{tb_str}")
@@ -188,6 +190,8 @@ def update_sales_order_route(order_id):
         result = update_sales_order(order_id, order_data)
         status_code = 200 if result.get("success") else 400
         return jsonify(result), status_code
+    except ValueError as e:
+        return jsonify({"success": False, "error": str(e)}), 422
     except Exception as e:
         tb_str = traceback.format_exc()
         print(f"Error in update_sales_order_route: {e}\n{tb_str}")

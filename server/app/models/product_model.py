@@ -14,8 +14,8 @@ def create_product(data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "INSERT INTO product (code, name, price) "
-                "VALUES (%s, %s, %s)"
+                "INSERT INTO product (code, name, price, status) "
+                "VALUES (%s, %s, %s, 'PUBLISHED')"
             )
             cursor.execute(query, (
                 data.get("code"),
