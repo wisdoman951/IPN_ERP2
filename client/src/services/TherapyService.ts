@@ -212,7 +212,7 @@ export const deleteTherapy = async (therapyId: number, account: string) => {
             },
             params: { deleted_by: account },
         });
-        return response.data;
+    return response.data;
     } catch (error) {
         console.error("刪除療程失敗：", error);
         throw error;
