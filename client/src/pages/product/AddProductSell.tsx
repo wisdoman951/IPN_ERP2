@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Button, Container, Row, Col, Form, InputGroup, Alert, Card } from "react-bootstrap";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import MemberColumn from "../../components/MemberColumn";
 import { MemberData } from "../../types/medicalTypes";
-import { addProductSell, ProductSellData } from "../../services/ProductSellService";
+import { addProductSell, ProductSellData, getProductSellById, updateProductSell, ProductSell } from "../../services/ProductSellService";
 import { getStoreId } from "../../services/LoginService";
 import { fetchAllStores, Store } from "../../services/StoreService";
 import { getStaffMembers, StaffMember } from "../../services/TherapyDropdownService";
@@ -33,9 +33,15 @@ const paymentMethodDisplayMap: { [key: string]: string } = {
   "其他": "Others",
 };
 
+const paymentMethodValueMap: { [key: string]: string } = Object.fromEntries(
+  Object.entries(paymentMethodDisplayMap).map(([key, value]) => [value, key])
+);
+
 const AddProductSell: React.FC = () => {
   const userRole = getUserRole();
   const navigate = useNavigate();
+  const { sellId } = useParams<{ sellId?: string }>();
+  const isEditMode = Boolean(sellId);
 
   const [stores, setStores] = useState<Store[]>([]);
   const [storeNameToId, setStoreNameToId] = useState<{ [name: string]: number }>({});
@@ -80,7 +86,7 @@ const AddProductSell: React.FC = () => {
           uniqueStores.forEach(s => { map[s.store_name] = s.store_id; });
           nameToIdMap = map;
           setStoreNameToId(map);
-          if (!localStorage.getItem('productSellFormState')) {
+          if (!isEditMode && !localStorage.getItem('productSellFormState')) {
             if (uniqueStores.length > 0) {
               setSelectedStore(uniqueStores[0].store_name);
               setStoreId(uniqueStores[0].store_id.toString());
@@ -98,7 +104,7 @@ const AddProductSell: React.FC = () => {
         try {
           const data = await getStaffMembers(currentStoreId ? parseInt(currentStoreId) : undefined);
           setStaffMembers(data);
-          if (data.length > 0 && !localStorage.getItem('productSellFormState')) {
+          if (!isEditMode && data.length > 0 && !localStorage.getItem('productSellFormState')) {
             setSelectedStaffId(data[0].staff_id.toString());
           }
         } catch (err) {
@@ -107,6 +113,40 @@ const AddProductSell: React.FC = () => {
         }
       };
       await fetchStaffMembersData();
+
+      if (isEditMode && sellId) {
+        try {
+          const saleData: ProductSell = await getProductSellById(parseInt(sellId));
+          setMemberCode(saleData.member_code || "");
+          setMemberId(saleData.member_id.toString());
+          setMemberName(saleData.member_name || "");
+          setPurchaseDate(saleData.date ? new Date(saleData.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+
+          const product: SelectedProduct = {
+            type: saleData.bundle_id ? 'bundle' : 'product',
+            product_id: saleData.product_id || undefined,
+            bundle_id: saleData.bundle_id || undefined,
+            name: saleData.product_name || "",
+            price: saleData.unit_price || 0,
+            quantity: saleData.quantity || 0,
+          };
+          setSelectedProducts([product]);
+          const originalTotal = (saleData.unit_price || 0) * (saleData.quantity || 0);
+          setProductsOriginalTotal(originalTotal);
+          setOrderDiscountAmount(saleData.discount_amount || 0);
+          setFinalPayableAmount(saleData.final_price ?? originalTotal - (saleData.discount_amount || 0));
+          setPaymentMethod(paymentMethodValueMap[saleData.payment_method || 'Cash'] || paymentMethodOptions[0]);
+          setSaleCategory(saleCategoryOptions.includes(saleData.sale_category || '') ? saleData.sale_category! : saleCategoryOptions[0]);
+          setSelectedStaffId(saleData.staff_id ? saleData.staff_id.toString() : '');
+          setNote(saleData.note || '');
+          if (saleData.store_id) setStoreId(saleData.store_id.toString());
+          if (saleData.store_name) setSelectedStore(saleData.store_name);
+        } catch (err) {
+          console.error("載入銷售資料失敗：", err);
+          setError("載入銷售資料失敗");
+        }
+        return;
+      }
 
       // ---- 資料還原在這邊 ----
       const selectedProductsData = localStorage.getItem('selectedProducts');
@@ -156,15 +196,9 @@ const AddProductSell: React.FC = () => {
         } catch (e) { console.error("解析 productSellFormState 失敗", e); }
       }
       setFinalPayableAmount(currentTotalFromProds - currentDiscAmount);
-
-      // 千萬不要在這裡清除 localStorage！
-      // return () => {
-      //   localStorage.removeItem('selectedProducts');
-      //   localStorage.removeItem('productSellFormState');
-      // };
     };
     init();
-  }, []);
+  }, [isEditMode, sellId]);
 
   useEffect(() => {
     const newTotal = selectedProducts.reduce((sum, p) => sum + (p.price || 0) * (p.quantity || 0), 0);
@@ -224,17 +258,12 @@ const AddProductSell: React.FC = () => {
     try {
       const paymentMethodInEnglish = paymentMethodDisplayMap[paymentMethod] || paymentMethod;
 
-      for (const product of selectedProducts) {
+      if (isEditMode && sellId) {
+        const product = selectedProducts[0];
         let itemFinalPrice = product.price * product.quantity;
-        let itemDiscountAmount = 0;
-        if (productsOriginalTotal > 0 && orderDiscountAmount > 0 && selectedProducts.length > 0) {
-            const productOriginalValue = product.price * product.quantity;
-            const proportion = productOriginalValue / productsOriginalTotal;
-            itemDiscountAmount = parseFloat((orderDiscountAmount * proportion).toFixed(2));
-            itemFinalPrice = parseFloat((productOriginalValue - itemDiscountAmount).toFixed(2));
-        } else if (productsOriginalTotal === 0 && orderDiscountAmount > 0 && selectedProducts.length === 1 && product.quantity > 0) {
-            itemDiscountAmount = orderDiscountAmount / product.quantity;
-            itemFinalPrice = (product.price * product.quantity) - orderDiscountAmount;
+        let itemDiscountAmount = orderDiscountAmount;
+        if (productsOriginalTotal > 0 && orderDiscountAmount > 0) {
+          itemFinalPrice = productsOriginalTotal - orderDiscountAmount;
         }
 
         const sellData: ProductSellData = {
@@ -259,7 +288,45 @@ const AddProductSell: React.FC = () => {
           sellData.bundle_id = product.bundle_id;
         }
 
-        await addProductSell(sellData);
+        await updateProductSell(parseInt(sellId), sellData);
+      } else {
+        for (const product of selectedProducts) {
+          let itemFinalPrice = product.price * product.quantity;
+          let itemDiscountAmount = 0;
+          if (productsOriginalTotal > 0 && orderDiscountAmount > 0 && selectedProducts.length > 0) {
+              const productOriginalValue = product.price * product.quantity;
+              const proportion = productOriginalValue / productsOriginalTotal;
+              itemDiscountAmount = parseFloat((orderDiscountAmount * proportion).toFixed(2));
+              itemFinalPrice = parseFloat((productOriginalValue - itemDiscountAmount).toFixed(2));
+          } else if (productsOriginalTotal === 0 && orderDiscountAmount > 0 && selectedProducts.length === 1 && product.quantity > 0) {
+              itemDiscountAmount = orderDiscountAmount / product.quantity;
+              itemFinalPrice = (product.price * product.quantity) - orderDiscountAmount;
+          }
+
+          const sellData: ProductSellData = {
+            member_id: parseInt(memberId),
+            store_id: parseInt(storeId),
+            staff_id: selectedStaffId ? parseInt(selectedStaffId) : undefined,
+            date: purchaseDate,
+            payment_method: paymentMethodInEnglish,
+            transfer_code: paymentMethod === "轉帳" ? transferCode : undefined,
+            card_number: paymentMethod === "信用卡" ? cardNumber : undefined,
+            sale_category: saleCategory,
+            quantity: product.quantity,
+            note: note,
+            unit_price: product.price,
+            discount_amount: itemDiscountAmount,
+            final_price: itemFinalPrice,
+          };
+
+          if (product.product_id) {
+            sellData.product_id = product.product_id;
+          } else if (product.bundle_id) {
+            sellData.bundle_id = product.bundle_id;
+          }
+
+          await addProductSell(sellData);
+        }
       }
 
       // 只在送出成功時清除
@@ -280,7 +347,7 @@ const AddProductSell: React.FC = () => {
     e.preventDefault();
     const success = await processSale();
     if (success) {
-      alert("銷售記錄已成功新增！");
+      alert(isEditMode ? "銷售記錄已成功更新！" : "銷售記錄已成功新增！");
       navigate('/product-sell', { state: { refresh: true } });
     }
   };
