@@ -351,7 +351,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
             bundle_conditions.append("ps.note LIKE '%%[bundle:%%'")
             bundle_where = " WHERE " + " AND ".join(bundle_conditions)
 
-            prod_q = f"""
+            prod_base_q = f"""
                 SELECT
                     ps.product_sell_id + 1000000 AS Inventory_ID,
                     COALESCE(p.name, ps.product_name) AS Name,
@@ -375,7 +375,11 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                 LEFT JOIN store st ON ps.store_id = st.store_id
                 LEFT JOIN member mb ON ps.member_id = mb.member_id
                 {base_where}
-                UNION ALL
+            """
+            cursor.execute(prod_base_q, base_params)
+            records.extend(cursor.fetchall())
+
+            prod_bundle_q = f"""
                 SELECT
                     ps.product_sell_id + 1000000 + pbi.item_id AS Inventory_ID,
                     pr.name AS Name,
@@ -403,7 +407,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                 LEFT JOIN member mb ON ps.member_id = mb.member_id
                 {bundle_where}
             """
-            cursor.execute(prod_q, base_params + bundle_params)
+            cursor.execute(prod_bundle_q, bundle_params)
             records.extend(cursor.fetchall())
             
             # -------- 療程銷售紀錄 --------
@@ -455,7 +459,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
             t_bundle_conditions.append("ts.note LIKE '%%[bundle:%%'")
             t_bundle_where = " WHERE " + " AND ".join(t_bundle_conditions)
 
-            therapy_q = f"""
+            therapy_base_q = f"""
                 SELECT
                     ts.therapy_sell_id + 2000000 AS Inventory_ID,
                     COALESCE(t.name, ts.therapy_name) AS Name,
@@ -479,7 +483,11 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                 LEFT JOIN store st ON ts.store_id = st.store_id
                 LEFT JOIN member mb ON ts.member_id = mb.member_id
                 {t_base_where}
-                UNION ALL
+            """
+            cursor.execute(therapy_base_q, t_base_params)
+            records.extend(cursor.fetchall())
+
+            therapy_bundle_q = f"""
                 SELECT
                     ts.therapy_sell_id + 2000000 + tbi.item_id AS Inventory_ID,
                     th.name AS Name,
@@ -506,7 +514,7 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                 LEFT JOIN member mb ON ts.member_id = mb.member_id
                 {t_bundle_where}
             """
-            cursor.execute(therapy_q, t_base_params + t_bundle_params)
+            cursor.execute(therapy_bundle_q, t_bundle_params)
             records.extend(cursor.fetchall())
 
             if sale_staff:
