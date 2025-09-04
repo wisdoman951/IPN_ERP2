@@ -42,6 +42,7 @@ export const pageTitles: PageTitleMap = {
   // Sales
   '/product-sell': { basic: '銷售產品 1.1.2', admin: '銷售產品 1.2.2' },
   '/add-product-sell': { basic: '新增銷售產品 1.1.2.1', admin: '新增銷售產品 1.2.2.1' },
+  '/add-product-sell/:sellId': { basic: '新增銷售產品 1.1.2.1', admin: '新增銷售產品 1.2.2.1' },
   '/product-selection': { basic: '購買品項 1.1.2.1.1', admin: '購買品項 1.2.2.1.1' },
   '/therapy-sell': { basic: '銷售療程 1.1.3', admin: '銷售療程 1.2.3' },
   '/therapy-sell/add': { basic: '新增銷售療程 1.1.3.1', admin: '新增銷售療程 1.2.3.1' },

@@ -177,7 +177,6 @@ def update_sales_order(order_id: int, order_data: dict):
                 raw_therapy_id = item.get("therapy_id")
                 product_id = int(raw_product_id) if raw_product_id else None
                 therapy_id = int(raw_therapy_id) if raw_therapy_id else None
-
                 _validate_item_ids(cursor, product_id, therapy_id)
 
                 item_for_sql = {
