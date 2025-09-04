@@ -4,6 +4,26 @@ from app.config import DB_CONFIG
 from datetime import datetime
 import traceback
 
+
+def _validate_item_ids(cursor, product_id: int | None, therapy_id: int | None):
+    """Confirm provided product/bundle and therapy IDs exist."""
+    if product_id is not None:
+        cursor.execute("SELECT product_id FROM product WHERE product_id = %s", (product_id,))
+        if cursor.fetchone() is None:
+            cursor.execute(
+                "SELECT bundle_id FROM product_bundles WHERE bundle_id = %s",
+                (product_id,),
+            )
+            if cursor.fetchone() is None:
+                raise ValueError(f"產品或組合ID {product_id} 不存在")
+    if therapy_id is not None:
+        cursor.execute(
+            "SELECT therapy_id FROM therapy WHERE therapy_id = %s",
+            (therapy_id,),
+        )
+        if cursor.fetchone() is None:
+            raise ValueError(f"療程ID {therapy_id} 不存在")
+
 def connect_to_db():
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
@@ -65,15 +85,8 @@ def create_sales_order(order_data: dict):
                 product_id = int(raw_product_id) if raw_product_id else None
                 therapy_id = int(raw_therapy_id) if raw_therapy_id else None
 
-                # 若提供了 product_id 或 therapy_id，先驗證其在資料庫中是否存在
-                if product_id is not None:
-                    cursor.execute("SELECT product_id FROM product WHERE product_id = %s", (product_id,))
-                    if cursor.fetchone() is None:
-                        raise ValueError(f"產品ID {product_id} 不存在")
-                if therapy_id is not None:
-                    cursor.execute("SELECT therapy_id FROM therapy WHERE therapy_id = %s", (therapy_id,))
-                    if cursor.fetchone() is None:
-                        raise ValueError(f"療程ID {therapy_id} 不存在")
+                # 驗證提供的 ID 是否存在於資料庫
+                _validate_item_ids(cursor, product_id, therapy_id)
 
                 # 確保所有必要的鍵都存在，即使其值為 None
                 item_for_sql = {
@@ -164,15 +177,7 @@ def update_sales_order(order_id: int, order_data: dict):
                 raw_therapy_id = item.get("therapy_id")
                 product_id = int(raw_product_id) if raw_product_id else None
                 therapy_id = int(raw_therapy_id) if raw_therapy_id else None
-
-                if product_id is not None:
-                    cursor.execute("SELECT product_id FROM product WHERE product_id = %s", (product_id,))
-                    if cursor.fetchone() is None:
-                        raise ValueError(f"產品ID {product_id} 不存在")
-                if therapy_id is not None:
-                    cursor.execute("SELECT therapy_id FROM therapy WHERE therapy_id = %s", (therapy_id,))
-                    if cursor.fetchone() is None:
-                        raise ValueError(f"療程ID {therapy_id} 不存在")
+                _validate_item_ids(cursor, product_id, therapy_id)
 
                 item_for_sql = {
                     "order_id": order_id,
