@@ -567,7 +567,6 @@ def delete_therapy(therapy_id: int):
                 "UPDATE therapy_sell SET therapy_id = NULL WHERE therapy_id=%s",
                 (therapy_id,),
             )
-
             # 再刪除療程本身
             cursor.execute("DELETE FROM therapy WHERE therapy_id=%s", (therapy_id,))
         conn.commit()

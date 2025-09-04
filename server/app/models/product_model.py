@@ -78,7 +78,6 @@ def delete_product(product_id: int):
                 "UPDATE product_sell SET product_id = NULL WHERE product_id=%s",
                 (product_id,),
             )
-
             # 再刪除產品本身
             cursor.execute("DELETE FROM product WHERE product_id=%s", (product_id,))
         conn.commit()

@@ -33,7 +33,8 @@ def add_sales_order_route():
         order_data['order_number'] = order_data.get('order_number') or generate_order_number(prefix)
 
         result = create_sales_order(order_data)
-        return jsonify(result), 201
+        status_code = 201 if result.get("success") else 400
+        return jsonify(result), status_code
     except Exception as e:
         tb_str = traceback.format_exc()
         print(f"Error in add_sales_order_route: {e}\n{tb_str}")

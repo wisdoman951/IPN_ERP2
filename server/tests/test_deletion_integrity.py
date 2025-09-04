@@ -138,4 +138,3 @@ def test_delete_therapy_preserves_sales(monkeypatch):
     assert queries[1].startswith("UPDATE therapy_sell SET therapy_name"), "therapy name not archived"
     assert queries[2].startswith("UPDATE therapy_sell SET therapy_id = NULL"), "therapy sells not preserved"
     assert queries[3].startswith("DELETE FROM therapy"), "therapy not deleted"
-
