@@ -544,10 +544,16 @@ def update_therapy(therapy_id: int, data: dict):
 
 
 def delete_therapy(therapy_id: int):
-    """刪除療程套餐"""
+    """刪除療程套餐並保留相關的銷售紀錄"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            # 先將 therapy_sell 中引用此療程的紀錄設為 NULL，避免銷售紀錄被刪除
+            cursor.execute(
+                "UPDATE therapy_sell SET therapy_id = NULL WHERE therapy_id=%s",
+                (therapy_id,),
+            )
+            # 再刪除療程本身
             cursor.execute("DELETE FROM therapy WHERE therapy_id=%s", (therapy_id,))
         conn.commit()
     except Exception as e:
