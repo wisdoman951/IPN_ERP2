@@ -131,6 +131,7 @@ const AddTherapySell: React.FC = () => {
           {
             therapy_id: editSale.therapy_id,
             type: 'therapy',
+            TherapyCode: editSale.TherapyCode,
             TherapyName: editSale.PackageName,
             TherapyContent: editSale.PackageName,
             TherapyPrice: editSale.UnitPrice ||

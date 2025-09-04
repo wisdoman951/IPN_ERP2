@@ -91,6 +91,7 @@ export interface ProductSell extends ProductSellData {
   member_name?: string;
   store_name?: string;
   product_name?: string;
+  product_code?: string;
   staff_name?: string;
 }
 

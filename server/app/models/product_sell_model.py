@@ -45,7 +45,8 @@ def get_product_sell_by_id(sell_id: int):
         query = """
             SELECT
                 ps.*, m.member_code AS member_code, m.name AS member_name,
-                st.store_name, COALESCE(p.name, ps.product_name) AS product_name, sf.name AS staff_name
+                st.store_name, p.code AS product_code,
+                COALESCE(p.name, ps.product_name) AS product_name, sf.name AS staff_name
             FROM product_sell ps
             LEFT JOIN member m ON ps.member_id = m.member_id
             LEFT JOIN store st ON ps.store_id = st.store_id
