@@ -4,17 +4,18 @@ from app.config import DB_CONFIG
 from datetime import datetime
 import traceback
 import logging
+import json
 def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
-def get_all_therapy_packages(status: str | None = 'PUBLISHED'):
+def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | None = None):
     """獲取所有療程套餐"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT therapy_id, code as TherapyCode, price as TherapyPrice, name as TherapyName, content as TherapyContent
+                SELECT therapy_id, code as TherapyCode, price as TherapyPrice, name as TherapyName, content as TherapyContent, visible_store_ids
                 FROM therapy
             """
             params = []
@@ -24,20 +25,33 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED'):
             query += " ORDER BY code"
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
-            return result
+            filtered = []
+            for row in result:
+                store_ids = None
+                if row.get('visible_store_ids'):
+                    try:
+                        store_ids = json.loads(row['visible_store_ids'])
+                        if isinstance(store_ids, (int, str)):
+                            store_ids = [int(store_ids)]
+                    except Exception:
+                        store_ids = None
+                if store_id is None or not store_ids or int(store_id) in store_ids:
+                    row.pop('visible_store_ids', None)
+                    filtered.append(row)
+            return filtered
     except Exception as e:
         print(f"獲取療程套餐錯誤: {e}")
         return {"error": str(e)}
     finally:
         conn.close()
 
-def search_therapy_packages(keyword, status: str | None = 'PUBLISHED'):
+def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id: int | None = None):
     """搜尋療程套餐"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT therapy_id, code as TherapyCode, price as TherapyPrice, name as TherapyName, content as TherapyContent
+                SELECT therapy_id, code as TherapyCode, price as TherapyPrice, name as TherapyName, content as TherapyContent, visible_store_ids
                 FROM therapy
                 WHERE (code LIKE %s OR name LIKE %s OR content LIKE %s)
             """
@@ -50,7 +64,20 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED'):
             query += " ORDER BY code"
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
-            return result
+            filtered = []
+            for row in result:
+                store_ids = None
+                if row.get('visible_store_ids'):
+                    try:
+                        store_ids = json.loads(row['visible_store_ids'])
+                        if isinstance(store_ids, (int, str)):
+                            store_ids = [int(store_ids)]
+                    except Exception:
+                        store_ids = None
+                if store_id is None or not store_ids or int(store_id) in store_ids:
+                    row.pop('visible_store_ids', None)
+                    filtered.append(row)
+            return filtered
     except Exception as e:
         print(f"搜尋療程套餐錯誤: {e}")
         return {"error": str(e)}
