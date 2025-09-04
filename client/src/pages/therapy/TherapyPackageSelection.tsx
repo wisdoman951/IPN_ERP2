@@ -9,7 +9,7 @@ import {
     TherapyPackage as TherapyPackageBaseType,
     fetchRemainingSessionsBulk
 } from '../../services/TherapySellService';
-import { fetchAllBundles, Bundle } from '../../services/ProductBundleService';
+import { fetchAllTherapyBundles, TherapyBundle } from '../../services/TherapyBundleService';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
 export interface PackageInSelection extends TherapyPackageBaseType {
@@ -82,7 +82,7 @@ const TherapyPackageSelection: React.FC = () => {
         try {
             const [therapyRes, bundleData] = await Promise.all([
                 fetchAllTherapyPackagesService(),
-                fetchAllBundles()
+                fetchAllTherapyBundles()
             ]);
 
             let packages: TherapyPackageBaseType[] = [];
@@ -94,7 +94,7 @@ const TherapyPackageSelection: React.FC = () => {
                 }));
             }
 
-            const bundlePackages: TherapyPackageBaseType[] = bundleData.map((b: Bundle) => ({
+            const bundlePackages: TherapyPackageBaseType[] = bundleData.map((b: TherapyBundle) => ({
                 bundle_id: b.bundle_id,
                 type: 'bundle',
                 TherapyCode: b.bundle_code,
