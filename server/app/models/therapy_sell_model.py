@@ -242,14 +242,20 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                 if bundle_id:
                     bundle_qty = int(data_item.get("amount", 1))
                     cursor.execute(
-                        "SELECT item_id, quantity FROM product_bundle_items WHERE bundle_id = %s AND item_type = 'Therapy'",
+                        "SELECT item_id, quantity FROM therapy_bundle_items WHERE bundle_id = %s",
                         (bundle_id,)
                     )
                     bundle_items = cursor.fetchall()
                     if not bundle_items:
+                        cursor.execute(
+                            "SELECT name FROM therapy_bundles WHERE bundle_id = %s",
+                            (bundle_id,),
+                        )
+                        bundle_row = cursor.fetchone()
+                        bundle_name = bundle_row.get("name") if bundle_row else None
                         empty_bundle_values = {
                             "therapy_id": None,
-                            "therapy_name": data_item.get("therapy_name") or data_item.get("therapyName"),
+                            "therapy_name": bundle_name or data_item.get("therapy_name") or data_item.get("therapyName"),
                             "member_id": data_item.get("memberId"),
                             "store_id": data_item.get("storeId"),
                             "staff_id": data_item.get("staffId"),
