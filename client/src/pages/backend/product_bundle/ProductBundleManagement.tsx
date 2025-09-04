@@ -5,8 +5,9 @@ import DynamicContainer from '../../../components/DynamicContainer';
 import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
+import TherapyBundleModal from './TherapyBundleModal';
 import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
-import { fetchAllTherapyBundles, TherapyBundle } from '../../../services/TherapyBundleService';
+import { fetchAllTherapyBundles, deleteTherapyBundle, TherapyBundle } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
 import { deleteProduct } from '../../../services/ProductService';
 import { deleteTherapy } from '../../../services/TherapyService';
@@ -28,6 +29,8 @@ const ProductBundleManagement: React.FC = () => {
     const [showProductModal, setShowProductModal] = useState(false);
     const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
     const [editingTherapy, setEditingTherapy] = useState<TherapyItem | null>(null);
+    const [showTherapyBundleModal, setShowTherapyBundleModal] = useState(false);
+    const [editingTherapyBundle, setEditingTherapyBundle] = useState<TherapyBundle | null>(null);
     const [stores, setStores] = useState<Store[]>([]);
     const [activeTab, setActiveTab] = useState<'bundle' | 'therapy_bundle' | 'product' | 'therapy'>('bundle');
     const [bundleSearch, setBundleSearch] = useState('');
@@ -120,6 +123,11 @@ const ProductBundleManagement: React.FC = () => {
         setShowTherapyModal(true);
     };
 
+    const handleShowTherapyBundleModal = () => {
+        setEditingTherapyBundle(null);
+        setShowTherapyBundleModal(true);
+    };
+
     const handleShowProductModal = () => {
         setEditingProduct(null);
         setShowProductModal(true);
@@ -135,10 +143,21 @@ const ProductBundleManagement: React.FC = () => {
         setShowTherapyModal(true);
     };
 
+    const handleShowEditTherapyBundleModal = (bundle: TherapyBundle) => {
+        setEditingTherapyBundle(bundle);
+        setShowTherapyBundleModal(true);
+    };
+
     const handleCloseTherapyModal = () => {
         setShowTherapyModal(false);
         setEditingTherapy(null);
         fetchTherapies();
+    };
+
+    const handleCloseTherapyBundleModal = () => {
+        setShowTherapyBundleModal(false);
+        setEditingTherapyBundle(null);
+        fetchTherapyBundlesData();
     };
 
     const handleCloseProductModal = () => {
@@ -184,6 +203,18 @@ const ProductBundleManagement: React.FC = () => {
         setTimeout(() => setSuccessMessage(null), 3000);
     };
 
+    const handleDeleteTherapyBundle = async (bundleId: number) => {
+        setSuccessMessage(null);
+        try {
+            await deleteTherapyBundle(bundleId);
+            setSuccessMessage('刪除成功！');
+            fetchTherapyBundlesData();
+        } catch {
+            setError('刪除失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
     const filteredBundles = bundles.filter(bundle =>
         bundle.bundle_code.toLowerCase().includes(bundleSearch.toLowerCase()) ||
         bundle.name.toLowerCase().includes(bundleSearch.toLowerCase())
@@ -218,6 +249,13 @@ const ProductBundleManagement: React.FC = () => {
                             onClick={handleShowAddModal}
                         >
                             新增產品組合
+                        </Button>
+                        <Button
+                            variant="info"
+                            className="text-white px-4"
+                            onClick={handleShowTherapyBundleModal}
+                        >
+                            新增療程組合
                         </Button>
                         <Button
                             variant="info"
@@ -332,6 +370,7 @@ const ProductBundleManagement: React.FC = () => {
                                     <th>組合內容</th>
                                     <th>限定分店</th>
                                     <th>售價</th>
+                                    <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -351,10 +390,24 @@ const ProductBundleManagement: React.FC = () => {
                                                     : '---'}
                                             </td>
                                             <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
+                                            <td className="align-middle">
+                                                <Button variant="link" onClick={() => handleShowEditTherapyBundleModal(bundle)}>修改</Button>
+                                                <Button
+                                                    variant="link"
+                                                    className="text-danger"
+                                                    onClick={() => {
+                                                        if (window.confirm(`確定要刪除「${bundle.name}」嗎？`)) {
+                                                            handleDeleteTherapyBundle(bundle.bundle_id);
+                                                        }
+                                                    }}
+                                                >
+                                                    刪除
+                                                </Button>
+                                            </td>
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan={5} className="text-center text-muted py-5">尚無資料</td></tr>
+                                    <tr><td colSpan={6} className="text-center text-muted py-5">尚無資料</td></tr>
                                 )}
                             </tbody>
                         </Table>
@@ -481,6 +534,12 @@ const ProductBundleManagement: React.FC = () => {
                 onHide={handleCloseModal}
                 onSaveSuccess={fetchBundles}
                 editingBundle={editingBundle}
+            />
+            <TherapyBundleModal
+                show={showTherapyBundleModal}
+                onHide={handleCloseTherapyBundleModal}
+                onSaveSuccess={fetchTherapyBundlesData}
+                editingBundle={editingTherapyBundle}
             />
             <AddTherapyModal
                 show={showTherapyModal}
