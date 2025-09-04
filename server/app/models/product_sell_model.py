@@ -1,5 +1,6 @@
 # \app\models\product_sell_model.py
 import pymysql
+import json
 from decimal import Decimal
 from app.config import DB_CONFIG
 
@@ -473,6 +474,7 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 p.code AS product_code,
                 p.name AS product_name,
                 p.price AS product_price,
+                p.visible_store_ids,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id
             FROM product p
@@ -490,11 +492,25 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
         if status:
             query += " WHERE p.status = %s"
             params.append(status)
-        query += " GROUP BY p.product_id, p.code, p.name, p.price ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.visible_store_ids ORDER BY p.name"
         cursor.execute(query, tuple(params))
-        result = cursor.fetchall()
+    result = cursor.fetchall()
     conn.close()
-    return result
+    filtered = []
+    for row in result:
+        store_ids = None
+        if row.get('visible_store_ids'):
+            try:
+                store_ids = json.loads(row['visible_store_ids'])
+                if isinstance(store_ids, (int, str)):
+                    store_ids = [int(store_ids)]
+            except Exception:
+                store_ids = None
+        if store_id is None or not store_ids or int(store_id) in store_ids:
+            if store_ids is not None:
+                row['visible_store_ids'] = store_ids
+            filtered.append(row)
+    return filtered
 
 def search_products_with_inventory(keyword, store_id=None, status: str | None = 'PUBLISHED'):
     """
@@ -511,6 +527,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 p.code AS product_code,
                 p.name AS product_name,
                 p.price AS product_price,
+                p.visible_store_ids,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id
             FROM product p
@@ -537,12 +554,26 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " GROUP BY p.product_id, p.code, p.name, p.price ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.visible_store_ids ORDER BY p.name"
 
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()
     conn.close()
-    return result
+    filtered = []
+    for row in result:
+        store_ids = None
+        if row.get('visible_store_ids'):
+            try:
+                store_ids = json.loads(row['visible_store_ids'])
+                if isinstance(store_ids, (int, str)):
+                    store_ids = [int(store_ids)]
+            except Exception:
+                store_ids = None
+        if store_id is None or not store_ids or int(store_id) in store_ids:
+            if store_ids is not None:
+                row['visible_store_ids'] = store_ids
+            filtered.append(row)
+    return filtered
 
 def export_product_sells(store_id=None):
     """匯出產品銷售記錄，可選用 store_id 過濾"""
