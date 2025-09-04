@@ -17,6 +17,7 @@ import DynamicContainer from "../../components/DynamicContainer";
 import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData, TherapySellRow, updateTherapySell } from "../../services/TherapySellService";
 import { SalesOrderItemData } from "../../services/SalesOrderService";
 import { getStoreName } from "../../utils/authUtils";
+import { fetchTherapyBundlesForSale, TherapyBundle } from "../../services/TherapyBundleService";
 
 interface DropdownItem {
   id: number;
@@ -78,7 +79,7 @@ const AddTherapySell: React.FC = () => {
       }
     };
 
-    const restoreState = () => {
+    const restoreState = async () => {
       let formStateData: string | null = null;
       let storedPkgs: string | null = null;
 
@@ -135,23 +136,63 @@ const AddTherapySell: React.FC = () => {
           note: editSale.Note || "",
         }));
         setMemberName(editSale.MemberName || "");
-        setTherapyPackages([
-          {
-            therapy_id: editSale.therapy_id,
-            type: 'therapy',
-            TherapyCode: editSale.TherapyCode,
-            TherapyName: editSale.PackageName,
-            TherapyContent: editSale.PackageName,
-            TherapyPrice: editSale.UnitPrice ||
-              ((editSale.Price || 0) / (editSale.Sessions || 1)),
-            userSessions: editSale.Sessions?.toString() || "1",
-          },
-        ]);
+
+        const bundleMatch = editSale.Note?.match(/\[bundle:(\d+)\]/);
+        if (bundleMatch) {
+          const bundleId = Number(bundleMatch[1]);
+          try {
+            const bundles: TherapyBundle[] = await fetchTherapyBundlesForSale();
+            const bundle = bundles.find(b => b.bundle_id === bundleId);
+            if (bundle) {
+              setTherapyPackages([
+                {
+                  bundle_id: bundle.bundle_id,
+                  type: 'bundle',
+                  TherapyCode: bundle.bundle_code,
+                  TherapyName: bundle.name,
+                  TherapyContent: bundle.bundle_contents,
+                  TherapyPrice: editSale.UnitPrice || ((editSale.Price || 0) / (editSale.Sessions || 1)),
+                  userSessions: editSale.Sessions?.toString() || "1",
+                },
+              ]);
+              return;
+            }
+          } catch (e) {
+            console.error('載入療程組合失敗', e);
+          }
+
+          setTherapyPackages([
+            {
+              bundle_id: bundleId,
+              type: 'bundle',
+              TherapyCode: '',
+              TherapyName: editSale.PackageName,
+              TherapyContent: editSale.PackageName,
+              TherapyPrice: editSale.UnitPrice || ((editSale.Price || 0) / (editSale.Sessions || 1)),
+              userSessions: editSale.Sessions?.toString() || "1",
+            },
+          ]);
+        } else {
+          setTherapyPackages([
+            {
+              therapy_id: editSale.therapy_id,
+              type: 'therapy',
+              TherapyCode: editSale.TherapyCode,
+              TherapyName: editSale.PackageName,
+              TherapyContent: editSale.PackageName,
+              TherapyPrice: editSale.UnitPrice || ((editSale.Price || 0) / (editSale.Sessions || 1)),
+              userSessions: editSale.Sessions?.toString() || "1",
+            },
+          ]);
+        }
       }
     };
 
-    fetchInitialData();
-    restoreState();
+    const init = async () => {
+      await fetchInitialData();
+      await restoreState();
+    };
+    init();
   }, []);
 
   // 重新計算金額
