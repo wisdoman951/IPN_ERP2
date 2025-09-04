@@ -324,7 +324,8 @@ def export_sales():
 def get_therapy_list():
     """提供給前端下拉選單使用的療程列表"""
     try:
-        therapy_list = get_all_therapies_for_dropdown()
+        status = request.args.get("status", 'PUBLISHED')
+        therapy_list = get_all_therapies_for_dropdown(status)
         return jsonify(therapy_list)
     except Exception as e:
         return jsonify({"error": str(e)}), 500

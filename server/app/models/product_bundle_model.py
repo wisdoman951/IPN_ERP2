@@ -9,7 +9,7 @@ def connect_to_db():
     """建立資料庫連線"""
     return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
 
-def get_all_product_bundles():
+def get_all_product_bundles(status: str | None = None):
     """
     獲取所有產品組合列表。
     使用 GROUP_CONCAT 將每個組合的內容物（產品和療程名稱）合併成一個字串，
@@ -27,6 +27,7 @@ def get_all_product_bundles():
                     pb.calculated_price,
                     pb.visible_store_ids,
                     pb.created_at,
+                    pb.status,
                     -- 使用 IFNULL 避免組合內沒有項目時回傳 NULL
                     IFNULL(
                         GROUP_CONCAT(
@@ -39,20 +40,21 @@ def get_all_product_bundles():
                         ),
                         ''
                     ) AS bundle_contents
-                FROM 
+                FROM
                     product_bundles pb
-                LEFT JOIN 
+                LEFT JOIN
                     product_bundle_items pbi ON pb.bundle_id = pbi.bundle_id
-                LEFT JOIN 
+                LEFT JOIN
                     product p ON pbi.item_id = p.product_id AND pbi.item_type = 'Product'
-                LEFT JOIN 
+                LEFT JOIN
                     therapy t ON pbi.item_id = t.therapy_id AND pbi.item_type = 'Therapy'
-                GROUP BY 
-                    pb.bundle_id
-                ORDER BY 
-                    pb.bundle_id DESC;
             """
-            cursor.execute(query)
+            params = []
+            if status:
+                query += " WHERE pb.status = %s"
+                params.append(status)
+            query += " GROUP BY pb.bundle_id ORDER BY pb.bundle_id DESC"
+            cursor.execute(query, tuple(params))
             result = cursor.fetchall()
             for row in result:
                 if row.get('visible_store_ids'):
@@ -71,8 +73,8 @@ def create_product_bundle(data: dict):
         with conn.cursor() as cursor:
             # 步驟 1: 修改 SQL 語句，使用 %s 作為佔位符
             bundle_query = """
-                INSERT INTO product_bundles (bundle_code, name, calculated_price, selling_price, visible_store_ids)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO product_bundles (bundle_code, name, calculated_price, selling_price, visible_store_ids, status)
+                VALUES (%s, %s, %s, %s, %s, 'PUBLISHED')
             """
             # 步驟 2: 建立一個包含參數的元組 (tuple)，順序必須與 %s 對應
             bundle_values = (

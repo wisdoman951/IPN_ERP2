@@ -6,11 +6,11 @@ import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
 import TherapyBundleModal from './TherapyBundleModal';
-import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
-import { fetchAllTherapyBundles, deleteTherapyBundle, TherapyBundle } from '../../../services/TherapyBundleService';
+import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, publishBundle, unpublishBundle, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
+import { fetchAllTherapyBundles, deleteTherapyBundle, publishTherapyBundle, unpublishTherapyBundle, TherapyBundle } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
-import { deleteProduct } from '../../../services/ProductService';
-import { deleteTherapy } from '../../../services/TherapyService';
+import { deleteProduct, publishProduct, unpublishProduct } from '../../../services/ProductService';
+import { deleteTherapy, publishTherapy, unpublishTherapy } from '../../../services/TherapyService';
 
 const ProductBundleManagement: React.FC = () => {
     const [bundles, setBundles] = useState<Bundle[]>([]);
@@ -37,12 +37,16 @@ const ProductBundleManagement: React.FC = () => {
     const [therapyBundleSearch, setTherapyBundleSearch] = useState('');
     const [productSearch, setProductSearch] = useState('');
     const [therapySearch, setTherapySearch] = useState('');
+    const [bundleStatus, setBundleStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
+    const [therapyBundleStatus, setTherapyBundleStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
+    const [productStatus, setProductStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
+    const [therapyStatus, setTherapyStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
 
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
         setError(null);
         try {
-            const data = await fetchAllBundles();
+            const data = await fetchAllBundles(bundleStatus);
             setBundles(data);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
@@ -50,13 +54,13 @@ const ProductBundleManagement: React.FC = () => {
         } finally {
             setBundleLoading(false);
         }
-    }, []);
+    }, [bundleStatus]);
 
     const fetchTherapyBundlesData = useCallback(async () => {
         setTherapyBundleLoading(true);
         setError(null);
         try {
-            const data = await fetchAllTherapyBundles();
+            const data = await fetchAllTherapyBundles(therapyBundleStatus);
             setTherapyBundles(data);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
@@ -64,12 +68,12 @@ const ProductBundleManagement: React.FC = () => {
         } finally {
             setTherapyBundleLoading(false);
         }
-    }, []);
+    }, [therapyBundleStatus]);
 
     const fetchProducts = useCallback(async () => {
         setProductLoading(true);
         try {
-            const data = await fetchProductsForDropdown();
+            const data = await fetchProductsForDropdown(productStatus);
             setProducts(data);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
@@ -77,12 +81,12 @@ const ProductBundleManagement: React.FC = () => {
         } finally {
             setProductLoading(false);
         }
-    }, []);
+    }, [productStatus]);
 
     const fetchTherapies = useCallback(async () => {
         setTherapyLoading(true);
         try {
-            const data = await fetchTherapiesForDropdown();
+            const data = await fetchTherapiesForDropdown(therapyStatus);
             setTherapies(data);
         } catch (err: unknown) {
             const error = err as { response?: { data?: { error?: string } } };
@@ -90,7 +94,7 @@ const ProductBundleManagement: React.FC = () => {
         } finally {
             setTherapyLoading(false);
         }
-    }, []);
+    }, [therapyStatus]);
 
     useEffect(() => {
         fetchBundles();
@@ -166,10 +170,25 @@ const ProductBundleManagement: React.FC = () => {
         fetchProducts();
     };
 
+    const confirmDeletion = (): string | null => {
+        if (!window.confirm('是否確認要刪除產品資料，將一併刪除銷售資料！')) {
+            return null;
+        }
+        const account = localStorage.getItem('account');
+        const input = window.prompt('請輸入登入帳號以確認刪除');
+        if (!account || input !== account) {
+            alert('帳號驗證失敗，刪除已取消');
+            return null;
+        }
+        return account;
+    };
+
     const handleDelete = async (bundleId: number) => {
+        const account = confirmDeletion();
+        if (!account) return;
         setSuccessMessage(null); // 清除舊的成功訊息
         try {
-            await deleteBundle(bundleId);
+            await deleteBundle(bundleId, account);
             setSuccessMessage('刪除成功！');
             fetchBundles(); // 重新載入列表
         } catch {
@@ -180,9 +199,11 @@ const ProductBundleManagement: React.FC = () => {
     };
 
     const handleDeleteProduct = async (productId: number) => {
+        const account = confirmDeletion();
+        if (!account) return;
         setSuccessMessage(null);
         try {
-            await deleteProduct(productId);
+            await deleteProduct(productId, account);
             setSuccessMessage('刪除成功！');
             fetchProducts();
         } catch {
@@ -192,9 +213,11 @@ const ProductBundleManagement: React.FC = () => {
     };
 
     const handleDeleteTherapy = async (therapyId: number) => {
+        const account = confirmDeletion();
+        if (!account) return;
         setSuccessMessage(null);
         try {
-            await deleteTherapy(therapyId);
+            await deleteTherapy(therapyId, account);
             setSuccessMessage('刪除成功！');
             fetchTherapies();
         } catch {
@@ -204,13 +227,111 @@ const ProductBundleManagement: React.FC = () => {
     };
 
     const handleDeleteTherapyBundle = async (bundleId: number) => {
+        const account = confirmDeletion();
+        if (!account) return;
         setSuccessMessage(null);
         try {
-            await deleteTherapyBundle(bundleId);
+            await deleteTherapyBundle(bundleId, account);
             setSuccessMessage('刪除成功！');
             fetchTherapyBundlesData();
         } catch {
             setError('刪除失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handlePublishBundle = async (bundleId: number) => {
+        setSuccessMessage(null);
+        try {
+            await publishBundle(bundleId);
+            setSuccessMessage('上架成功！');
+            fetchBundles();
+        } catch {
+            setError('上架失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handleUnpublishBundle = async (bundleId: number) => {
+        setSuccessMessage(null);
+        try {
+            await unpublishBundle(bundleId);
+            setSuccessMessage('下架成功！');
+            fetchBundles();
+        } catch {
+            setError('下架失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handlePublishTherapyBundle = async (bundleId: number) => {
+        setSuccessMessage(null);
+        try {
+            await publishTherapyBundle(bundleId);
+            setSuccessMessage('上架成功！');
+            fetchTherapyBundlesData();
+        } catch {
+            setError('上架失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handleUnpublishTherapyBundle = async (bundleId: number) => {
+        setSuccessMessage(null);
+        try {
+            await unpublishTherapyBundle(bundleId);
+            setSuccessMessage('下架成功！');
+            fetchTherapyBundlesData();
+        } catch {
+            setError('下架失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handlePublishProduct = async (productId: number) => {
+        setSuccessMessage(null);
+        try {
+            await publishProduct(productId);
+            setSuccessMessage('上架成功！');
+            fetchProducts();
+        } catch {
+            setError('上架失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handleUnpublishProduct = async (productId: number) => {
+        setSuccessMessage(null);
+        try {
+            await unpublishProduct(productId);
+            setSuccessMessage('下架成功！');
+            fetchProducts();
+        } catch {
+            setError('下架失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handlePublishTherapy = async (therapyId: number) => {
+        setSuccessMessage(null);
+        try {
+            await publishTherapy(therapyId);
+            setSuccessMessage('上架成功！');
+            fetchTherapies();
+        } catch {
+            setError('上架失敗，請稍後再試。');
+        }
+        setTimeout(() => setSuccessMessage(null), 3000);
+    };
+
+    const handleUnpublishTherapy = async (therapyId: number) => {
+        setSuccessMessage(null);
+        try {
+            await unpublishTherapy(therapyId);
+            setSuccessMessage('下架成功！');
+            fetchTherapies();
+        } catch {
+            setError('下架失敗，請稍後再試。');
         }
         setTimeout(() => setSuccessMessage(null), 3000);
     };
@@ -297,6 +418,12 @@ const ProductBundleManagement: React.FC = () => {
                                     onChange={(e) => setBundleSearch(e.target.value)}
                                 />
                             </Col>
+                            <Col xs={12} md={2} className="mt-2 mt-md-0">
+                                <Form.Select value={bundleStatus} onChange={(e) => setBundleStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
+                                    <option value="PUBLISHED">上架中</option>
+                                    <option value="UNPUBLISHED">下架中</option>
+                                </Form.Select>
+                            </Col>
                         </Row>
                         <Table striped bordered hover responsive>
                             <thead>
@@ -328,6 +455,31 @@ const ProductBundleManagement: React.FC = () => {
                                             <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditModal(bundle)}>修改</Button>
+                                                {bundleStatus === 'PUBLISHED' ? (
+                                                    <Button
+                                                        variant="link"
+                                                        className="text-orange"
+                                                        onClick={() => {
+                                                            if (window.confirm(`確定要下架「${bundle.name}」嗎？`)) {
+                                                                handleUnpublishBundle(bundle.bundle_id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        下架
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="link"
+                                                        className="text-success"
+                                                        onClick={() => {
+                                                            if (window.confirm(`確定要上架「${bundle.name}」嗎？`)) {
+                                                                handlePublishBundle(bundle.bundle_id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        上架
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="link"
                                                     className="text-danger"
@@ -361,6 +513,12 @@ const ProductBundleManagement: React.FC = () => {
                                     onChange={(e) => setTherapyBundleSearch(e.target.value)}
                                 />
                             </Col>
+                            <Col xs={12} md={2} className="mt-2 mt-md-0">
+                                <Form.Select value={therapyBundleStatus} onChange={(e) => setTherapyBundleStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
+                                    <option value="PUBLISHED">上架中</option>
+                                    <option value="UNPUBLISHED">下架中</option>
+                                </Form.Select>
+                            </Col>
                         </Row>
                         <Table striped bordered hover responsive>
                             <thead>
@@ -392,6 +550,31 @@ const ProductBundleManagement: React.FC = () => {
                                             <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditTherapyBundleModal(bundle)}>修改</Button>
+                                                {therapyBundleStatus === 'PUBLISHED' ? (
+                                                    <Button
+                                                        variant="link"
+                                                        className="text-orange"
+                                                        onClick={() => {
+                                                            if (window.confirm(`確定要下架「${bundle.name}」嗎？`)) {
+                                                                handleUnpublishTherapyBundle(bundle.bundle_id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        下架
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="link"
+                                                        className="text-success"
+                                                        onClick={() => {
+                                                            if (window.confirm(`確定要上架「${bundle.name}」嗎？`)) {
+                                                                handlePublishTherapyBundle(bundle.bundle_id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        上架
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="link"
                                                     className="text-danger"
@@ -425,6 +608,12 @@ const ProductBundleManagement: React.FC = () => {
                                     onChange={(e) => setProductSearch(e.target.value)}
                                 />
                             </Col>
+                            <Col xs={12} md={2} className="mt-2 mt-md-0">
+                                <Form.Select value={productStatus} onChange={(e) => setProductStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
+                                    <option value="PUBLISHED">上架中</option>
+                                    <option value="UNPUBLISHED">下架中</option>
+                                </Form.Select>
+                            </Col>
                         </Row>
                         <Table striped bordered hover responsive>
                             <thead>
@@ -446,6 +635,31 @@ const ProductBundleManagement: React.FC = () => {
                                             <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditProductModal(product)}>修改</Button>
+                                                {productStatus === 'PUBLISHED' ? (
+                                                    <Button
+                                                        variant="link"
+                                                        className="text-orange"
+                                                        onClick={() => {
+                                                            if (window.confirm(`確定要下架「${product.product_name}」嗎？`)) {
+                                                                handleUnpublishProduct(product.product_id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        下架
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="link"
+                                                        className="text-success"
+                                                        onClick={() => {
+                                                            if (window.confirm(`確定要上架「${product.product_name}」嗎？`)) {
+                                                                handlePublishProduct(product.product_id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        上架
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="link"
                                                     className="text-danger"
@@ -479,6 +693,12 @@ const ProductBundleManagement: React.FC = () => {
                                     onChange={(e) => setTherapySearch(e.target.value)}
                                 />
                             </Col>
+                            <Col xs={12} md={2} className="mt-2 mt-md-0">
+                                <Form.Select value={therapyStatus} onChange={(e) => setTherapyStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
+                                    <option value="PUBLISHED">上架中</option>
+                                    <option value="UNPUBLISHED">下架中</option>
+                                </Form.Select>
+                            </Col>
                         </Row>
                         <Table striped bordered hover responsive>
                             <thead>
@@ -500,6 +720,31 @@ const ProductBundleManagement: React.FC = () => {
                                             <td className="align-middle">{`$${Number(therapy.price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditTherapyModal(therapy)}>修改</Button>
+                                                {therapyStatus === 'PUBLISHED' ? (
+                                                    <Button
+                                                        variant="link"
+                                                        className="text-orange"
+                                                        onClick={() => {
+                                                            if (window.confirm(`確定要下架「${therapy.name}」嗎？`)) {
+                                                                handleUnpublishTherapy(therapy.therapy_id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        下架
+                                                    </Button>
+                                                ) : (
+                                                    <Button
+                                                        variant="link"
+                                                        className="text-success"
+                                                        onClick={() => {
+                                                            if (window.confirm(`確定要上架「${therapy.name}」嗎？`)) {
+                                                                handlePublishTherapy(therapy.therapy_id);
+                                                            }
+                                                        }}
+                                                    >
+                                                        上架
+                                                    </Button>
+                                                )}
                                                 <Button
                                                     variant="link"
                                                     className="text-danger"

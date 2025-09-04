@@ -32,11 +32,12 @@ def add_therapy_transaction_route():
         if isinstance(result, dict) and result.get("success"):
             return jsonify(result), 201
         elif isinstance(result, dict) and "error" in result:
-             # Model 層已經處理了錯誤並返回了包含錯誤訊息的字典
-            return jsonify(result), 400 # 或 500，取決於錯誤的嚴重性
-        else: 
+            return jsonify(result), 400
+        else:
             return jsonify({"success": False, "error": "伺服器處理時發生未預期的結果格式"}), 500
-            
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
     except Exception as e:
         tb_str = traceback.format_exc() # <--- 獲取完整 Traceback 字串
         return jsonify({"success": False, "error": f"伺服器路由層發生嚴重錯誤: {str(e)}", "traceback": tb_str}), 500
@@ -158,6 +159,8 @@ def update_sale(sale_id):
         if "error" in result:
             return jsonify(result), 400
         return jsonify(result)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 422
     except Exception as e:
         print(f"更新療程銷售失敗: {e}")
         return jsonify({"error": str(e)}), 500
