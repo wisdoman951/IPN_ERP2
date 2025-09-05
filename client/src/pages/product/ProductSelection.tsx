@@ -54,7 +54,11 @@ const ProductSelection: React.FC = () => {
 
         const storeId = Number(getStoreId());
         const filteredBundles = storeId
-          ? bundleData.filter(b => !b.visible_store_ids || b.visible_store_ids.includes(storeId))
+          ? bundleData.filter(b =>
+              !b.visible_store_ids ||
+              b.visible_store_ids.length === 0 ||
+              b.visible_store_ids.includes(storeId)
+            )
           : bundleData;
         const bundles: ItemBase[] = filteredBundles.map((b: Bundle) => ({
           type: 'bundle',
