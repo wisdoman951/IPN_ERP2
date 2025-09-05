@@ -105,17 +105,17 @@ def get_available_therapy_bundles():
     """根據店家權限取得可用的療程組合列表"""
     try:
         user = get_user_from_token(request)
-        store_id = None
+        store_id = user.get('store_id') if user else getattr(request, 'store_id', None)
+        store_level = user.get('store_level') if user else getattr(request, 'store_level', None)
 
-        if user and user.get('permission') == 'admin':
+        if store_level in ["總店", "admin"]:
             store_id = None
         else:
-            store_id = user.get('store_id') if user else getattr(request, 'store_id', None)
             try:
                 store_id = int(store_id) if store_id is not None else None
             except (TypeError, ValueError):
                 store_id = None
-        print(f"[DEBUG] get_available_therapy_bundles user={user}, store_id={store_id}")
+        print(f"[DEBUG] get_available_therapy_bundles user={user}, store_id={store_id}, store_level={store_level}")
         bundles = get_all_therapy_bundles(status="PUBLISHED", store_id=store_id)
         return jsonify(bundles)
     except Exception as e:
