@@ -43,7 +43,17 @@ def get_available_bundles():
     """根據店家權限取得可用的產品組合列表"""
     try:
         user = get_user_from_token(request)
-        store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
+        store_id = None
+
+        if user and user.get('permission') == 'admin':
+            store_id = None
+        else:
+            store_id = user.get('store_id') if user else getattr(request, 'store_id', None)
+            try:
+                store_id = int(store_id) if store_id is not None else None
+            except (TypeError, ValueError):
+                store_id = None
+
         bundles = get_all_product_bundles(status="PUBLISHED", store_id=store_id)
         return jsonify(bundles)
     except Exception as e:
