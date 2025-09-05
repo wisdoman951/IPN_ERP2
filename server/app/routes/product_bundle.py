@@ -19,17 +19,29 @@ def get_bundles():
     """獲取產品組合列表"""
     try:
         status = request.args.get("status")
-        # 總店或具備 admin 權限的使用者應能查看所有組合，不受門市限制
-        store_level = request.headers.get('X-Store-Level')
-        store_id_header = request.headers.get('X-Store-ID')
+        # 優先從 JWT token 取得使用者資訊
+        user = get_user_from_token(request)
+        header_store_level = request.headers.get('X-Store-Level')
+        header_store_id = request.headers.get('X-Store-ID')
 
-        store_id = None
-        if store_level not in ["總店", "admin"] and store_id_header:
-            try:
-                store_id = int(store_id_header)
-            except (TypeError, ValueError):
+        if user:
+            store_level = user.get('store_level')
+            if store_level in ["總店", "admin"]:
                 store_id = None
+            else:
+                store_id = user.get('store_id')
+        else:
+            store_level = header_store_level
+            store_id = None
+            if store_level not in ["總店", "admin"] and header_store_id:
+                try:
+                    store_id = int(header_store_id)
+                except (TypeError, ValueError):
+                    store_id = None
 
+        print(
+            f"[DEBUG] get_product_bundles status={status}, token_user={user}, header_store_level={header_store_level}, header_store_id={header_store_id}, resolved_store_level={store_level}, resolved_store_id={store_id}"
+        )
         bundles = get_all_product_bundles(status, store_id)
         return jsonify(bundles)
     except Exception as e:
@@ -43,7 +55,18 @@ def get_available_bundles():
     """根據店家權限取得可用的產品組合列表"""
     try:
         user = get_user_from_token(request)
-        store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
+        # 優先使用 token 內資訊，否則使用 auth_required 裝飾器設置的屬性
+        store_id = user.get('store_id') if user else getattr(request, 'store_id', None)
+        store_level = user.get('store_level') if user else getattr(request, 'store_level', None)
+
+        if store_level in ["總店", "admin"]:
+            store_id = None
+        else:
+            try:
+                store_id = int(store_id) if store_id is not None else None
+            except (TypeError, ValueError):
+                store_id = None
+        print(f"[DEBUG] get_available_product_bundles user={user}, store_id={store_id}, store_level={store_level}")
         bundles = get_all_product_bundles(status="PUBLISHED", store_id=store_id)
         return jsonify(bundles)
     except Exception as e:
