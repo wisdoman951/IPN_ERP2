@@ -140,7 +140,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
     return (
         <Modal show={show} onHide={onHide} size="lg" onExited={resetStates}>
             <Modal.Header closeButton>
-                <Modal.Title>療程組合管理 1.2.6.3.1</Modal.Title>
+                <Modal.Title>新增療程組合 1.2.6.3.1.1</Modal.Title>
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>
