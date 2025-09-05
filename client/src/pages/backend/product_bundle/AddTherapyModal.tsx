@@ -53,7 +53,7 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
     return (
         <Modal show={show} onHide={onHide}>
             <Modal.Header closeButton>
-                <Modal.Title>{editingTherapy ? '修改療程 1.2.6.3.1.1' : '建立療程 1.2.6.3.1.1'}</Modal.Title>
+                <Modal.Title>{editingTherapy ? '修改療程 1.2.6.3.1.1.1.1' : '新增療程 1.2.6.3.1.1.1.1'}</Modal.Title>
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>

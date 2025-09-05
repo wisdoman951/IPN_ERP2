@@ -12,7 +12,7 @@ const AddTherapy: React.FC = () => {
     <div style={{ minHeight: '100vh', background: '#fff', fontFamily: 'Noto Sans TC, sans-serif' }}>
       {/* Header */}
       <header className="d-flex justify-content-between align-items-center bg-info px-4 py-3 app-header">
-        <h1 className="text-white fw-bold fs-2 m-0">建立療程 1.2.6.3.1.1</h1>
+        <h1 className="text-white fw-bold fs-2 m-0">新增療程 1.2.6.3.1.1.1.1</h1>
         <div className="d-flex gap-2">
           <IconButton.HomeButton onClick={() => navigate('/home')} />
           <IconButton.CloseButton onClick={() => navigate(-1)} />

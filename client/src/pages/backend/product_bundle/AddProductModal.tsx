@@ -53,7 +53,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
     return (
         <Modal show={show} onHide={onHide}>
             <Modal.Header closeButton>
-                <Modal.Title>{editingProduct ? '修改產品 1.2.6.3.1.1.1' : '建立產品 1.2.6.3.1.1.1'}</Modal.Title>
+                <Modal.Title>{editingProduct ? '修改產品 1.2.6.3.1.1.1' : '新增產品 1.2.6.3.1.1.1'}</Modal.Title>
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>
