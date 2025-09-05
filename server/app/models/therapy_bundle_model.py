@@ -45,18 +45,28 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
             query += " GROUP BY tb.bundle_id ORDER BY tb.bundle_id DESC"
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
-            # 解析每筆資料中的可見門市 ID，使其成為整數列表以便後續篩選
+            # 解析每筆資料中的可見門市 ID，統一為整數列表
             for row in result:
-                if row.get("visible_store_ids"):
-                    try:
-                        store_ids = json.loads(row["visible_store_ids"])
-                        if isinstance(store_ids, (int, str)):
-                            store_ids = [int(store_ids)]
-                        row["visible_store_ids"] = store_ids
-                    except Exception:
-                        row["visible_store_ids"] = None
-                else:
-                    row["visible_store_ids"] = None
+                raw_ids = row.get("visible_store_ids")
+                if raw_ids in (None, ''):
+                    row["visible_store_ids"] = []
+                    continue
+                try:
+                    if isinstance(raw_ids, list):
+                        parsed = raw_ids
+                    elif isinstance(raw_ids, (int, str)):
+                        parsed = json.loads(str(raw_ids))
+                    else:
+                        parsed = json.loads(raw_ids)
+
+                    if isinstance(parsed, list):
+                        row["visible_store_ids"] = [int(s) for s in parsed]
+                    elif isinstance(parsed, (int, str)):
+                        row["visible_store_ids"] = [int(parsed)]
+                    else:
+                        row["visible_store_ids"] = []
+                except Exception:
+                    row["visible_store_ids"] = []
 
             if store_id is not None:
                 result = [

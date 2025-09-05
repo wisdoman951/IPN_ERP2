@@ -60,21 +60,29 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
 
-            # 將可見分店欄位從 JSON 轉換為整數列表，以便後續比對
+            # 將可見分店欄位統一轉換為整數列表，以便後續比對
             for row in result:
-                if row.get('visible_store_ids'):
-                    try:
-                        store_ids = json.loads(row['visible_store_ids'])
-                        if isinstance(store_ids, int):
-                            store_ids = [store_ids]
-                        elif isinstance(store_ids, str):
-                            store_ids = [int(store_ids)]
-                        else:
-                            store_ids = [int(s) for s in store_ids]
-                        row['visible_store_ids'] = store_ids
-                    except Exception:
+                raw_ids = row.get('visible_store_ids')
+                if raw_ids in (None, ''):
+                    row['visible_store_ids'] = []
+                    continue
+                try:
+                    # 若資料庫 driver 已自動解析為 list，直接使用
+                    if isinstance(raw_ids, list):
+                        parsed = raw_ids
+                    # 若為單一整數或字串，轉為列表
+                    elif isinstance(raw_ids, (int, str)):
+                        parsed = json.loads(str(raw_ids))
+                    else:
+                        parsed = json.loads(raw_ids)
+
+                    if isinstance(parsed, list):
+                        row['visible_store_ids'] = [int(s) for s in parsed]
+                    elif isinstance(parsed, (int, str)):
+                        row['visible_store_ids'] = [int(parsed)]
+                    else:
                         row['visible_store_ids'] = []
-                else:
+                except Exception:
                     row['visible_store_ids'] = []
 
             if store_id is not None:
