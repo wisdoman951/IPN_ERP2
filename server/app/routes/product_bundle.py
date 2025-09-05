@@ -14,7 +14,7 @@ product_bundle_bp = Blueprint(
 )
 
 @product_bundle_bp.route("/", methods=["GET"])
-@admin_required
+@auth_required
 def get_bundles():
     """獲取產品組合列表"""
     try:
