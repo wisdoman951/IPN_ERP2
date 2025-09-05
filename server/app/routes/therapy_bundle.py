@@ -12,7 +12,7 @@ therapy_bundle_bp = Blueprint(
 
 
 @therapy_bundle_bp.route("/", methods=["GET"])
-@admin_required
+@auth_required
 def get_bundles():
     """獲取療程組合列表"""
     try:
