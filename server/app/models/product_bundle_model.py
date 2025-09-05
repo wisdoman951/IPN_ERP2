@@ -18,6 +18,7 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
     以利前端直接顯示。
     會依據傳入的 store_id 過濾僅限於該分店可見的組合。
     """
+    print(f"[DEBUG] get_all_product_bundles called with status={status}, store_id={store_id}")
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -63,8 +64,10 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
             # 將可見分店欄位統一轉換為整數列表，以便後續比對
             for row in result:
                 raw_ids = row.get('visible_store_ids')
+                print(f"[DEBUG] Bundle {row.get('bundle_id')} raw visible_store_ids={raw_ids}")
                 if raw_ids in (None, ''):
                     row['visible_store_ids'] = []
+                    print(f"[DEBUG] -> normalized visible_store_ids={row['visible_store_ids']}")
                     continue
                 try:
                     # 若資料庫 driver 已自動解析為 list，直接使用
@@ -82,8 +85,10 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                         row['visible_store_ids'] = [int(parsed)]
                     else:
                         row['visible_store_ids'] = []
-                except Exception:
+                    print(f"[DEBUG] -> normalized visible_store_ids={row['visible_store_ids']}")
+                except Exception as e:
                     row['visible_store_ids'] = []
+                    print(f"[DEBUG] Failed to parse visible_store_ids for bundle {row.get('bundle_id')}: {e}")
 
             if store_id is not None:
                 result = [
@@ -92,6 +97,9 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                     if not row['visible_store_ids']
                     or store_id in row['visible_store_ids']
                 ]
+                print(f"[DEBUG] Filtered bundle_ids for store_id={store_id}: {[row.get('bundle_id') for row in result]}")
+            else:
+                print(f"[DEBUG] Returning all bundles without store filter; count={len(result)}")
             return result
     finally:
         conn.close()

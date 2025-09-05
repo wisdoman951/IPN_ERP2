@@ -29,7 +29,7 @@ def get_bundles():
                 store_id = int(store_id_header)
             except (TypeError, ValueError):
                 store_id = None
-
+        print(f"[DEBUG] get_product_bundles status={status}, store_level={store_level}, store_id={store_id}")
         bundles = get_all_product_bundles(status, store_id)
         return jsonify(bundles)
     except Exception as e:
@@ -53,7 +53,7 @@ def get_available_bundles():
                 store_id = int(store_id) if store_id is not None else None
             except (TypeError, ValueError):
                 store_id = None
-
+        print(f"[DEBUG] get_available_product_bundles user={user}, store_id={store_id}")
         bundles = get_all_product_bundles(status="PUBLISHED", store_id=store_id)
         return jsonify(bundles)
     except Exception as e:
