@@ -41,6 +41,10 @@ const ProductBundleManagement: React.FC = () => {
     const [therapyBundleStatus, setTherapyBundleStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
     const [productStatus, setProductStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
     const [therapyStatus, setTherapyStatus] = useState<'PUBLISHED' | 'UNPUBLISHED'>('PUBLISHED');
+    const [bundleStoreFilter, setBundleStoreFilter] = useState('');
+    const [therapyBundleStoreFilter, setTherapyBundleStoreFilter] = useState('');
+    const [productStoreFilter, setProductStoreFilter] = useState('');
+    const [therapyStoreFilter, setTherapyStoreFilter] = useState('');
 
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
@@ -336,25 +340,45 @@ const ProductBundleManagement: React.FC = () => {
         setTimeout(() => setSuccessMessage(null), 3000);
     };
 
-    const filteredBundles = bundles.filter(bundle =>
-        bundle.bundle_code.toLowerCase().includes(bundleSearch.toLowerCase()) ||
-        bundle.name.toLowerCase().includes(bundleSearch.toLowerCase())
-    );
+    const filteredBundles = bundles
+        .filter(bundle =>
+            bundle.bundle_code.toLowerCase().includes(bundleSearch.toLowerCase()) ||
+            bundle.name.toLowerCase().includes(bundleSearch.toLowerCase())
+        )
+        .filter(bundle =>
+            bundleStoreFilter === '' ||
+            (bundle.visible_store_ids && bundle.visible_store_ids.includes(Number(bundleStoreFilter)))
+        );
 
-    const filteredTherapyBundles = therapyBundles.filter(bundle =>
-        bundle.bundle_code.toLowerCase().includes(therapyBundleSearch.toLowerCase()) ||
-        bundle.name.toLowerCase().includes(therapyBundleSearch.toLowerCase())
-    );
+    const filteredTherapyBundles = therapyBundles
+        .filter(bundle =>
+            bundle.bundle_code.toLowerCase().includes(therapyBundleSearch.toLowerCase()) ||
+            bundle.name.toLowerCase().includes(therapyBundleSearch.toLowerCase())
+        )
+        .filter(bundle =>
+            therapyBundleStoreFilter === '' ||
+            (bundle.visible_store_ids && bundle.visible_store_ids.includes(Number(therapyBundleStoreFilter)))
+        );
 
-    const filteredProducts = products.filter(product =>
-        product.product_code.toLowerCase().includes(productSearch.toLowerCase()) ||
-        product.product_name.toLowerCase().includes(productSearch.toLowerCase())
-    );
+    const filteredProducts = products
+        .filter(product =>
+            product.product_code.toLowerCase().includes(productSearch.toLowerCase()) ||
+            product.product_name.toLowerCase().includes(productSearch.toLowerCase())
+        )
+        .filter(product =>
+            productStoreFilter === '' ||
+            (product.visible_store_ids && product.visible_store_ids.includes(Number(productStoreFilter)))
+        );
 
-    const filteredTherapies = therapies.filter(therapy =>
-        therapy.code.toLowerCase().includes(therapySearch.toLowerCase()) ||
-        therapy.name.toLowerCase().includes(therapySearch.toLowerCase())
-    );
+    const filteredTherapies = therapies
+        .filter(therapy =>
+            therapy.code.toLowerCase().includes(therapySearch.toLowerCase()) ||
+            therapy.name.toLowerCase().includes(therapySearch.toLowerCase())
+        )
+        .filter(therapy =>
+            therapyStoreFilter === '' ||
+            (therapy.visible_store_ids && therapy.visible_store_ids.includes(Number(therapyStoreFilter)))
+        );
 
     const content = (
         <>
@@ -417,6 +441,14 @@ const ProductBundleManagement: React.FC = () => {
                                     value={bundleSearch}
                                     onChange={(e) => setBundleSearch(e.target.value)}
                                 />
+                            </Col>
+                            <Col xs={12} md={3} className="mt-2 mt-md-0">
+                                <Form.Select value={bundleStoreFilter} onChange={(e) => setBundleStoreFilter(e.target.value)}>
+                                    <option value="">所有分店</option>
+                                    {stores.map(store => (
+                                        <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
+                                    ))}
+                                </Form.Select>
                             </Col>
                             <Col xs={12} md={2} className="mt-2 mt-md-0">
                                 <Form.Select value={bundleStatus} onChange={(e) => setBundleStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
@@ -513,6 +545,14 @@ const ProductBundleManagement: React.FC = () => {
                                     onChange={(e) => setTherapyBundleSearch(e.target.value)}
                                 />
                             </Col>
+                            <Col xs={12} md={3} className="mt-2 mt-md-0">
+                                <Form.Select value={therapyBundleStoreFilter} onChange={(e) => setTherapyBundleStoreFilter(e.target.value)}>
+                                    <option value="">所有分店</option>
+                                    {stores.map(store => (
+                                        <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
+                                    ))}
+                                </Form.Select>
+                            </Col>
                             <Col xs={12} md={2} className="mt-2 mt-md-0">
                                 <Form.Select value={therapyBundleStatus} onChange={(e) => setTherapyBundleStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
                                     <option value="PUBLISHED">上架中</option>
@@ -608,6 +648,14 @@ const ProductBundleManagement: React.FC = () => {
                                     onChange={(e) => setProductSearch(e.target.value)}
                                 />
                             </Col>
+                            <Col xs={12} md={3} className="mt-2 mt-md-0">
+                                <Form.Select value={productStoreFilter} onChange={(e) => setProductStoreFilter(e.target.value)}>
+                                    <option value="">所有分店</option>
+                                    {stores.map(store => (
+                                        <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
+                                    ))}
+                                </Form.Select>
+                            </Col>
                             <Col xs={12} md={2} className="mt-2 mt-md-0">
                                 <Form.Select value={productStatus} onChange={(e) => setProductStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
                                     <option value="PUBLISHED">上架中</option>
@@ -700,6 +748,14 @@ const ProductBundleManagement: React.FC = () => {
                                     value={therapySearch}
                                     onChange={(e) => setTherapySearch(e.target.value)}
                                 />
+                            </Col>
+                            <Col xs={12} md={3} className="mt-2 mt-md-0">
+                                <Form.Select value={therapyStoreFilter} onChange={(e) => setTherapyStoreFilter(e.target.value)}>
+                                    <option value="">所有分店</option>
+                                    {stores.map(store => (
+                                        <option key={store.store_id} value={store.store_id}>{store.store_name}</option>
+                                    ))}
+                                </Form.Select>
                             </Col>
                             <Col xs={12} md={2} className="mt-2 mt-md-0">
                                 <Form.Select value={therapyStatus} onChange={(e) => setTherapyStatus(e.target.value as 'PUBLISHED' | 'UNPUBLISHED')}>
