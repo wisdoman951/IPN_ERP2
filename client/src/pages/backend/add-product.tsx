@@ -12,7 +12,7 @@ const AddProduct: React.FC = () => {
     <div style={{ minHeight: '100vh', background: '#fff', fontFamily: 'Noto Sans TC, sans-serif' }}>
       {/* Header (match previous page) */}
       <header className="d-flex justify-content-between align-items-center bg-info px-4 py-3 app-header">
-        <h1 className="text-white fw-bold fs-2 m-0">建立產品 1.2.6.3.1.1.1</h1>
+        <h1 className="text-white fw-bold fs-2 m-0">新增產品 1.2.6.3.1.1.1</h1>
         <div className="d-flex gap-3">
           <IconButton.HomeButton onClick={() => navigate('/home')} />
         </div>
