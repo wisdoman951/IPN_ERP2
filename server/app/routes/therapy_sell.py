@@ -176,6 +176,9 @@ def update_sale(sale_id):
 def delete_sale(sale_id):
     """刪除療程銷售紀錄"""
     try:
+        if request.permission == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
+
         result = delete_therapy_sell(sale_id)
         if "error" in result:
             return jsonify(result), 400
