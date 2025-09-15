@@ -44,7 +44,7 @@ DROP TABLE IF EXISTS `category`;
 CREATE TABLE `category` (
   `category_id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `target_type` enum('product','therapy') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `target_type` enum('product','therapy','product_bundle','therapy_bundle') COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`category_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -80,6 +80,40 @@ CREATE TABLE `therapy_category` (
   KEY `category_id` (`category_id`),
   CONSTRAINT `therapy_category_ibfk_1` FOREIGN KEY (`therapy_id`) REFERENCES `therapy` (`therapy_id`) ON DELETE CASCADE,
   CONSTRAINT `therapy_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `product_bundle_category`
+--
+
+DROP TABLE IF EXISTS `product_bundle_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_bundle_category` (
+  `bundle_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  PRIMARY KEY (`bundle_id`,`category_id`),
+  KEY `category_id` (`category_id`),
+  CONSTRAINT `product_bundle_category_ibfk_1` FOREIGN KEY (`bundle_id`) REFERENCES `product_bundles` (`bundle_id`) ON DELETE CASCADE,
+  CONSTRAINT `product_bundle_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `therapy_bundle_category`
+--
+
+DROP TABLE IF EXISTS `therapy_bundle_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `therapy_bundle_category` (
+  `bundle_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  PRIMARY KEY (`bundle_id`,`category_id`),
+  KEY `category_id` (`category_id`),
+  CONSTRAINT `therapy_bundle_category_ibfk_1` FOREIGN KEY (`bundle_id`) REFERENCES `therapy_bundles` (`bundle_id`) ON DELETE CASCADE,
+  CONSTRAINT `therapy_bundle_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 

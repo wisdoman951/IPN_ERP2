@@ -6,6 +6,7 @@ import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
 import AddCategoryModal from './AddCategoryModal';
+import DeleteCategoryModal from './DeleteCategoryModal';
 import TherapyBundleModal from './TherapyBundleModal';
 import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, publishBundle, unpublishBundle, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
 import { fetchAllTherapyBundles, deleteTherapyBundle, publishTherapyBundle, unpublishTherapyBundle, TherapyBundle } from '../../../services/TherapyBundleService';
@@ -50,8 +51,13 @@ const ProductBundleManagement: React.FC = () => {
     const [showCategoryModal, setShowCategoryModal] = useState(false);
     const [productCategories, setProductCategories] = useState<Category[]>([]);
     const [therapyCategories, setTherapyCategories] = useState<Category[]>([]);
+    const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
+    const [therapyBundleCategories, setTherapyBundleCategories] = useState<Category[]>([]);
     const [activeProductCategory, setActiveProductCategory] = useState<string>('all');
     const [activeTherapyCategory, setActiveTherapyCategory] = useState<string>('all');
+    const [activeBundleCategory, setActiveBundleCategory] = useState<string>('all');
+    const [activeTherapyBundleCategory, setActiveTherapyBundleCategory] = useState<string>('all');
+    const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
 
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
@@ -118,10 +124,14 @@ const ProductBundleManagement: React.FC = () => {
         fetchAllStores().then(setStores).catch(() => {});
     }, []);
 
-    useEffect(() => {
+    const refreshCategories = useCallback(() => {
         getCategories('product').then(setProductCategories).catch(() => {});
         getCategories('therapy').then(setTherapyCategories).catch(() => {});
+        getCategories('product_bundle').then(setBundleCategories).catch(() => {});
+        getCategories('therapy_bundle').then(setTherapyBundleCategories).catch(() => {});
     }, []);
+
+    useEffect(() => { refreshCategories(); }, [refreshCategories]);
 
     const handleCloseModal = () => {
         setShowModal(false);
@@ -192,6 +202,21 @@ const ProductBundleManagement: React.FC = () => {
 
     const handleCloseCategoryModal = () => {
         setShowCategoryModal(false);
+        refreshCategories();
+    };
+
+    const handleShowDeleteCategoryModal = () => {
+        setShowDeleteCategoryModal(true);
+    };
+
+    const handleCloseDeleteCategoryModal = () => {
+        setShowDeleteCategoryModal(false);
+        refreshCategories();
+        fetchBundles();
+        fetchTherapyBundlesData();
+        fetchProducts();
+        fetchTherapies();
+
     };
 
     const confirmDeletion = (): string | null => {
@@ -368,6 +393,9 @@ const ProductBundleManagement: React.FC = () => {
         .filter(bundle =>
             bundleStoreFilter === '' ||
             (bundle.visible_store_ids && bundle.visible_store_ids.includes(Number(bundleStoreFilter)))
+        )
+        .filter(bundle =>
+            activeBundleCategory === 'all' || (bundle.categories && bundle.categories.includes(activeBundleCategory))
         );
 
     const filteredTherapyBundles = therapyBundles
@@ -378,6 +406,9 @@ const ProductBundleManagement: React.FC = () => {
         .filter(bundle =>
             therapyBundleStoreFilter === '' ||
             (bundle.visible_store_ids && bundle.visible_store_ids.includes(Number(therapyBundleStoreFilter)))
+        )
+        .filter(bundle =>
+            activeTherapyBundleCategory === 'all' || (bundle.categories && bundle.categories.includes(activeTherapyBundleCategory))
         );
 
     const filteredProducts = products
@@ -449,6 +480,13 @@ const ProductBundleManagement: React.FC = () => {
                         >
                             新增分類
                         </Button>
+                        <Button
+                            variant="secondary"
+                            className="px-4"
+                            onClick={handleShowDeleteCategoryModal}
+                        >
+                            刪除分類
+                        </Button>
                     </Col>
                 </Row>
             </Container>
@@ -466,6 +504,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'bundle' && (
                     <>
+                        <Tabs activeKey={activeBundleCategory} onSelect={(k) => setActiveBundleCategory(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {bundleCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
                         <Row className="mb-3">
                             <Col xs={12} md={4}>
                                 <Form.Control
@@ -569,6 +613,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'therapy_bundle' && (
                     <>
+                        <Tabs activeKey={activeTherapyBundleCategory} onSelect={(k) => setActiveTherapyBundleCategory(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {therapyBundleCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
                         <Row className="mb-3">
                             <Col xs={12} md={4}>
                                 <Form.Control
@@ -918,6 +968,10 @@ const ProductBundleManagement: React.FC = () => {
             <AddCategoryModal
                 show={showCategoryModal}
                 onHide={handleCloseCategoryModal}
+            />
+            <DeleteCategoryModal
+                show={showDeleteCategoryModal}
+                onHide={handleCloseDeleteCategoryModal}
             />
         </>
     );

@@ -31,13 +31,18 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                             SEPARATOR ', '
                         ),
                         ''
-                    ) AS bundle_contents
+                    ) AS bundle_contents,
+                    GROUP_CONCAT(DISTINCT c.name) AS categories
                 FROM
                     therapy_bundles tb
                 LEFT JOIN
                     therapy_bundle_items tbi ON tb.bundle_id = tbi.bundle_id
                 LEFT JOIN
                     therapy t ON tbi.item_id = t.therapy_id
+                LEFT JOIN
+                    therapy_bundle_category tbc ON tb.bundle_id = tbc.bundle_id
+                LEFT JOIN
+                    category c ON tbc.category_id = c.category_id
             """
             params = []
             if status:
@@ -72,7 +77,8 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                 except Exception as e:
                     row["visible_store_ids"] = []
                     print(f"[DEBUG] Failed to parse visible_store_ids for bundle {row.get('bundle_id')}: {e}")
-
+                if row.get('categories'):
+                    row['categories'] = row['categories'].split(',')
             if store_id is not None:
                 result = [
                     row
@@ -119,6 +125,12 @@ def create_therapy_bundle(data: dict):
                 ]
                 cursor.executemany(item_query, item_values)
 
+            for cid in data.get('category_ids', []):
+                cursor.execute(
+                    "INSERT INTO therapy_bundle_category (bundle_id, category_id) VALUES (%s, %s)",
+                    (bundle_id, cid),
+                )
+
         conn.commit()
         return bundle_id
     except Exception as e:
@@ -142,13 +154,13 @@ def get_bundle_details_by_id(bundle_id: int):
                     bundle_details['visible_store_ids'] = json.loads(bundle_details['visible_store_ids'])
                 except Exception:
                     pass
-
-            cursor.execute(
-                "SELECT item_id, quantity FROM therapy_bundle_items WHERE bundle_id = %s",
-                (bundle_id,)
-            )
+            cursor.execute("SELECT item_id, quantity FROM therapy_bundle_items WHERE bundle_id = %s", (bundle_id,))
             items = cursor.fetchall()
+            cursor.execute("SELECT c.category_id, c.name FROM therapy_bundle_category tbc JOIN category c ON tbc.category_id = c.category_id WHERE tbc.bundle_id = %s", (bundle_id,))
+            cats = cursor.fetchall()
             bundle_details['items'] = items
+            bundle_details['category_ids'] = [c['category_id'] for c in cats]
+            bundle_details['categories'] = [c['name'] for c in cats]
             return bundle_details
     finally:
         conn.close()
@@ -189,6 +201,14 @@ def update_therapy_bundle(bundle_id: int, data: dict):
                     for item in items
                 ]
                 cursor.executemany(item_query, item_values)
+
+            if "category_ids" in data:
+                cursor.execute("DELETE FROM therapy_bundle_category WHERE bundle_id = %s", (bundle_id,))
+                for cid in data.get("category_ids", []):
+                    cursor.execute(
+                        "INSERT INTO therapy_bundle_category (bundle_id, category_id) VALUES (%s, %s)",
+                        (bundle_id, cid),
+                    )
 
         conn.commit()
         return True

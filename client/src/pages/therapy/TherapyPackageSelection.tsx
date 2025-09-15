@@ -29,6 +29,8 @@ const TherapyPackageSelection: React.FC = () => {
     const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
     const [activeTab, setActiveTab] = useState<string>('all');
     const [categories, setCategories] = useState<Category[]>([]);
+    const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
+    const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
 
 
     useEffect(() => {
@@ -82,10 +84,11 @@ const TherapyPackageSelection: React.FC = () => {
     const fetchPackages = async () => {
         setLoading(true); setPageError(null);
         try {
-            const [therapyRes, bundleData, categoryData] = await Promise.all([
+            const [therapyRes, bundleData, categoryData, bundleCatData] = await Promise.all([
                 fetchAllTherapyPackagesService(),
                 fetchAllTherapyBundles(),
-                getCategories('therapy')
+                getCategories('therapy'),
+                getCategories('therapy_bundle')
             ]);
 
             let packages: TherapyPackageBaseType[] = [];
@@ -104,12 +107,14 @@ const TherapyPackageSelection: React.FC = () => {
                 TherapyCode: b.bundle_code,
                 TherapyName: b.name,
                 TherapyContent: b.bundle_contents,
-                TherapyPrice: Number(b.selling_price)
+                TherapyPrice: Number(b.selling_price),
+                categories: b.categories || []
             }));
 
             const combined = [...packages, ...bundlePackages];
             setAllPackages(combined);
             setCategories(categoryData);
+            setBundleCategories(bundleCatData);
             setDisplayedPackages(combined.filter(pkg => pkg.type === 'therapy'));
         } catch (err: unknown) {
             setPageError((err as Error).message || "載入療程套餐時發生嚴重錯誤");
@@ -146,6 +151,9 @@ const TherapyPackageSelection: React.FC = () => {
         let filtered: TherapyPackageBaseType[] = [];
         if (activeTab === 'bundle') {
             filtered = allPackages.filter(pkg => pkg.type === 'bundle');
+            if (activeBundleTab !== 'all') {
+                filtered = filtered.filter(pkg => pkg.categories?.includes(activeBundleTab));
+            }
         } else {
             filtered = allPackages.filter(pkg => pkg.type === 'therapy');
             if (activeTab !== 'all') {
@@ -161,7 +169,7 @@ const TherapyPackageSelection: React.FC = () => {
             );
         }
         setDisplayedPackages(filtered);
-    }, [searchTerm, allPackages, activeTab]);
+    }, [searchTerm, allPackages, activeTab, activeBundleTab]);
 
     const getPkgKey = (pkg: TherapyPackageBaseType) =>
         pkg.type === 'bundle' ? `b-${pkg.bundle_id}` : `t-${pkg.therapy_id}`;
@@ -240,6 +248,15 @@ const TherapyPackageSelection: React.FC = () => {
                         ))}
                         <Tab eventKey="bundle" title="療程組合" />
                     </Tabs>
+
+                    {activeTab === 'bundle' && (
+                        <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {bundleCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
+                    )}
 
                     {loading && (
                         <div className="text-center p-5"><Spinner animation="border" variant="info" /> <p className="mt-2">載入中...</p></div>

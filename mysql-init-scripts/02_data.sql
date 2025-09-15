@@ -280,6 +280,7 @@ INSERT INTO `ipn_stress_answer` (`ipn_stress_id`, `question_no`, `answer`) VALUE
 
 -- Seed product and therapy categories
 INSERT INTO `category` (`name`, `target_type`) VALUES
+('未歸類', 'product'),
 ('明星商品', 'product'),
 ('嚴選商品', 'product'),
 ('MINI QP配件', 'product'),
@@ -287,6 +288,17 @@ INSERT INTO `category` (`name`, `target_type`) VALUES
 ('HPA量子儀配件', 'product'),
 ('HPA 線材組', 'product'),
 ('系統教育訓練', 'product'),
+('未歸類', 'therapy'),
+('IPN 身體課程', 'therapy'),
+('澎湖店限定', 'therapy'),
+('未歸類', 'product_bundle'),
+('嚴選商品', 'product_bundle'),
+('未歸類', 'therapy_bundle'),
+('IPN 身體課程', 'therapy_bundle'),
+('台北店/台中店/桃園店限定', 'therapy_bundle'),
+('桃園店限定', 'therapy_bundle'),
+('澎湖店限定', 'therapy_bundle'),
+('桃園店/澎湖店限定', 'therapy_bundle');
 ('IPN 身體課程', 'therapy'),
 ('隱藏不出現的課程', 'therapy'),
 ('澎湖店限定', 'therapy');
@@ -386,7 +398,7 @@ WHERE t.code IN ('COF0101','COL0101','COM0101','COB0101','COH0101','COO0101','CO
 INSERT INTO `therapy_category` (`therapy_id`, `category_id`)
 SELECT t.therapy_id, c.category_id
 FROM `therapy` t
-JOIN `category` c ON c.name = '隱藏不出現的課程' AND c.target_type = 'therapy'
+JOIN `category` c ON c.name = '未歸類' AND c.target_type = 'therapy'
 WHERE t.code IN ('COO0100','COZ0111','COZ0112');
 
 INSERT INTO `therapy_category` (`therapy_id`, `category_id`)
@@ -394,3 +406,41 @@ SELECT t.therapy_id, c.category_id
 FROM `therapy` t
 JOIN `category` c ON c.name = '澎湖店限定' AND c.target_type = 'therapy'
 WHERE t.code IN ('CCP0001');
+
+-- Assign product bundles to categories
+INSERT INTO `product_bundle_category` (`bundle_id`, `category_id`)
+SELECT pb.bundle_id, c.category_id
+FROM `product_bundles` pb
+JOIN `category` c ON c.name = '嚴選商品' AND c.target_type = 'product_bundle'
+WHERE pb.bundle_code IN ('PCP0002','PCP0003','PCP0502','PCP0503');
+
+-- Assign therapy bundles to categories
+INSERT INTO `therapy_bundle_category` (`bundle_id`, `category_id`)
+SELECT tb.bundle_id, c.category_id
+FROM `therapy_bundles` tb
+JOIN `category` c ON c.name = 'IPN 身體課程' AND c.target_type = 'therapy_bundle'
+WHERE tb.bundle_code IN ('COF0102','COL0102','COB0102','COH0102','COO0102','COO0103','COO0104','COO0105');
+
+INSERT INTO `therapy_bundle_category` (`bundle_id`, `category_id`)
+SELECT tb.bundle_id, c.category_id
+FROM `therapy_bundles` tb
+JOIN `category` c ON c.name = '台北店/台中店/桃園店限定' AND c.target_type = 'therapy_bundle'
+WHERE tb.bundle_code IN ('CPP0001','CPP0002','CPP0003','CPP0004');
+
+INSERT INTO `therapy_bundle_category` (`bundle_id`, `category_id`)
+SELECT tb.bundle_id, c.category_id
+FROM `therapy_bundles` tb
+JOIN `category` c ON c.name = '桃園店限定' AND c.target_type = 'therapy_bundle'
+WHERE tb.bundle_code IN ('CDP0001','CDP0002','CDP0003');
+
+INSERT INTO `therapy_bundle_category` (`bundle_id`, `category_id`)
+SELECT tb.bundle_id, c.category_id
+FROM `therapy_bundles` tb
+JOIN `category` c ON c.name = '澎湖店限定' AND c.target_type = 'therapy_bundle'
+WHERE tb.bundle_code IN ('CCP0002','CCP0003','CCP0004','CCP0005');
+
+INSERT INTO `therapy_bundle_category` (`bundle_id`, `category_id`)
+SELECT tb.bundle_id, c.category_id
+FROM `therapy_bundles` tb
+JOIN `category` c ON c.name = '桃園店/澎湖店限定' AND c.target_type = 'therapy_bundle'
+WHERE tb.bundle_code IN ('CQP0001','CQP0002');

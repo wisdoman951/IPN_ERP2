@@ -33,6 +33,8 @@ const ProductSelection: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<string>('all');
   const [categories, setCategories] = useState<Category[]>([]);
+  const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
+  const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -40,10 +42,11 @@ const ProductSelection: React.FC = () => {
     const fetchData = async () => {
       setLoading(true); setPageError(null);
       try {
-        const [productData, bundleData, categoryData] = await Promise.all([
+        const [productData, bundleData, categoryData, bundleCatData] = await Promise.all([
           getAllProducts(),
           fetchAllBundles(),
-          getCategories('product')
+          getCategories('product'),
+          getCategories('product_bundle')
         ]);
 
         const products: ItemBase[] = productData.map((p: Product) => ({
@@ -71,12 +74,14 @@ const ProductSelection: React.FC = () => {
           name: b.name || b.bundle_contents,
           code: b.bundle_code,
           price: Number(b.selling_price),
-          content: b.bundle_contents
+          content: b.bundle_contents,
+          categories: b.categories || []
         }));
 
         const combined = [...products, ...bundles];
         setAllItems(combined);
         setCategories(categoryData);
+        setBundleCategories(bundleCatData);
         setDisplayedItems(combined.filter(item => item.type === 'product'));
       } catch (err) {
         console.error('載入產品資料失敗：', err);
@@ -109,6 +114,9 @@ const ProductSelection: React.FC = () => {
     let filtered: ItemBase[] = [];
     if (activeTab === 'bundle') {
       filtered = allItems.filter(item => item.type === 'bundle');
+      if (activeBundleTab !== 'all') {
+        filtered = filtered.filter(item => item.categories?.includes(activeBundleTab));
+      }
     } else {
       filtered = allItems.filter(item => item.type === 'product');
       if (activeTab !== 'all') {
@@ -124,7 +132,7 @@ const ProductSelection: React.FC = () => {
       );
     }
     setDisplayedItems(filtered);
-  }, [searchTerm, allItems, activeTab]);
+  }, [searchTerm, allItems, activeTab, activeBundleTab]);
 
   const getItemKey = (item: ItemBase) =>
     item.type === 'bundle' ? `b-${item.bundle_id}` : `p-${item.product_id}`;
@@ -308,6 +316,15 @@ const ProductSelection: React.FC = () => {
             ))}
             <Tab eventKey="bundle" title="產品組合" />
           </Tabs>
+
+          {activeTab === 'bundle' && (
+            <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mb-3">
+              <Tab eventKey="all" title="全部" />
+              {bundleCategories.map(cat => (
+                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+              ))}
+            </Tabs>
+          )}
 
           {renderItemList()}
         </Card.Body>

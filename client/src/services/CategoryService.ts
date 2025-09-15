@@ -24,3 +24,10 @@ export const addCategory = async (data: { name: string; target_type: string }) =
   });
   return response.data;
 };
+
+export const deleteCategory = async (categoryId: number) => {
+  const response = await axios.delete(`${API_URL}/${categoryId}`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};

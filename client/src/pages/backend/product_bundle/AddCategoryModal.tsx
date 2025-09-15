@@ -9,7 +9,7 @@ interface Props {
 
 const AddCategoryModal: React.FC<Props> = ({ show, onHide }) => {
   const [name, setName] = useState('');
-  const [targetType, setTargetType] = useState<'product' | 'therapy'>('product');
+  const [targetType, setTargetType] = useState<'product' | 'therapy' | 'product_bundle' | 'therapy_bundle'>('product');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,9 +35,11 @@ const AddCategoryModal: React.FC<Props> = ({ show, onHide }) => {
           </Form.Group>
           <Form.Group className="mb-3">
             <Form.Label>分類類型</Form.Label>
-            <Form.Select value={targetType} onChange={e => setTargetType(e.target.value as 'product' | 'therapy')}>
-              <option value="product">商品</option>
+            <Form.Select value={targetType} onChange={e => setTargetType(e.target.value as any)}>
+              <option value="product">產品</option>
               <option value="therapy">療程</option>
+              <option value="product_bundle">產品組合</option>
+              <option value="therapy_bundle">療程組合</option>
             </Form.Select>
           </Form.Group>
         </Modal.Body>
