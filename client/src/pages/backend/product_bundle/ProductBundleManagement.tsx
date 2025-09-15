@@ -5,12 +5,14 @@ import DynamicContainer from '../../../components/DynamicContainer';
 import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
+import AddCategoryModal from './AddCategoryModal';
 import TherapyBundleModal from './TherapyBundleModal';
 import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, publishBundle, unpublishBundle, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
 import { fetchAllTherapyBundles, deleteTherapyBundle, publishTherapyBundle, unpublishTherapyBundle, TherapyBundle } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
 import { deleteProduct, publishProduct, unpublishProduct } from '../../../services/ProductService';
 import { deleteTherapy, publishTherapy, unpublishTherapy } from '../../../services/TherapyService';
+import { getCategories, Category } from '../../../services/CategoryService';
 
 const ProductBundleManagement: React.FC = () => {
     const [bundles, setBundles] = useState<Bundle[]>([]);
@@ -45,6 +47,11 @@ const ProductBundleManagement: React.FC = () => {
     const [therapyBundleStoreFilter, setTherapyBundleStoreFilter] = useState('');
     const [productStoreFilter, setProductStoreFilter] = useState('');
     const [therapyStoreFilter, setTherapyStoreFilter] = useState('');
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [productCategories, setProductCategories] = useState<Category[]>([]);
+    const [therapyCategories, setTherapyCategories] = useState<Category[]>([]);
+    const [activeProductCategory, setActiveProductCategory] = useState<string>('all');
+    const [activeTherapyCategory, setActiveTherapyCategory] = useState<string>('all');
 
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
@@ -111,6 +118,11 @@ const ProductBundleManagement: React.FC = () => {
         fetchAllStores().then(setStores).catch(() => {});
     }, []);
 
+    useEffect(() => {
+        getCategories('product').then(setProductCategories).catch(() => {});
+        getCategories('therapy').then(setTherapyCategories).catch(() => {});
+    }, []);
+
     const handleCloseModal = () => {
         setShowModal(false);
         setEditingBundle(null);
@@ -139,6 +151,10 @@ const ProductBundleManagement: React.FC = () => {
     const handleShowProductModal = () => {
         setEditingProduct(null);
         setShowProductModal(true);
+    };
+
+    const handleShowCategoryModal = () => {
+        setShowCategoryModal(true);
     };
 
     const handleShowEditProductModal = (product: ProductItem) => {
@@ -172,6 +188,10 @@ const ProductBundleManagement: React.FC = () => {
         setShowProductModal(false);
         setEditingProduct(null);
         fetchProducts();
+    };
+
+    const handleCloseCategoryModal = () => {
+        setShowCategoryModal(false);
     };
 
     const confirmDeletion = (): string | null => {
@@ -368,6 +388,9 @@ const ProductBundleManagement: React.FC = () => {
         .filter(product =>
             productStoreFilter === '' ||
             (product.visible_store_ids && product.visible_store_ids.includes(Number(productStoreFilter)))
+        )
+        .filter(product =>
+            activeProductCategory === 'all' || (product.categories && product.categories.includes(activeProductCategory))
         );
 
     const filteredTherapies = therapies
@@ -378,6 +401,9 @@ const ProductBundleManagement: React.FC = () => {
         .filter(therapy =>
             therapyStoreFilter === '' ||
             (therapy.visible_store_ids && therapy.visible_store_ids.includes(Number(therapyStoreFilter)))
+        )
+        .filter(therapy =>
+            activeTherapyCategory === 'all' || (therapy.categories && therapy.categories.includes(activeTherapyCategory))
         );
 
     const content = (
@@ -415,6 +441,13 @@ const ProductBundleManagement: React.FC = () => {
                             onClick={handleShowTherapyModal}
                         >
                             新增療程
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            className="px-4"
+                            onClick={handleShowCategoryModal}
+                        >
+                            新增分類
                         </Button>
                     </Col>
                 </Row>
@@ -639,6 +672,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'product' && (
                     <>
+                        <Tabs activeKey={activeProductCategory} onSelect={(k) => setActiveProductCategory(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {productCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
                         <Row className="mb-3">
                             <Col xs={12} md={4}>
                                 <Form.Control
@@ -740,6 +779,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'therapy' && (
                     <>
+                        <Tabs activeKey={activeTherapyCategory} onSelect={(k) => setActiveTherapyCategory(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {therapyCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
                         <Row className="mb-3">
                             <Col xs={12} md={4}>
                                 <Form.Control
@@ -869,6 +914,10 @@ const ProductBundleManagement: React.FC = () => {
                 onHide={handleCloseProductModal}
                 editingProduct={editingProduct}
                 stores={stores}
+            />
+            <AddCategoryModal
+                show={showCategoryModal}
+                onHide={handleCloseCategoryModal}
             />
         </>
     );

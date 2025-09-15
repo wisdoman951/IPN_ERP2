@@ -10,6 +10,7 @@ import {
     fetchRemainingSessionsBulk
 } from '../../services/TherapySellService';
 import { fetchAllTherapyBundles, TherapyBundle } from '../../services/TherapyBundleService';
+import { getCategories, Category } from '../../services/CategoryService';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
 export interface PackageInSelection extends TherapyPackageBaseType {
@@ -26,7 +27,8 @@ const TherapyPackageSelection: React.FC = () => {
     const [pageError, setPageError] = useState<string | null>(null); // 用於此頁面特定的錯誤，如堂數無效
     const [memberId, setMemberId] = useState<string>('');
     const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
-    const [activeTab, setActiveTab] = useState<'therapy' | 'bundle'>('therapy');
+    const [activeTab, setActiveTab] = useState<string>('all');
+    const [categories, setCategories] = useState<Category[]>([]);
 
 
     useEffect(() => {
@@ -80,9 +82,10 @@ const TherapyPackageSelection: React.FC = () => {
     const fetchPackages = async () => {
         setLoading(true); setPageError(null);
         try {
-            const [therapyRes, bundleData] = await Promise.all([
+            const [therapyRes, bundleData, categoryData] = await Promise.all([
                 fetchAllTherapyPackagesService(),
-                fetchAllTherapyBundles()
+                fetchAllTherapyBundles(),
+                getCategories('therapy')
             ]);
 
             let packages: TherapyPackageBaseType[] = [];
@@ -91,6 +94,7 @@ const TherapyPackageSelection: React.FC = () => {
                     ...p,
                     type: 'therapy',
                     therapy_id: Number(p.therapy_id),
+                    categories: p.categories || []
                 }));
             }
 
@@ -105,7 +109,8 @@ const TherapyPackageSelection: React.FC = () => {
 
             const combined = [...packages, ...bundlePackages];
             setAllPackages(combined);
-            setDisplayedPackages(combined.filter(pkg => pkg.type === activeTab));
+            setCategories(categoryData);
+            setDisplayedPackages(combined.filter(pkg => pkg.type === 'therapy'));
         } catch (err: unknown) {
             setPageError((err as Error).message || "載入療程套餐時發生嚴重錯誤");
             setAllPackages([]); setDisplayedPackages([]);
@@ -138,7 +143,15 @@ const TherapyPackageSelection: React.FC = () => {
     }, [memberId, allPackages]);
 
     useEffect(() => {
-        let filtered = allPackages.filter(pkg => pkg.type === activeTab);
+        let filtered: TherapyPackageBaseType[] = [];
+        if (activeTab === 'bundle') {
+            filtered = allPackages.filter(pkg => pkg.type === 'bundle');
+        } else {
+            filtered = allPackages.filter(pkg => pkg.type === 'therapy');
+            if (activeTab !== 'all') {
+                filtered = filtered.filter(pkg => pkg.categories?.includes(activeTab));
+            }
+        }
         if (searchTerm.trim() !== "") {
             const lowerSearchTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(pkg =>
@@ -220,8 +233,11 @@ const TherapyPackageSelection: React.FC = () => {
                         </Col>
                     </Row>
 
-                    <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'therapy' | 'bundle') || 'therapy')} className="mb-3">
-                        <Tab eventKey="therapy" title="療程" />
+                    <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'all')} className="mb-3">
+                        <Tab eventKey="all" title="全部" />
+                        {categories.map(cat => (
+                            <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                        ))}
                         <Tab eventKey="bundle" title="療程組合" />
                     </Tabs>
 

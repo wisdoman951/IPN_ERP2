@@ -29,6 +29,7 @@ export interface TherapyPackage { // 這是基礎的 TherapyPackage 型別
   name?: string;
   content?: string;
   price?: number;
+  categories?: string[];
 }
 
 export interface Store {
@@ -111,6 +112,7 @@ export const getAllTherapyPackages = async (): Promise<ApiResponse<TherapyPackag
                 TherapyPrice: item.TherapyPrice || item.price,
                 TherapyName: item.TherapyName || item.name,
                 TherapyContent: item.TherapyContent || item.content || item.TherapyName || item.name || '',
+                categories: item.categories || [],
             }));
             return { success: true, data: formattedData };
         } else if (response.data && typeof response.data === 'object' && response.data.hasOwnProperty('data') && Array.isArray(response.data.data)) {
@@ -121,6 +123,7 @@ export const getAllTherapyPackages = async (): Promise<ApiResponse<TherapyPackag
                 TherapyPrice: item.TherapyPrice || item.price,
                 TherapyName: item.TherapyName || item.name,
                 TherapyContent: item.TherapyContent || item.content || item.TherapyName || item.name || '',
+                categories: item.categories || [],
             }));
             return { success: response.data.success, data: formattedData, message: response.data.message };
         }
