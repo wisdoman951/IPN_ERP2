@@ -170,6 +170,7 @@ const InventoryEntryForm = () => {
           {/* 第二列顯示品項與數量 */}
           <Row className="mb-3">
             <Col xs={12} md={6} className="mb-3 mb-md-0">
+              <p></p>
               <Form.Group controlId="product_id">
                 <Form.Label>品項</Form.Label>
                 <Form.Select
