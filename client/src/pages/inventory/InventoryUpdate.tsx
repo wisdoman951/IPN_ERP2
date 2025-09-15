@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
 import { getAllStaffs, Staff } from "../../services/StaffService";
+import { getCategories, Category } from "../../services/CategoryService";
 import { addInventoryItem, getInventoryById, updateInventoryItem, exportInventory } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -15,6 +16,8 @@ const InventoryEntryForm = () => {
 
   const [products, setProducts] = useState<Product[]>([]);
   const [staffs, setStaffs] = useState<Staff[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [productSearch, setProductSearch] = useState('');
 
   const [formData, setFormData] = useState({
     product_id: "",
@@ -30,15 +33,16 @@ const InventoryEntryForm = () => {
   });
 
   useEffect(() => {
-    getAllProducts().then((res) => {
+    Promise.all([getAllProducts(), getCategories('product'), getAllStaffs()]).then(([res, cats, staffsRes]) => {
       const sorted = [...res].sort((a, b) => {
         const codeA = a.product_code ? parseInt(a.product_code, 10) : 0;
         const codeB = b.product_code ? parseInt(b.product_code, 10) : 0;
         return codeB - codeA;
       });
       setProducts(sorted);
+      setCategories(cats);
+      setStaffs(staffsRes);
     });
-    getAllStaffs().then((res) => setStaffs(res));
 
     if (editingId) {
       getInventoryById(Number(editingId)).then((data) => {
@@ -120,6 +124,26 @@ const InventoryEntryForm = () => {
     }
   };
 
+  const filteredProducts = useMemo(() => {
+    const lower = productSearch.trim().toLowerCase();
+    return products.filter(p =>
+      !lower ||
+      p.product_name.toLowerCase().includes(lower) ||
+      (p.product_code || '').toLowerCase().includes(lower)
+    );
+  }, [products, productSearch]);
+
+  const grouped = useMemo(() =>
+    categories.map(cat => ({
+      name: cat.name,
+      items: filteredProducts.filter(p => p.categories?.includes(cat.name))
+    })), [categories, filteredProducts]);
+
+  const ungrouped = useMemo(() =>
+    filteredProducts.filter(
+      p => !p.categories || !p.categories.some(c => categories.some(cat => cat.name === c))
+    ), [filteredProducts, categories]);
+
   return (
     <>
       <Header />
@@ -128,6 +152,22 @@ const InventoryEntryForm = () => {
         style={{ marginLeft: "200px", paddingRight: "30px", maxWidth: "calc(100% - 220px)" }}
       >
         <Form>
+          {/* 搜尋品項獨立一列 */}
+          <Row className="mb-3">
+            <Col xs={12} md={6}>
+              <Form.Group controlId="product_search" className="mb-2">
+                <Form.Label>搜尋品項</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={productSearch}
+                  onChange={e => setProductSearch(e.target.value)}
+                  placeholder="輸入名稱或編號"
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          {/* 第二列顯示品項與數量 */}
           <Row className="mb-3">
             <Col xs={12} md={6} className="mb-3 mb-md-0">
               <Form.Group controlId="product_id">
@@ -138,19 +178,30 @@ const InventoryEntryForm = () => {
                   onChange={handleChange}
                 >
                   <option value="">-- 選擇品項 --</option>
-                  {products.map((p) => {
-                    const key = p.product_id;
-                    const value = p.product_id;
-                    const label = `[${p.product_code ?? ""}] ${p.product_name}`;
-                    return (
-                      <option key={key} value={value}>
-                        {label}
-                      </option>
-                    );
-                  })}
+                  {grouped.map(g => (
+                    g.items.length > 0 ? (
+                      <optgroup key={g.name} label={g.name}>
+                        {g.items.map(p => (
+                          <option key={p.product_id} value={p.product_id}>
+                            [{p.product_code ?? ""}] {p.product_name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null
+                  ))}
+                  {ungrouped.length > 0 && (
+                    <optgroup label="未分類">
+                      {ungrouped.map(p => (
+                        <option key={p.product_id} value={p.product_id}>
+                          [{p.product_code ?? ""}] {p.product_name}
+                        </option>
+                      ))}
+                    </optgroup>
+                  )}
                 </Form.Select>
               </Form.Group>
             </Col>
+
             <Col xs={12} md={6}>
               <Form.Group controlId="quantity">
                 <Form.Label>數量</Form.Label>
