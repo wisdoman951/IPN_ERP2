@@ -24,6 +24,7 @@ export interface Product {
   product_price: number;
   inventory_id: number;
   inventory_quantity: number;
+  categories?: string[];
 }
 
 export interface ProductSellData {

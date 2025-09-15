@@ -476,8 +476,11 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 p.price AS product_price,
                 p.visible_store_ids,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
-                0 AS inventory_id
+                0 AS inventory_id,
+                GROUP_CONCAT(c.name) AS categories
             FROM product p
+            LEFT JOIN product_category pc ON p.product_id = pc.product_id
+            LEFT JOIN category c ON pc.category_id = c.category_id
             LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
         """
 
@@ -509,6 +512,8 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
         if store_id is None or not store_ids or int(store_id) in store_ids:
             if store_ids is not None:
                 row['visible_store_ids'] = store_ids
+            if row.get('categories'):
+                row['categories'] = row['categories'].split(',')
             filtered.append(row)
     return filtered
 
@@ -529,8 +534,11 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 p.price AS product_price,
                 p.visible_store_ids,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
-                0 AS inventory_id
+                0 AS inventory_id,
+                GROUP_CONCAT(c.name) AS categories
             FROM product p
+            LEFT JOIN product_category pc ON p.product_id = pc.product_id
+            LEFT JOIN category c ON pc.category_id = c.category_id
             LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
         """
 
@@ -572,6 +580,8 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
         if store_id is None or not store_ids or int(store_id) in store_ids:
             if store_ids is not None:
                 row['visible_store_ids'] = store_ids
+            if row.get('categories'):
+                row['categories'] = row['categories'].split(',')
             filtered.append(row)
     return filtered
 
