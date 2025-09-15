@@ -7,6 +7,7 @@ import {
     Product, Therapy, Bundle
 } from '../../../services/ProductBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
+import { getCategories, Category } from '../../../services/CategoryService';
 
 interface BundleCreateModalProps {
     show: boolean;
@@ -24,9 +25,11 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     const [products, setProducts] = useState<Product[]>([]);
     const [therapies, setTherapies] = useState<Therapy[]>([]);
     const [stores, setStores] = useState<Store[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
     const [selectedTherapyIds, setSelectedTherapyIds] = useState<number[]>([]);
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     // 新增數量 state
@@ -45,6 +48,7 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
             fetchAllStores()
                 .then(data => setStores(data.filter(s => s.store_name !== '總店')))
                 .catch(() => setError("無法載入分店列表"));
+            getCategories('product_bundle').then(setCategories).catch(() => setCategories([]));
 
             // 如果是編輯模式，則獲取該組合的詳細資料並填充表單
             if (editingBundle) {
@@ -61,6 +65,7 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                         setSelectedProductIds(prodIds);
                         setSelectedTherapyIds(thrpIds);
                         setSelectedStoreIds(data.visible_store_ids || []);
+                        setSelectedCategoryIds(data.category_ids || []);
                         // 填充數量
                         prodIds.forEach(id => {
                             const item = data.items.find(i => i.item_id === id && i.item_type === 'Product');
@@ -82,6 +87,7 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
         setSelectedProductIds([]);
         setSelectedTherapyIds([]);
         setSelectedStoreIds([]);
+        setSelectedCategoryIds([]);
         setError(null);
         setLoading(false);
         setProductQuantities({});
@@ -147,7 +153,8 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
             items: [
                 ...selectedProductIds.map(id => ({ item_id: id, item_type: 'Product', quantity: productQuantities[id] || 1 })),
                 ...selectedTherapyIds.map(id => ({ item_id: id, item_type: 'Therapy', quantity: therapyQuantities[id] || 1 }))
-            ]
+            ],
+            category_ids: selectedCategoryIds
         };
 
         try {
@@ -179,6 +186,25 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                     <Form.Group className="mb-3">
                         <Form.Label>編號</Form.Label>
                         <Form.Control type="text" name="bundle_code" value={formData.bundle_code} onChange={handleInputChange} required />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>分類 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {categories.map(cat => (
+                                <Form.Check
+                                    key={cat.category_id}
+                                    type="checkbox"
+                                    label={cat.name}
+                                    checked={selectedCategoryIds.includes(cat.category_id)}
+                                    onChange={e => {
+                                        const checked = e.target.checked;
+                                        setSelectedCategoryIds(prev =>
+                                            checked ? [...prev, cat.category_id] : prev.filter(id => id !== cat.category_id)
+                                        );
+                                    }}
+                                />
+                            ))}
+                        </div>
                     </Form.Group>
                     <Form.Group className="mb-3">
                         <Form.Label>項目 (組合名稱)</Form.Label>

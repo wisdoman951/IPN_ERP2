@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button } from 'react-bootstrap';
 import { addProduct, updateProduct } from '../../../services/ProductService';
 import { Product as ProductItem } from '../../../services/ProductBundleService';
+import { getCategories, Category } from '../../../services/CategoryService';
 import { Store } from '../../../services/StoreService';
 
 interface AddProductModalProps {
@@ -16,6 +17,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
 
     useEffect(() => {
         if (editingProduct) {
@@ -23,13 +26,19 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             setName(editingProduct.product_name);
             setPrice(String(editingProduct.product_price));
             setSelectedStoreIds(editingProduct.visible_store_ids || []);
+            setSelectedCategoryIds([]);
         } else {
             setCode('');
             setName('');
             setPrice('');
             setSelectedStoreIds([]);
+            setSelectedCategoryIds([]);
         }
     }, [editingProduct]);
+
+    useEffect(() => {
+        getCategories('product').then(setCategories).catch(() => {});
+    }, []);
 
     const handleStoreCheckChange = (id: number, checked: boolean) => {
         setSelectedStoreIds(prev => checked ? [...prev, id] : prev.filter(sid => sid !== id));
@@ -38,7 +47,13 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const payload = { code, name, price: Number(price), visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null };
+            const payload = {
+                code,
+                name,
+                price: Number(price),
+                visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
+                category_ids: selectedCategoryIds,
+            };
             if (editingProduct) {
                 await updateProduct(editingProduct.product_id, payload);
             } else {
@@ -48,6 +63,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
         } catch (err) {
             alert(editingProduct ? '更新產品失敗' : '新增產品失敗');
         }
+    };
+
+    const handleCategoryChange = (id: number, checked: boolean) => {
+        setSelectedCategoryIds(prev => checked ? [...prev, id] : prev.filter(cid => cid !== id));
     };
 
     return (
@@ -80,6 +99,21 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
                                     label={s.store_name}
                                     checked={selectedStoreIds.includes(s.store_id)}
                                     onChange={e => handleStoreCheckChange(s.store_id, e.target.checked)}
+                                />
+                            ))}
+                        </div>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>分類 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {categories.map(c => (
+                                <Form.Check
+                                    key={`cat-${c.category_id}`}
+                                    type="checkbox"
+                                    id={`cat-check-${c.category_id}`}
+                                    label={c.name}
+                                    checked={selectedCategoryIds.includes(c.category_id)}
+                                    onChange={e => handleCategoryChange(c.category_id, e.target.checked)}
                                 />
                             ))}
                         </div>

@@ -24,6 +24,7 @@ export interface TherapyBundle {
     bundle_contents: string;
     created_at: string;
     visible_store_ids?: number[];
+    categories?: string[];
 }
 
 export interface TherapyBundleDetails extends TherapyBundle {
@@ -31,6 +32,7 @@ export interface TherapyBundleDetails extends TherapyBundle {
         item_id: number;
         quantity: number;
     }[];
+    category_ids?: number[];
 }
 
 export interface Therapy {

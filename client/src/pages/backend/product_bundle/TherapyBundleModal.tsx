@@ -10,6 +10,7 @@ import {
     TherapyBundle
 } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
+import { getCategories, Category } from '../../../services/CategoryService';
 
 interface TherapyBundleModalProps {
     show: boolean;
@@ -26,9 +27,11 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
     });
     const [therapies, setTherapies] = useState<Therapy[]>([]);
     const [stores, setStores] = useState<Store[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [selectedTherapyIds, setSelectedTherapyIds] = useState<number[]>([]);
     const [therapyQuantities, setTherapyQuantities] = useState<{ [id: number]: number }>({});
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +42,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
             fetchAllStores()
                 .then(data => setStores(data.filter(s => s.store_name !== '總店')))
                 .catch(() => setError('無法載入分店列表'));
+            getCategories('therapy_bundle').then(setCategories).catch(() => setCategories([]));
 
             if (editingBundle) {
                 setLoading(true);
@@ -52,6 +56,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                         const ids = data.items.map(i => i.item_id);
                         setSelectedTherapyIds(ids);
                         setSelectedStoreIds(data.visible_store_ids || []);
+                        setSelectedCategoryIds(data.category_ids || []);
                         const quantities: { [id: number]: number } = {};
                         data.items.forEach(item => {
                             quantities[item.item_id] = item.quantity;
@@ -69,6 +74,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
         setSelectedTherapyIds([]);
         setTherapyQuantities({});
         setSelectedStoreIds([]);
+        setSelectedCategoryIds([]);
         setError(null);
         setLoading(false);
     };
@@ -118,7 +124,8 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
             ...formData,
             calculated_price: calculatedPrice,
             visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
-            items: selectedTherapyIds.map(id => ({ item_id: id, quantity: therapyQuantities[id] || 1 }))
+            items: selectedTherapyIds.map(id => ({ item_id: id, quantity: therapyQuantities[id] || 1 })),
+            category_ids: selectedCategoryIds
         };
 
         try {
@@ -203,6 +210,26 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                             </Form.Group>
                         </Col>
                     </Row>
+
+                    <Form.Group className="mb-3">
+                        <Form.Label>分類 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {categories.map(cat => (
+                                <Form.Check
+                                    key={cat.category_id}
+                                    type="checkbox"
+                                    label={cat.name}
+                                    checked={selectedCategoryIds.includes(cat.category_id)}
+                                    onChange={e => {
+                                        const checked = e.target.checked;
+                                        setSelectedCategoryIds(prev =>
+                                            checked ? [...prev, cat.category_id] : prev.filter(id => id !== cat.category_id)
+                                        );
+                                    }}
+                                />
+                            ))}
+                        </div>
+                    </Form.Group>
 
                     <Form.Group className="mb-3">
                         <Form.Label>原價總計</Form.Label>
