@@ -36,7 +36,7 @@ const AddCategoryModal: React.FC<Props> = ({ show, onHide }) => {
           <Form.Group className="mb-3">
             <Form.Label>分類類型</Form.Label>
             <Form.Select value={targetType} onChange={e => setTargetType(e.target.value as any)}>
-              <option value="product">商品</option>
+              <option value="product">產品</option>
               <option value="therapy">療程</option>
               <option value="product_bundle">產品組合</option>
               <option value="therapy_bundle">療程組合</option>

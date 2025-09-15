@@ -123,14 +123,18 @@ def update_sale(sale_id):
 @auth_required
 def delete_sale(sale_id):
     try:
+        user = get_user_from_token(request)
+
+        if user and user.get('permission') == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
+
         sale = get_product_sell_by_id(sale_id)
         if not sale:
             return jsonify({"error": "找不到產品銷售記錄"}), 404
-            
-        user = get_user_from_token(request)
+
         if user and user.get('permission') != 'admin' and sale.get('store_id') != user.get('store_id'):
             return jsonify({"error": "無權限刪除其他商店的記錄"}), 403
-            
+
         delete_product_sell(sale_id)
         return jsonify({"message": "產品銷售記錄刪除成功"}), 200
     except Exception as e:

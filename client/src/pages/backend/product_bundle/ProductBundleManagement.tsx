@@ -473,15 +473,15 @@ const ProductBundleManagement: React.FC = () => {
                             新增療程
                         </Button>
                         <Button
-                            variant="secondary"
-                            className="px-4"
+                            variant="info"
+                            className="text-white px-4"
                             onClick={handleShowCategoryModal}
                         >
                             新增分類
                         </Button>
                         <Button
-                            variant="secondary"
-                            className="px-4"
+                            variant="info"
+                            className="text-white px-4"
                             onClick={handleShowDeleteCategoryModal}
                         >
                             刪除分類
