@@ -33,11 +33,11 @@ def get_categories(target_type: str | None = None):
         with conn.cursor() as cursor:
             if target_type:
                 cursor.execute(
-                    "SELECT * FROM category WHERE target_type=%s ORDER BY name",
+                    "SELECT * FROM category WHERE target_type=%s ORDER BY (name='未歸類'), name",
                     (target_type,),
                 )
             else:
-                cursor.execute("SELECT * FROM category ORDER BY name")
+                cursor.execute("SELECT * FROM category ORDER BY (name='未歸類'), name")
             return cursor.fetchall()
     finally:
         conn.close()

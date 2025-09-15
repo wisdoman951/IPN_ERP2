@@ -1,12 +1,12 @@
 from flask import Blueprint, request, jsonify
 from app.models.category_model import create_category, get_categories, delete_category
-from app.middleware import admin_required, auth_required
+from app.middleware import admin_required
 
 category_bp = Blueprint("category", __name__)
 
 
 @category_bp.route("/", methods=["GET"])
-@auth_required
+@admin_required
 def list_categories():
     target_type = request.args.get("target_type")
     try:

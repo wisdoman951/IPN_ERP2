@@ -15,7 +15,11 @@ export const getCategories = async (targetType?: string): Promise<Category[]> =>
     params: { target_type: targetType },
     headers: getAuthHeaders(),
   });
-  return response.data;
+  const data: Category[] = response.data;
+  return [
+    ...data.filter(c => c.name !== '未歸類'),
+    ...data.filter(c => c.name === '未歸類')
+  ];
 };
 
 export const addCategory = async (data: { name: string; target_type: string }) => {
