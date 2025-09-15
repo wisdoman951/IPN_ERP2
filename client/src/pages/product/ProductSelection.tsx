@@ -31,7 +31,8 @@ const ProductSelection: React.FC = () => {
   const [displayedItems, setDisplayedItems] = useState<ItemBase[]>([]);
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, SelectedItem>>(new Map());
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<string>('all');
+  const [topTab, setTopTab] = useState<'product' | 'bundle'>('product');
+  const [activeProductTab, setActiveProductTab] = useState<string>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
   const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
@@ -112,15 +113,15 @@ const ProductSelection: React.FC = () => {
 
   useEffect(() => { // 前端篩選
     let filtered: ItemBase[] = [];
-    if (activeTab === 'bundle') {
+    if (topTab === 'bundle') {
       filtered = allItems.filter(item => item.type === 'bundle');
       if (activeBundleTab !== 'all') {
         filtered = filtered.filter(item => item.categories?.includes(activeBundleTab));
       }
     } else {
       filtered = allItems.filter(item => item.type === 'product');
-      if (activeTab !== 'all') {
-        filtered = filtered.filter(item => item.categories?.includes(activeTab));
+      if (activeProductTab !== 'all') {
+        filtered = filtered.filter(item => item.categories?.includes(activeProductTab));
       }
     }
     if (searchTerm.trim() !== '') {
@@ -132,7 +133,7 @@ const ProductSelection: React.FC = () => {
       );
     }
     setDisplayedItems(filtered);
-  }, [searchTerm, allItems, activeTab, activeBundleTab]);
+  }, [searchTerm, allItems, topTab, activeProductTab, activeBundleTab]);
 
   const getItemKey = (item: ItemBase) =>
     item.type === 'bundle' ? `b-${item.bundle_id}` : `p-${item.product_id}`;
@@ -216,7 +217,7 @@ const ProductSelection: React.FC = () => {
     if (displayedItems.length === 0 && !pageError) {
       return (
         <Alert variant="secondary">
-          目前沒有符合條件的{activeTab === 'product' ? '產品' : '產品組合'}。
+          目前沒有符合條件的{topTab === 'product' ? '產品' : '產品組合'}。
         </Alert>
       );
     }
@@ -309,12 +310,23 @@ const ProductSelection: React.FC = () => {
             </Col>
           </Row>
 
-          <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'all')} className="mb-3">
-            <Tab eventKey="all" title="全部" />
-            {categories.map(cat => (
-              <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
-            ))}
-            <Tab eventKey="bundle" title="產品組合" />
+          <Tabs activeKey={topTab} onSelect={(k) => setTopTab((k as 'product' | 'bundle') || 'product')} className="mb-3">
+            <Tab eventKey="product" title="產品">
+              <Tabs activeKey={activeProductTab} onSelect={(k) => setActiveProductTab(k || 'all')} className="mt-3 mb-3">
+                <Tab eventKey="all" title="全部" />
+                {categories.map(cat => (
+                  <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                ))}
+              </Tabs>
+            </Tab>
+            <Tab eventKey="bundle" title="產品組合">
+              <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mt-3 mb-3">
+                <Tab eventKey="all" title="全部" />
+                {bundleCategories.map(cat => (
+                  <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                ))}
+              </Tabs>
+            </Tab>
           </Tabs>
 
           {activeTab === 'bundle' && (

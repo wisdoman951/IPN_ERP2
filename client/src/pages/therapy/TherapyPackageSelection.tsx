@@ -27,7 +27,8 @@ const TherapyPackageSelection: React.FC = () => {
     const [pageError, setPageError] = useState<string | null>(null); // 用於此頁面特定的錯誤，如堂數無效
     const [memberId, setMemberId] = useState<string>('');
     const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
-    const [activeTab, setActiveTab] = useState<string>('all');
+    const [topTab, setTopTab] = useState<'therapy' | 'bundle'>('therapy');
+    const [activeTherapyTab, setActiveTherapyTab] = useState<string>('all');
     const [categories, setCategories] = useState<Category[]>([]);
     const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
     const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
@@ -149,15 +150,15 @@ const TherapyPackageSelection: React.FC = () => {
 
     useEffect(() => {
         let filtered: TherapyPackageBaseType[] = [];
-        if (activeTab === 'bundle') {
+        if (topTab === 'bundle') {
             filtered = allPackages.filter(pkg => pkg.type === 'bundle');
             if (activeBundleTab !== 'all') {
                 filtered = filtered.filter(pkg => pkg.categories?.includes(activeBundleTab));
             }
         } else {
             filtered = allPackages.filter(pkg => pkg.type === 'therapy');
-            if (activeTab !== 'all') {
-                filtered = filtered.filter(pkg => pkg.categories?.includes(activeTab));
+            if (activeTherapyTab !== 'all') {
+                filtered = filtered.filter(pkg => pkg.categories?.includes(activeTherapyTab));
             }
         }
         if (searchTerm.trim() !== "") {
@@ -169,7 +170,7 @@ const TherapyPackageSelection: React.FC = () => {
             );
         }
         setDisplayedPackages(filtered);
-    }, [searchTerm, allPackages, activeTab, activeBundleTab]);
+    }, [searchTerm, allPackages, topTab, activeTherapyTab, activeBundleTab]);
 
     const getPkgKey = (pkg: TherapyPackageBaseType) =>
         pkg.type === 'bundle' ? `b-${pkg.bundle_id}` : `t-${pkg.therapy_id}`;
@@ -241,12 +242,23 @@ const TherapyPackageSelection: React.FC = () => {
                         </Col>
                     </Row>
 
-                    <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'all')} className="mb-3">
-                        <Tab eventKey="all" title="全部" />
-                        {categories.map(cat => (
-                            <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
-                        ))}
-                        <Tab eventKey="bundle" title="療程組合" />
+                    <Tabs activeKey={topTab} onSelect={(k) => setTopTab((k as 'therapy' | 'bundle') || 'therapy')} className="mb-3">
+                        <Tab eventKey="therapy" title="療程">
+                            <Tabs activeKey={activeTherapyTab} onSelect={(k) => setActiveTherapyTab(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {categories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                                ))}
+                            </Tabs>
+                        </Tab>
+                        <Tab eventKey="bundle" title="療程組合">
+                            <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {bundleCategories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                                ))}
+                            </Tabs>
+                        </Tab>
                     </Tabs>
 
                     {activeTab === 'bundle' && (
@@ -262,7 +274,9 @@ const TherapyPackageSelection: React.FC = () => {
                         <div className="text-center p-5"><Spinner animation="border" variant="info" /> <p className="mt-2">載入中...</p></div>
                     )}
                     {!loading && displayedPackages.length === 0 && (
-                        <Alert variant="secondary">目前沒有符合條件的療程套餐。</Alert>
+                        <Alert variant="secondary">
+                            目前沒有符合條件的{topTab === 'therapy' ? '療程' : '療程組合'}。
+                        </Alert>
                     )}
                     {!loading && displayedPackages.length > 0 && (
                         <ListGroup variant="flush" style={{maxHeight: 'calc(100vh - 380px)', overflowY: 'auto'}}>
