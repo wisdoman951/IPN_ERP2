@@ -15,14 +15,18 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT therapy_id, code as TherapyCode, price as TherapyPrice, name as TherapyName, content as TherapyContent, visible_store_ids
-                FROM therapy
+                SELECT t.therapy_id, t.code AS TherapyCode, t.price AS TherapyPrice,
+                       t.name AS TherapyName, t.content AS TherapyContent,
+                       t.visible_store_ids, GROUP_CONCAT(c.name) AS categories
+                FROM therapy t
+                LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id
+                LEFT JOIN category c ON tc.category_id = c.category_id
             """
             params = []
             if status:
-                query += " WHERE status = %s"
+                query += " WHERE t.status = %s"
                 params.append(status)
-            query += " ORDER BY code"
+            query += " GROUP BY t.therapy_id, t.code, t.price, t.name, t.content, t.visible_store_ids ORDER BY t.code"
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
             filtered = []
@@ -37,6 +41,8 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
                         store_ids = None
                 if store_id is None or not store_ids or int(store_id) in store_ids:
                     row.pop('visible_store_ids', None)
+                    if row.get('categories'):
+                        row['categories'] = row['categories'].split(',')
                     filtered.append(row)
             return filtered
     except Exception as e:
@@ -51,17 +57,21 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id:
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT therapy_id, code as TherapyCode, price as TherapyPrice, name as TherapyName, content as TherapyContent, visible_store_ids
-                FROM therapy
-                WHERE (code LIKE %s OR name LIKE %s OR content LIKE %s)
+                SELECT t.therapy_id, t.code AS TherapyCode, t.price AS TherapyPrice,
+                       t.name AS TherapyName, t.content AS TherapyContent,
+                       t.visible_store_ids, GROUP_CONCAT(c.name) AS categories
+                FROM therapy t
+                LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id
+                LEFT JOIN category c ON tc.category_id = c.category_id
+                WHERE (t.code LIKE %s OR t.name LIKE %s OR t.content LIKE %s)
             """
             params = []
             like = f"%{keyword}%"
             params.extend([like, like, like])
             if status:
-                query += " AND status = %s"
+                query += " AND t.status = %s"
                 params.append(status)
-            query += " ORDER BY code"
+            query += " GROUP BY t.therapy_id, t.code, t.price, t.name, t.content, t.visible_store_ids ORDER BY t.code"
             cursor.execute(query, tuple(params))
             result = cursor.fetchall()
             filtered = []
@@ -76,6 +86,8 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id:
                         store_ids = None
                 if store_id is None or not store_ids or int(store_id) in store_ids:
                     row.pop('visible_store_ids', None)
+                    if row.get('categories'):
+                        row['categories'] = row['categories'].split(',')
                     filtered.append(row)
             return filtered
     except Exception as e:

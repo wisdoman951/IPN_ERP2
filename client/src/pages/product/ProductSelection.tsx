@@ -6,6 +6,7 @@ import DynamicContainer from '../../components/DynamicContainer';
 import { getAllProducts, Product } from '../../services/ProductSellService';
 import { fetchAllBundles, Bundle } from '../../services/ProductBundleService';
 import { getStoreId } from '../../services/AuthUtils';
+import { getCategories, Category } from '../../services/CategoryService';
 
 interface ItemBase {
   type: 'product' | 'bundle';
@@ -17,6 +18,7 @@ interface ItemBase {
   inventory_id?: number;
   stock_quantity?: number;
   content?: string;
+  categories?: string[];
 }
 
 interface SelectedItem extends ItemBase {
@@ -29,7 +31,8 @@ const ProductSelection: React.FC = () => {
   const [displayedItems, setDisplayedItems] = useState<ItemBase[]>([]);
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, SelectedItem>>(new Map());
   const [searchTerm, setSearchTerm] = useState('');
-  const [activeTab, setActiveTab] = useState<'product' | 'bundle'>('product');
+  const [activeTab, setActiveTab] = useState<string>('all');
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
 
@@ -37,9 +40,10 @@ const ProductSelection: React.FC = () => {
     const fetchData = async () => {
       setLoading(true); setPageError(null);
       try {
-        const [productData, bundleData] = await Promise.all([
+        const [productData, bundleData, categoryData] = await Promise.all([
           getAllProducts(),
-          fetchAllBundles()
+          fetchAllBundles(),
+          getCategories('product')
         ]);
 
         const products: ItemBase[] = productData.map((p: Product) => ({
@@ -49,7 +53,8 @@ const ProductSelection: React.FC = () => {
           code: p.product_code,
           price: Number(p.product_price),
           inventory_id: p.inventory_id,
-          stock_quantity: p.inventory_quantity
+          stock_quantity: p.inventory_quantity,
+          categories: p.categories || []
         }));
 
         const storeId = Number(getStoreId());
@@ -71,7 +76,8 @@ const ProductSelection: React.FC = () => {
 
         const combined = [...products, ...bundles];
         setAllItems(combined);
-        setDisplayedItems(combined.filter(item => item.type === activeTab));
+        setCategories(categoryData);
+        setDisplayedItems(combined.filter(item => item.type === 'product'));
       } catch (err) {
         console.error('載入產品資料失敗：', err);
         setPageError('載入產品資料失敗，請稍後再試。');
@@ -100,7 +106,15 @@ const ProductSelection: React.FC = () => {
   }, []);
 
   useEffect(() => { // 前端篩選
-    let filtered = allItems.filter(item => item.type === activeTab);
+    let filtered: ItemBase[] = [];
+    if (activeTab === 'bundle') {
+      filtered = allItems.filter(item => item.type === 'bundle');
+    } else {
+      filtered = allItems.filter(item => item.type === 'product');
+      if (activeTab !== 'all') {
+        filtered = filtered.filter(item => item.categories?.includes(activeTab));
+      }
+    }
     if (searchTerm.trim() !== '') {
       const lower = searchTerm.toLowerCase();
       filtered = filtered.filter(item =>
@@ -287,8 +301,11 @@ const ProductSelection: React.FC = () => {
             </Col>
           </Row>
 
-          <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'product' | 'bundle') || 'product')} className="mb-3">
-            <Tab eventKey="product" title="單品" />
+          <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k || 'all')} className="mb-3">
+            <Tab eventKey="all" title="全部" />
+            {categories.map(cat => (
+              <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+            ))}
             <Tab eventKey="bundle" title="產品組合" />
           </Tabs>
 

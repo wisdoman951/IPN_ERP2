@@ -43,6 +43,7 @@ export interface Product {
     product_price: number;
     product_code: string;
     visible_store_ids?: number[];
+    categories?: string[];
 }
 
 export interface Therapy {
@@ -52,6 +53,7 @@ export interface Therapy {
     code: string;
     content?: string;
      visible_store_ids?: number[];
+     categories?: string[];
 }
 
 
