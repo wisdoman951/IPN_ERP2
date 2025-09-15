@@ -217,7 +217,7 @@ const ProductSelection: React.FC = () => {
     if (displayedItems.length === 0 && !pageError) {
       return (
         <Alert variant="secondary">
-          目前沒有符合條件的{activeTab === 'product' ? '產品' : '產品組合'}。
+          目前沒有符合條件的{topTab === 'product' ? '產品' : '產品組合'}。
         </Alert>
       );
     }
@@ -328,6 +328,15 @@ const ProductSelection: React.FC = () => {
               </Tabs>
             </Tab>
           </Tabs>
+
+          {activeTab === 'bundle' && (
+            <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mb-3">
+              <Tab eventKey="all" title="全部" />
+              {bundleCategories.map(cat => (
+                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+              ))}
+            </Tabs>
+          )}
 
           {renderItemList()}
         </Card.Body>

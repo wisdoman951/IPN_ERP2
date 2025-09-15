@@ -261,6 +261,15 @@ const TherapyPackageSelection: React.FC = () => {
                         </Tab>
                     </Tabs>
 
+                    {activeTab === 'bundle' && (
+                        <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {bundleCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
+                    )}
+
                     {loading && (
                         <div className="text-center p-5"><Spinner animation="border" variant="info" /> <p className="mt-2">載入中...</p></div>
                     )}
