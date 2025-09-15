@@ -200,32 +200,6 @@ const InventoryEntryForm = () => {
             </Col>
           </Row>
 
-          <Row className="mb-3">
-            <Col xs={12} md={6} className="mb-3 mb-md-0">
-              <Form.Group controlId="buyer">
-                <Form.Label>購買人</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="buyer"
-                  value={formData.buyer}
-                  onChange={handleChange}
-                  placeholder="輸入購買人"
-                />
-              </Form.Group>
-            </Col>
-            <Col xs={12} md={6}>
-              <Form.Group controlId="store_name">
-                <Form.Label>出貨單位</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="store_name"
-                  value={formData.store_name}
-                  readOnly
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-
           <Row className="mb-4">
             <Col xs={12}>
               <Form.Group controlId="note">
@@ -272,6 +246,7 @@ const InventoryEntryForm = () => {
                   name="voucher"
                   value={formData.voucher}
                   onChange={handleChange}
+                  placeholder="輸入購買人"
                 />
               </Form.Group>
             </Col>
@@ -283,6 +258,32 @@ const InventoryEntryForm = () => {
                   name="supplier"
                   value={formData.supplier}
                   onChange={handleChange}
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          <Row className="mb-4">
+            <Col xs={12}>
+              <Form.Group controlId="note">
+                <Form.Label>備註</Form.Label>
+                <Form.Control
+                  as="textarea"
+                  name="note"
+                  value={formData.note}
+                  onChange={handleChange}
+                  rows={2}
+                />
+              </Form.Group>
+            </Col>
+            <Col xs={12} md={6}>
+              <Form.Group controlId="store_name">
+                <Form.Label>出貨單位</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="store_name"
+                  value={formData.store_name}
+                  readOnly
                 />
               </Form.Group>
             </Col>
