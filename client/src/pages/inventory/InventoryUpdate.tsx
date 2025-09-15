@@ -146,6 +146,22 @@ const InventoryEntryForm = () => {
         style={{ marginLeft: "200px", paddingRight: "30px", maxWidth: "calc(100% - 220px)" }}
       >
         <Form>
+          {/* 搜尋品項獨立一列 */}
+          <Row className="mb-3">
+            <Col xs={12} md={6}>
+              <Form.Group controlId="product_search" className="mb-2">
+                <Form.Label>搜尋品項</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={productSearch}
+                  onChange={e => setProductSearch(e.target.value)}
+                  placeholder="輸入名稱或編號"
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          {/* 第二列顯示品項與數量 */}
           <Row className="mb-3">
             <Col xs={12} md={6} className="mb-3 mb-md-0">
               <Form.Group controlId="product_search" className="mb-2">
@@ -189,6 +205,7 @@ const InventoryEntryForm = () => {
                 </Form.Select>
               </Form.Group>
             </Col>
+
             <Col xs={12} md={6}>
               <Form.Group controlId="quantity">
                 <Form.Label>數量</Form.Label>
