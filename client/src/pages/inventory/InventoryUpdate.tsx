@@ -157,6 +157,7 @@ const InventoryEntryForm = () => {
                   placeholder="輸入名稱或編號"
                 />
               </Form.Group>
+              <p></p>
               <Form.Group controlId="product_id">
                 <Form.Label>品項</Form.Label>
                 <Form.Select
