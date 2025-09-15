@@ -50,7 +50,7 @@ export const getProductById = async (productId: number): Promise<Product> => {
   }
 };
 
-export const addProduct = async (data: { code: string; name: string; price: number; visible_store_ids?: number[] | null }) => {
+export const addProduct = async (data: { code: string; name: string; price: number; visible_store_ids?: number[] | null; category_ids?: number[] }) => {
   try {
     const token = localStorage.getItem("token");
     const response = await axios.post(`${API_URL}/`, data, {
@@ -69,7 +69,7 @@ export const addProduct = async (data: { code: string; name: string; price: numb
 
 export const updateProduct = async (
   productId: number,
-  data: { code: string; name: string; price: number; visible_store_ids?: number[] | null }
+  data: { code: string; name: string; price: number; visible_store_ids?: number[] | null; category_ids?: number[] }
 ) => {
   try {
     const token = localStorage.getItem("token");

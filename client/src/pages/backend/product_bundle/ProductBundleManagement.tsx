@@ -5,6 +5,7 @@ import DynamicContainer from '../../../components/DynamicContainer';
 import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
+import AddCategoryModal from './AddCategoryModal';
 import TherapyBundleModal from './TherapyBundleModal';
 import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, publishBundle, unpublishBundle, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
 import { fetchAllTherapyBundles, deleteTherapyBundle, publishTherapyBundle, unpublishTherapyBundle, TherapyBundle } from '../../../services/TherapyBundleService';
@@ -45,6 +46,7 @@ const ProductBundleManagement: React.FC = () => {
     const [therapyBundleStoreFilter, setTherapyBundleStoreFilter] = useState('');
     const [productStoreFilter, setProductStoreFilter] = useState('');
     const [therapyStoreFilter, setTherapyStoreFilter] = useState('');
+    const [showCategoryModal, setShowCategoryModal] = useState(false);
 
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
@@ -141,6 +143,10 @@ const ProductBundleManagement: React.FC = () => {
         setShowProductModal(true);
     };
 
+    const handleShowCategoryModal = () => {
+        setShowCategoryModal(true);
+    };
+
     const handleShowEditProductModal = (product: ProductItem) => {
         setEditingProduct(product);
         setShowProductModal(true);
@@ -172,6 +178,10 @@ const ProductBundleManagement: React.FC = () => {
         setShowProductModal(false);
         setEditingProduct(null);
         fetchProducts();
+    };
+
+    const handleCloseCategoryModal = () => {
+        setShowCategoryModal(false);
     };
 
     const confirmDeletion = (): string | null => {
@@ -415,6 +425,13 @@ const ProductBundleManagement: React.FC = () => {
                             onClick={handleShowTherapyModal}
                         >
                             新增療程
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            className="px-4"
+                            onClick={handleShowCategoryModal}
+                        >
+                            新增分類
                         </Button>
                     </Col>
                 </Row>
@@ -869,6 +886,10 @@ const ProductBundleManagement: React.FC = () => {
                 onHide={handleCloseProductModal}
                 editingProduct={editingProduct}
                 stores={stores}
+            />
+            <AddCategoryModal
+                show={showCategoryModal}
+                onHide={handleCloseCategoryModal}
             />
         </>
     );
