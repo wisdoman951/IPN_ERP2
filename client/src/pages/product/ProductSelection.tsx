@@ -329,6 +329,15 @@ const ProductSelection: React.FC = () => {
             </Tab>
           </Tabs>
 
+          {activeTab === 'bundle' && (
+            <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mb-3">
+              <Tab eventKey="all" title="全部" />
+              {bundleCategories.map(cat => (
+                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+              ))}
+            </Tabs>
+          )}
+
           {renderItemList()}
         </Card.Body>
         {!loading && (
