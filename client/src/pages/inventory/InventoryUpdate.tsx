@@ -21,6 +21,7 @@ const InventoryEntryForm = () => {
     quantity: "",
     date: "",
     staff_id: "",
+    sale_staff_id: "",
     supplier: "",
     buyer: "",
     voucher: "",
@@ -47,6 +48,7 @@ const InventoryEntryForm = () => {
             quantity: String(data.ItemQuantity ?? ""),
             date: data.StockInTime ? data.StockInTime.split("T")[0] : "",
             staff_id: String(data.Staff_ID ?? ""),
+            sale_staff_id: "",
             supplier: data.Supplier || "",
             buyer: data.Buyer || "",
             voucher: data.Voucher || "",
@@ -66,7 +68,7 @@ const InventoryEntryForm = () => {
   const handleSubmit = async () => {
     try {
       if (!formData.staff_id) {
-        alert("請選擇銷售人");
+        alert("請選擇進貨人");
         return;
       }
 
@@ -176,13 +178,13 @@ const InventoryEntryForm = () => {
             </Col>
             <Col xs={12} md={6}>
               <Form.Group controlId="staff_id">
-                <Form.Label>銷售人</Form.Label>
+                <Form.Label>進貨人</Form.Label>
                 <Form.Select
                   name="staff_id"
                   value={formData.staff_id}
                   onChange={handleChange}
                 >
-                  <option value="">-- 選擇銷售人 --</option>
+                  <option value="">-- 選擇進貨人 --</option>
                   {Array.isArray(staffs) && staffs.map((s, index) => {
                     const key = (s as any)?.staff_id ? `staff-${(s as any).staff_id}` : `staff-fallback-${index}`;
                     const value = (s as any)?.staff_id ?? "";
@@ -194,31 +196,6 @@ const InventoryEntryForm = () => {
                     );
                   })}
                 </Form.Select>
-              </Form.Group>
-            </Col>
-          </Row>
-
-          <Row className="mb-3">
-            <Col xs={12} md={6} className="mb-3 mb-md-0">
-              <Form.Group controlId="supplier">
-                <Form.Label>供貨人</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="supplier"
-                  value={formData.supplier}
-                  onChange={handleChange}
-                />
-              </Form.Group>
-            </Col>
-            <Col xs={12} md={6}>
-              <Form.Group controlId="store_name">
-                <Form.Label>出貨單位</Form.Label>
-                <Form.Control
-                  type="text"
-                  name="store_name"
-                  value={formData.store_name}
-                  readOnly
-                />
               </Form.Group>
             </Col>
           </Row>
@@ -237,13 +214,13 @@ const InventoryEntryForm = () => {
               </Form.Group>
             </Col>
             <Col xs={12} md={6}>
-              <Form.Group controlId="voucher">
-                <Form.Label>憑證單號</Form.Label>
+              <Form.Group controlId="store_name">
+                <Form.Label>出貨單位</Form.Label>
                 <Form.Control
                   type="text"
-                  name="voucher"
-                  value={formData.voucher}
-                  onChange={handleChange}
+                  name="store_name"
+                  value={formData.store_name}
+                  readOnly
                 />
               </Form.Group>
             </Col>
@@ -259,6 +236,53 @@ const InventoryEntryForm = () => {
                   value={formData.note}
                   onChange={handleChange}
                   rows={2}
+                />
+              </Form.Group>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col xs={12} md={4} className="mb-3 mb-md-0">
+              <Form.Group controlId="sale_staff_id">
+                <Form.Label>銷售人</Form.Label>
+                <Form.Select
+                  name="sale_staff_id"
+                  value={formData.sale_staff_id}
+                  onChange={handleChange}
+                >
+                  <option value="">-- 選擇銷售人 --</option>
+                  {Array.isArray(staffs) && staffs.map((s, index) => {
+                    const key = (s as any)?.staff_id ? `sale-staff-${(s as any).staff_id}` : `sale-staff-fallback-${index}`;
+                    const value = (s as any)?.staff_id ?? "";
+                    const label = (s as any)?.name ?? `員工 ${index + 1}`;
+                    return (
+                      <option key={key} value={value}>
+                        {label}
+                      </option>
+                    );
+                  })}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col xs={12} md={4} className="mb-3 mb-md-0">
+              <Form.Group controlId="voucher">
+                <Form.Label>憑證單號</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="voucher"
+                  value={formData.voucher}
+                  onChange={handleChange}
+                />
+              </Form.Group>
+            </Col>
+            <Col xs={12} md={4}>
+              <Form.Group controlId="supplier">
+                <Form.Label>供貨人</Form.Label>
+                <Form.Control
+                  type="text"
+                  name="supplier"
+                  value={formData.supplier}
+                  onChange={handleChange}
                 />
               </Form.Group>
             </Col>
