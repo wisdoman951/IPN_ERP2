@@ -246,6 +246,7 @@ const InventoryEntryForm = () => {
                   name="voucher"
                   value={formData.voucher}
                   onChange={handleChange}
+                  placeholder="輸入購買人"
                 />
               </Form.Group>
             </Col>
@@ -262,16 +263,16 @@ const InventoryEntryForm = () => {
             </Col>
           </Row>
 
-          <Row className="mb-3">
-            <Col xs={12} md={6} className="mb-3 mb-md-0">
-              <Form.Group controlId="buyer">
-                <Form.Label>購買人</Form.Label>
+          <Row className="mb-4">
+            <Col xs={12}>
+              <Form.Group controlId="note">
+                <Form.Label>備註</Form.Label>
                 <Form.Control
-                  type="text"
-                  name="buyer"
-                  value={formData.buyer}
+                  as="textarea"
+                  name="note"
+                  value={formData.note}
                   onChange={handleChange}
-                  placeholder="輸入購買人"
+                  rows={2}
                 />
               </Form.Group>
             </Col>
