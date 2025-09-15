@@ -277,3 +277,15 @@ INSERT INTO `ipn_stress_answer` (`ipn_stress_id`, `question_no`, `answer`) VALUE
 (@stress_id2, 'b1', 'B'), (@stress_id2, 'b2', 'A'), (@stress_id2, 'b3', 'B'), (@stress_id2, 'b4', 'A'), (@stress_id2, 'b5', 'B'),
 (@stress_id2, 'c1', 'A'), (@stress_id2, 'c2', 'B'), (@stress_id2, 'c3', 'A'), (@stress_id2, 'c4', 'B'), (@stress_id2, 'c5', 'A'),
 (@stress_id2, 'd1', 'B'), (@stress_id2, 'd2', 'A'), (@stress_id2, 'd3', 'B'), (@stress_id2, 'd4', 'A'), (@stress_id2, 'd5', 'B');
+
+-- Initial categories
+INSERT INTO `category` (`name`, `target_type`) VALUES
+('明星商品', 'product'),
+('嚴選商品', 'product'),
+('IPN 身體課程', 'therapy');
+
+-- Sample category assignments for existing demo data
+INSERT INTO `product_category` (`product_id`, `category_id`) VALUES
+(1, 1), (2, 2);
+INSERT INTO `therapy_category` (`therapy_id`, `category_id`) VALUES
+(1, 3);

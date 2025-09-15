@@ -488,12 +488,17 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            sql = "SELECT therapy_id, code, name, price, visible_store_ids FROM therapy"
+            sql = (
+                "SELECT t.therapy_id, t.code, t.name, t.price, t.visible_store_ids, "
+                "GROUP_CONCAT(c.name) AS categories FROM therapy t "
+                "LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id "
+                "LEFT JOIN category c ON tc.category_id = c.category_id"
+            )
             params = []
             if status:
-                sql += " WHERE status = %s"
+                sql += " WHERE t.status = %s"
                 params.append(status)
-            sql += " ORDER BY name"
+            sql += " GROUP BY t.therapy_id, t.code, t.name, t.price, t.visible_store_ids ORDER BY t.name"
             cursor.execute(sql, tuple(params))
             result = cursor.fetchall()
             filtered = []
@@ -509,6 +514,8 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
                 if store_id is None or not store_ids or int(store_id) in store_ids:
                     if store_ids is not None:
                         row['visible_store_ids'] = store_ids
+                    if row.get('categories'):
+                        row['categories'] = row['categories'].split(',')
                     filtered.append(row)
             return filtered
     finally:
@@ -532,6 +539,13 @@ def create_therapy(data: dict):
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
             ))
             therapy_id = conn.insert_id()
+
+            category_ids = data.get("category_ids", [])
+            for cid in category_ids:
+                cursor.execute(
+                    "INSERT INTO therapy_category (therapy_id, category_id) VALUES (%s, %s)",
+                    (therapy_id, cid),
+                )
         conn.commit()
         return therapy_id
     except Exception as e:
@@ -557,6 +571,17 @@ def update_therapy(therapy_id: int, data: dict):
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
                 therapy_id,
             ))
+
+            if "category_ids" in data:
+                cursor.execute(
+                    "DELETE FROM therapy_category WHERE therapy_id=%s",
+                    (therapy_id,),
+                )
+                for cid in data.get("category_ids", []):
+                    cursor.execute(
+                        "INSERT INTO therapy_category (therapy_id, category_id) VALUES (%s, %s)",
+                        (therapy_id, cid),
+                    )
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -590,6 +615,10 @@ def delete_therapy(therapy_id: int):
                 (therapy_id,),
             )
             # 再刪除療程本身
+            cursor.execute(
+                "DELETE FROM therapy_category WHERE therapy_id=%s",
+                (therapy_id,),
+            )
             cursor.execute("DELETE FROM therapy WHERE therapy_id=%s", (therapy_id,))
         conn.commit()
     except Exception as e:
