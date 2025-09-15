@@ -299,6 +299,9 @@ INSERT INTO `category` (`name`, `target_type`) VALUES
 ('桃園店限定', 'therapy_bundle'),
 ('澎湖店限定', 'therapy_bundle'),
 ('桃園店/澎湖店限定', 'therapy_bundle');
+('IPN 身體課程', 'therapy'),
+('隱藏不出現的課程', 'therapy'),
+('澎湖店限定', 'therapy');
 
 -- Assign products to categories
 INSERT INTO `product_category` (`product_id`, `category_id`)

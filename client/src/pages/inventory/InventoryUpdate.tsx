@@ -264,18 +264,6 @@ const InventoryEntryForm = () => {
           </Row>
 
           <Row className="mb-4">
-            <Col xs={12}>
-              <Form.Group controlId="note">
-                <Form.Label>備註</Form.Label>
-                <Form.Control
-                  as="textarea"
-                  name="note"
-                  value={formData.note}
-                  onChange={handleChange}
-                  rows={2}
-                />
-              </Form.Group>
-            </Col>
             <Col xs={12} md={6}>
               <Form.Group controlId="store_name">
                 <Form.Label>出貨單位</Form.Label>

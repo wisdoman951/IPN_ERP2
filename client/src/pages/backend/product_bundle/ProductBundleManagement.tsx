@@ -216,6 +216,7 @@ const ProductBundleManagement: React.FC = () => {
         fetchTherapyBundlesData();
         fetchProducts();
         fetchTherapies();
+
     };
 
     const confirmDeletion = (): string | null => {
