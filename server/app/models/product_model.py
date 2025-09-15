@@ -25,6 +25,14 @@ def create_product(data: dict):
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
             ))
             product_id = conn.insert_id()
+
+            # 關聯分類
+            category_ids = data.get("category_ids", [])
+            for cid in category_ids:
+                cursor.execute(
+                    "INSERT INTO product_category (product_id, category_id) VALUES (%s, %s)",
+                    (product_id, cid),
+                )
         conn.commit()
         return product_id
     except Exception as e:
@@ -49,6 +57,17 @@ def update_product(product_id: int, data: dict):
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
                 product_id,
             ))
+
+            if "category_ids" in data:
+                cursor.execute(
+                    "DELETE FROM product_category WHERE product_id=%s",
+                    (product_id,),
+                )
+                for cid in data.get("category_ids", []):
+                    cursor.execute(
+                        "INSERT INTO product_category (product_id, category_id) VALUES (%s, %s)",
+                        (product_id, cid),
+                    )
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -82,6 +101,10 @@ def delete_product(product_id: int):
                 (product_id,),
             )
             # 再刪除產品本身
+            cursor.execute(
+                "DELETE FROM product_category WHERE product_id=%s",
+                (product_id,),
+            )
             cursor.execute("DELETE FROM product WHERE product_id=%s", (product_id,))
         conn.commit()
     except Exception as e:
