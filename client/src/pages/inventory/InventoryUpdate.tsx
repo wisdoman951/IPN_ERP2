@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Container, Row, Col, Form, Button } from "react-bootstrap";
 import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
 import { getAllStaffs, Staff } from "../../services/StaffService";
@@ -124,19 +124,25 @@ const InventoryEntryForm = () => {
     }
   };
 
-  const filteredProducts = products.filter(p => {
-    if (!productSearch.trim()) return true;
-    const lower = productSearch.toLowerCase();
-    return (
+  const filteredProducts = useMemo(() => {
+    const lower = productSearch.trim().toLowerCase();
+    return products.filter(p =>
+      !lower ||
       p.product_name.toLowerCase().includes(lower) ||
       (p.product_code || '').toLowerCase().includes(lower)
     );
-  });
-  const grouped = categories.map(cat => ({
-    name: cat.name,
-    items: filteredProducts.filter(p => p.categories?.includes(cat.name))
-  }));
-  const ungrouped = filteredProducts.filter(p => !p.categories || !p.categories.some(c => categories.some(cat => cat.name === c)));
+  }, [products, productSearch]);
+
+  const grouped = useMemo(() =>
+    categories.map(cat => ({
+      name: cat.name,
+      items: filteredProducts.filter(p => p.categories?.includes(cat.name))
+    })), [categories, filteredProducts]);
+
+  const ungrouped = useMemo(() =>
+    filteredProducts.filter(
+      p => !p.categories || !p.categories.some(c => categories.some(cat => cat.name === c))
+    ), [filteredProducts, categories]);
 
   return (
     <>
