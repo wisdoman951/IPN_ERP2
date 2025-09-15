@@ -27,7 +27,7 @@ const TherapyPackageSelection: React.FC = () => {
     const [pageError, setPageError] = useState<string | null>(null); // 用於此頁面特定的錯誤，如堂數無效
     const [memberId, setMemberId] = useState<string>('');
     const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
-    const [topTab, setTopTab] = useState<'therapy' | 'bundle'>('therapy');
+    const [activeTab, setActiveTab] = useState<'therapy' | 'bundle'>('therapy');
     const [activeTherapyTab, setActiveTherapyTab] = useState<string>('all');
     const [categories, setCategories] = useState<Category[]>([]);
     const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
@@ -150,7 +150,7 @@ const TherapyPackageSelection: React.FC = () => {
 
     useEffect(() => {
         let filtered: TherapyPackageBaseType[] = [];
-        if (topTab === 'bundle') {
+        if (activeTab === 'bundle') {
             filtered = allPackages.filter(pkg => pkg.type === 'bundle');
             if (activeBundleTab !== 'all') {
                 filtered = filtered.filter(pkg => pkg.categories?.includes(activeBundleTab));
@@ -170,7 +170,7 @@ const TherapyPackageSelection: React.FC = () => {
             );
         }
         setDisplayedPackages(filtered);
-    }, [searchTerm, allPackages, topTab, activeTherapyTab, activeBundleTab]);
+    }, [searchTerm, allPackages, activeTab, activeTherapyTab, activeBundleTab]);
 
     const getPkgKey = (pkg: TherapyPackageBaseType) =>
         pkg.type === 'bundle' ? `b-${pkg.bundle_id}` : `t-${pkg.therapy_id}`;
@@ -242,7 +242,7 @@ const TherapyPackageSelection: React.FC = () => {
                         </Col>
                     </Row>
 
-                    <Tabs activeKey={topTab} onSelect={(k) => setTopTab((k as 'therapy' | 'bundle') || 'therapy')} className="mb-3">
+                    <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'therapy' | 'bundle') || 'therapy')} className="mb-3">
                         <Tab eventKey="therapy" title="療程">
                             <Tabs activeKey={activeTherapyTab} onSelect={(k) => setActiveTherapyTab(k || 'all')} className="mt-3 mb-3">
                                 <Tab eventKey="all" title="全部" />
@@ -275,7 +275,7 @@ const TherapyPackageSelection: React.FC = () => {
                     )}
                     {!loading && displayedPackages.length === 0 && (
                         <Alert variant="secondary">
-                            目前沒有符合條件的{topTab === 'therapy' ? '療程' : '療程組合'}。
+                              目前沒有符合條件的{activeTab === 'therapy' ? '療程' : '療程組合'}。
                         </Alert>
                     )}
                     {!loading && displayedPackages.length > 0 && (

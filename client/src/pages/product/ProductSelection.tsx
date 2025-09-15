@@ -31,7 +31,7 @@ const ProductSelection: React.FC = () => {
   const [displayedItems, setDisplayedItems] = useState<ItemBase[]>([]);
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, SelectedItem>>(new Map());
   const [searchTerm, setSearchTerm] = useState('');
-  const [topTab, setTopTab] = useState<'product' | 'bundle'>('product');
+  const [activeTab, setActiveTab] = useState<'product' | 'bundle'>('product');
   const [activeProductTab, setActiveProductTab] = useState<string>('all');
   const [categories, setCategories] = useState<Category[]>([]);
   const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
@@ -113,7 +113,7 @@ const ProductSelection: React.FC = () => {
 
   useEffect(() => { // 前端篩選
     let filtered: ItemBase[] = [];
-    if (topTab === 'bundle') {
+    if (activeTab === 'bundle') {
       filtered = allItems.filter(item => item.type === 'bundle');
       if (activeBundleTab !== 'all') {
         filtered = filtered.filter(item => item.categories?.includes(activeBundleTab));
@@ -133,7 +133,7 @@ const ProductSelection: React.FC = () => {
       );
     }
     setDisplayedItems(filtered);
-  }, [searchTerm, allItems, topTab, activeProductTab, activeBundleTab]);
+  }, [searchTerm, allItems, activeTab, activeProductTab, activeBundleTab]);
 
   const getItemKey = (item: ItemBase) =>
     item.type === 'bundle' ? `b-${item.bundle_id}` : `p-${item.product_id}`;
@@ -310,7 +310,7 @@ const ProductSelection: React.FC = () => {
             </Col>
           </Row>
 
-          <Tabs activeKey={topTab} onSelect={(k) => setTopTab((k as 'product' | 'bundle') || 'product')} className="mb-3">
+          <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'product' | 'bundle') || 'product')} className="mb-3">
             <Tab eventKey="product" title="產品">
               <Tabs activeKey={activeProductTab} onSelect={(k) => setActiveProductTab(k || 'all')} className="mt-3 mb-3">
                 <Tab eventKey="all" title="全部" />
