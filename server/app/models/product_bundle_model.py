@@ -32,7 +32,6 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                     pb.visible_store_ids,
                     pb.created_at,
                     pb.status,
-                    -- 使用 IFNULL 避免組合內沒有項目時回傳 NULL
                     IFNULL(
                         GROUP_CONCAT(
                             CASE
@@ -43,7 +42,8 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                             SEPARATOR ', '
                         ),
                         ''
-                    ) AS bundle_contents
+                    ) AS bundle_contents,
+                    GROUP_CONCAT(DISTINCT c.name) AS categories
                 FROM
                     product_bundles pb
                 LEFT JOIN
@@ -52,6 +52,10 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                     product p ON pbi.item_id = p.product_id AND pbi.item_type = 'Product'
                 LEFT JOIN
                     therapy t ON pbi.item_id = t.therapy_id AND pbi.item_type = 'Therapy'
+                LEFT JOIN
+                    product_bundle_category pbc ON pb.bundle_id = pbc.bundle_id
+                LEFT JOIN
+                    category c ON pbc.category_id = c.category_id
             """
             params = []
             if status:
@@ -89,7 +93,8 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                 except Exception as e:
                     row['visible_store_ids'] = []
                     print(f"[DEBUG] Failed to parse visible_store_ids for bundle {row.get('bundle_id')}: {e}")
-
+                if row.get('categories'):
+                    row['categories'] = row['categories'].split(',')
             if store_id is not None:
                 result = [
                     row
@@ -138,8 +143,13 @@ def create_product_bundle(data: dict):
                     for item in items
                 ]
                 cursor.executemany(item_query, item_values)
-            
-        conn.commit()
+
+            if "category_ids" in data:
+                cursor.execute("DELETE FROM product_bundle_category WHERE bundle_id = %s", (bundle_id,))
+                for cid in data.get("category_ids", []):
+                    cursor.execute("INSERT INTO product_bundle_category (bundle_id, category_id) VALUES (%s, %s)", (bundle_id, cid))
+
+            conn.commit()
         return bundle_id
     except Exception as e:
         conn.rollback()
@@ -170,9 +180,16 @@ def get_bundle_details_by_id(bundle_id: int):
             # 2. 獲取該組合的所有項目
             cursor.execute("SELECT item_id, item_type, quantity FROM product_bundle_items WHERE bundle_id = %s", (bundle_id,))
             items = cursor.fetchall()
-            
-            # 3. 將項目資訊附加到主組合資料中
+
+            cursor.execute(
+                "SELECT c.category_id, c.name FROM product_bundle_category pbc JOIN category c ON pbc.category_id = c.category_id WHERE pbc.bundle_id = %s",
+                (bundle_id,),
+            )
+            cats = cursor.fetchall()
+
             bundle_details['items'] = items
+            bundle_details['category_ids'] = [c['category_id'] for c in cats]
+            bundle_details['categories'] = [c['name'] for c in cats]
             return bundle_details
     finally:
         conn.close()
@@ -218,8 +235,13 @@ def update_product_bundle(bundle_id: int, data: dict):
                     for item in items
                 ]
                 cursor.executemany(item_query, item_values)
-        
-        conn.commit()
+
+            if "category_ids" in data:
+                cursor.execute("DELETE FROM product_bundle_category WHERE bundle_id = %s", (bundle_id,))
+                for cid in data.get("category_ids", []):
+                    cursor.execute("INSERT INTO product_bundle_category (bundle_id, category_id) VALUES (%s, %s)", (bundle_id, cid))
+
+            conn.commit()
         return True
     except Exception as e:
         conn.rollback()

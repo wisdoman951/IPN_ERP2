@@ -16,6 +16,7 @@ from app.routes.product import product_bp
 from app.routes.items import items_bp
 from .routes.sales_order_routes import sales_order_bp
 from app.routes.store import store_bp
+from app.routes.category import category_bp
 
 def create_app():
     app = Flask(__name__)
@@ -74,6 +75,7 @@ def create_app():
     app.register_blueprint(product_bp, url_prefix='/api/product')
     app.register_blueprint(store_bp, url_prefix='/api/stores')
     app.register_blueprint(items_bp, url_prefix='/api/items')
+    app.register_blueprint(category_bp, url_prefix='/api/categories')
 
     # 註冊產品銷售路由
     from app.routes.product_sell import product_sell_bp
@@ -102,3 +104,4 @@ def create_app():
         return jsonify({"message": "Welcome to IPN ERP System API"})
 
     return app
+
