@@ -43,17 +43,17 @@ INSERT INTO `micro_surgery` (`micro_surgery_selection`, `micro_surgery_descripti
 ('複合式療程', '全臉美容'),
 ('醫學美容', '改善暗沉');
 
-INSERT INTO `product` (`code`, `name`, `price`, `status`) VALUES
-('SKN001', '保濕面膜', 580.00, 'PUBLISHED'),
-('SKN002', '精華液', 1200.00, 'PUBLISHED'),
-('SKN003', '潔面乳', 450.00, 'PUBLISHED'),
-('SKN004', '保濕乳液', 780.00, 'PUBLISHED'),
-('SKN005', '防曬霜', 650.00, 'PUBLISHED'),
-('SUP001', '膠原蛋白粉', 1500.00, 'PUBLISHED'),
-('SUP002', '維他命C', 850.00, 'PUBLISHED'),
-('SUP003', '魚油', 720.00, 'PUBLISHED'),
-('HRB001', '舒壓茶包', 380.00, 'PUBLISHED'),
-('HRB002', '薰衣草精油', 550.00, 'PUBLISHED');
+INSERT INTO `product` (`code`, `name`, `price`, `purchase_price`, `status`) VALUES
+('SKN001', '保濕面膜', 580.00, 350.00, 'PUBLISHED'),
+('SKN002', '精華液', 1200.00, 720.00, 'PUBLISHED'),
+('SKN003', '潔面乳', 450.00, 260.00, 'PUBLISHED'),
+('SKN004', '保濕乳液', 780.00, 480.00, 'PUBLISHED'),
+('SKN005', '防曬霜', 650.00, 390.00, 'PUBLISHED'),
+('SUP001', '膠原蛋白粉', 1500.00, 900.00, 'PUBLISHED'),
+('SUP002', '維他命C', 850.00, 510.00, 'PUBLISHED'),
+('SUP003', '魚油', 720.00, 420.00, 'PUBLISHED'),
+('HRB001', '舒壓茶包', 380.00, 210.00, 'PUBLISHED'),
+('HRB002', '薰衣草精油', 550.00, 330.00, 'PUBLISHED');
 
 INSERT INTO `therapy` (`code`, `name`, `price`, `content`, `status`) VALUES
 ('TH001', '全身放鬆按摩', 2800.00, '60分鐘全身按摩，幫助放鬆肌肉，改善血液循環', 'PUBLISHED'),

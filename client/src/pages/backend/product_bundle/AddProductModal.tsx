@@ -16,6 +16,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
     const [code, setCode] = useState('');
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
+    const [purchasePrice, setPurchasePrice] = useState('');
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
@@ -25,12 +26,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             setCode(editingProduct.product_code);
             setName(editingProduct.product_name);
             setPrice(String(editingProduct.product_price));
+            setPurchasePrice(editingProduct.purchase_price != null ? String(editingProduct.purchase_price) : '');
             setSelectedStoreIds(editingProduct.visible_store_ids || []);
             setSelectedCategoryIds([]);
         } else {
             setCode('');
             setName('');
             setPrice('');
+            setPurchasePrice('');
             setSelectedStoreIds([]);
             setSelectedCategoryIds([]);
         }
@@ -51,6 +54,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
                 code,
                 name,
                 price: Number(price),
+                purchase_price: purchasePrice === '' ? null : Number(purchasePrice),
                 visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
                 category_ids: selectedCategoryIds,
             };
@@ -85,8 +89,23 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
                         <Form.Control value={name} onChange={e => setName(e.target.value)} />
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>設定售價</Form.Label>
-                        <Form.Control type="number" min={0} value={price} onChange={e => setPrice(e.target.value)} />
+                        <Form.Label>分類 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {categories.map(c => (
+                                <Form.Check
+                                    key={`cat-${c.category_id}`}
+                                    type="checkbox"
+                                    id={`cat-check-${c.category_id}`}
+                                    label={c.name}
+                                    checked={selectedCategoryIds.includes(c.category_id)}
+                                    onChange={e => handleCategoryChange(c.category_id, e.target.checked)}
+                                />
+                            ))}
+                        </div>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>設定進貨價</Form.Label>
+                        <Form.Control type="number" min={0} value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} />
                     </Form.Group>
                     <Form.Group className="mb-3">
                         <Form.Label>限定分店 (可複選)</Form.Label>
@@ -104,19 +123,8 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
                         </div>
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>分類 (可複選)</Form.Label>
-                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
-                            {categories.map(c => (
-                                <Form.Check
-                                    key={`cat-${c.category_id}`}
-                                    type="checkbox"
-                                    id={`cat-check-${c.category_id}`}
-                                    label={c.name}
-                                    checked={selectedCategoryIds.includes(c.category_id)}
-                                    onChange={e => handleCategoryChange(c.category_id, e.target.checked)}
-                                />
-                            ))}
-                        </div>
+                        <Form.Label>設定售價</Form.Label>
+                        <Form.Control type="number" min={0} value={price} onChange={e => setPrice(e.target.value)} />
                     </Form.Group>
                 </Modal.Body>
                 <Modal.Footer>

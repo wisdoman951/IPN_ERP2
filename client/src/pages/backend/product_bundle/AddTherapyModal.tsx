@@ -85,8 +85,19 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
                         <Form.Control value={name} onChange={e => setName(e.target.value)} />
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>設定售價</Form.Label>
-                        <Form.Control type="number" min={0} value={price} onChange={e => setPrice(e.target.value)} />
+                        <Form.Label>分類 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {categories.map(c => (
+                                <Form.Check
+                                    key={`cat-${c.category_id}`}
+                                    type="checkbox"
+                                    id={`cat-check-${c.category_id}`}
+                                    label={c.name}
+                                    checked={selectedCategoryIds.includes(c.category_id)}
+                                    onChange={e => handleCategoryChange(c.category_id, e.target.checked)}
+                                />
+                            ))}
+                        </div>
                     </Form.Group>
                     <Form.Group className="mb-3">
                         <Form.Label>限定分店 (可複選)</Form.Label>
@@ -104,19 +115,8 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
                         </div>
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>分類 (可複選)</Form.Label>
-                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
-                            {categories.map(c => (
-                                <Form.Check
-                                    key={`cat-${c.category_id}`}
-                                    type="checkbox"
-                                    id={`cat-check-${c.category_id}`}
-                                    label={c.name}
-                                    checked={selectedCategoryIds.includes(c.category_id)}
-                                    onChange={e => handleCategoryChange(c.category_id, e.target.checked)}
-                                />
-                            ))}
-                        </div>
+                        <Form.Label>設定售價</Form.Label>
+                        <Form.Control type="number" min={0} value={price} onChange={e => setPrice(e.target.value)} />
                     </Form.Group>
                 </Modal.Body>
                 <Modal.Footer>

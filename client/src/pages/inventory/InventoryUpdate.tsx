@@ -144,6 +144,19 @@ const InventoryEntryForm = () => {
       p => !p.categories || !p.categories.some(c => categories.some(cat => cat.name === c))
     ), [filteredProducts, categories]);
 
+  const selectedProduct = useMemo(
+    () => products.find(p => String(p.product_id) === formData.product_id),
+    [products, formData.product_id]
+  );
+
+  const purchasePriceDisplay = useMemo(() => {
+    const price = selectedProduct?.purchase_price as number | string | undefined | null;
+    if (price === null || price === undefined) {
+      return "";
+    }
+    return typeof price === "number" ? price.toString() : price;
+  }, [selectedProduct]);
+
   return (
     <>
       <Header />
@@ -152,9 +165,9 @@ const InventoryEntryForm = () => {
         style={{ marginLeft: "200px", paddingRight: "30px", maxWidth: "calc(100% - 220px)" }}
       >
         <Form>
-          {/* 搜尋品項獨立一列 */}
+          {/* 搜尋與品項選擇 */}
           <Row className="mb-3">
-            <Col xs={12} md={6}>
+            <Col xs={12} md={6} className="mb-3 mb-md-0">
               <Form.Group controlId="product_search" className="mb-2">
                 <Form.Label>搜尋品項</Form.Label>
                 <Form.Control
@@ -165,12 +178,7 @@ const InventoryEntryForm = () => {
                 />
               </Form.Group>
             </Col>
-          </Row>
-
-          {/* 第二列顯示品項與數量 */}
-          <Row className="mb-3">
-            <Col xs={12} md={6} className="mb-3 mb-md-0">
-              <p></p>
+            <Col xs={12} md={6}>
               <Form.Group controlId="product_id">
                 <Form.Label>品項</Form.Label>
                 <Form.Select
@@ -202,8 +210,11 @@ const InventoryEntryForm = () => {
                 </Form.Select>
               </Form.Group>
             </Col>
+          </Row>
 
-            <Col xs={12} md={6}>
+          {/* 數量與進貨價 */}
+          <Row className="mb-3">
+            <Col xs={12} md={6} className="mb-3 mb-md-0">
               <Form.Group controlId="quantity">
                 <Form.Label>數量</Form.Label>
                 <Form.Control
@@ -211,6 +222,17 @@ const InventoryEntryForm = () => {
                   name="quantity"
                   value={formData.quantity}
                   onChange={handleChange}
+                />
+              </Form.Group>
+            </Col>
+            <Col xs={12} md={6}>
+              <Form.Group controlId="purchase_price">
+                <Form.Label>進貨價錢</Form.Label>
+                <Form.Control
+                  type="text"
+                  value={purchasePriceDisplay}
+                  readOnly
+                  placeholder="尚未提供"
                 />
               </Form.Group>
             </Col>

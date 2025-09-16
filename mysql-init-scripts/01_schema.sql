@@ -368,6 +368,7 @@ CREATE TABLE `product` (
   `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `price` decimal(10,2) NOT NULL,
+  `purchase_price` decimal(10,2) DEFAULT NULL COMMENT '最新進貨成本價',
   `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
   `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
   `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
