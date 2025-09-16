@@ -1,4 +1,5 @@
 // client\src\hooks\useProductSell.ts
+import axios from 'axios';
 import { useState, useEffect, useCallback } from 'react';
 import { 
   getAllProductSells, 
@@ -84,8 +85,28 @@ export const useProductSell = (): UseProductSellReturn => {
         fetchSales();
       } catch (error) {
         console.error("刪除產品銷售記錄失敗：", error);
-        setError("刪除產品銷售記錄失敗");
-        alert("刪除失敗，請稍後再試！");
+
+        let message = "刪除產品銷售記錄失敗";
+        let alertMessage = "刪除失敗，請稍後再試！";
+
+        if (axios.isAxiosError(error) && error.response) {
+          const { status, data } = error.response;
+          const serverMessage = typeof data === "string" ? data : data?.error;
+
+          if (status === 403) {
+            const permissionMessage = serverMessage === "無操作權限"
+              ? "沒有權限刪除"
+              : (serverMessage || "沒有權限刪除");
+            message = permissionMessage;
+            alertMessage = permissionMessage;
+          } else if (serverMessage) {
+            message = serverMessage;
+            alertMessage = serverMessage;
+          }
+        }
+
+        setError(message);
+        alert(alertMessage);
       } finally {
         setLoading(false);
       }
