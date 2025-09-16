@@ -5,6 +5,16 @@ import jwt
 import datetime
 from app.config import JWT_SECRET_KEY
 
+
+def _as_int(value):
+    """Convert string-like integers to ``int`` while keeping other types unchanged."""
+    if value is None or isinstance(value, int):
+        return value
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return value
+
 def auth_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -17,35 +27,43 @@ def auth_required(f):
         
         if not token:
             # 嘗試從舊的標頭取得store_id
-            store_id = request.headers.get('X-Store-ID')
+            store_id = _as_int(request.headers.get('X-Store-ID'))
             store_level = request.headers.get('X-Store-Level')
-            
+            store_name = request.headers.get('X-Store-Name')
+            permission = request.headers.get('X-Permission')
+            staff_id = _as_int(request.headers.get('X-Staff-ID'))
+
             if not store_id or not store_level:
                 return jsonify({"error": "認證失敗，請重新登入"}), 401
-            
+
             # 設置到request以便後續使用
             request.store_id = store_id
             request.store_level = store_level
+            request.store_name = store_name
+            request.permission = permission
+            request.staff_id = staff_id
         else:
             try:
                 # 驗證JWT token
                 payload = jwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
-                
+
                 # 可以從payload中獲取store_id和store_level
-                store_id = payload.get('store_id')
+                store_id = _as_int(payload.get('store_id'))
                 store_level = payload.get('store_level')
                 store_name = payload.get('store_name')
                 permission = payload.get('permission')
-                
+                staff_id = _as_int(payload.get('staff_id'))
+
                 if not store_id or not store_level:
                     return jsonify({"error": "無效的認證信息"}), 401
-                    
+
                 # 將store信息添加到request對象以供後續使用
                 request.store_id = store_id
                 request.store_level = store_level
                 request.store_name = store_name
                 request.permission = permission
-                
+                request.staff_id = staff_id
+
             except jwt.ExpiredSignatureError:
                 return jsonify({"error": "認證已過期，請重新登入"}), 401
             except (jwt.InvalidTokenError, Exception) as e:
@@ -129,7 +147,13 @@ def get_user_from_token(request):
         token = auth_header.split(' ')[1]
     
     if not token:
-        return user_info
+        return {
+            'store_id': _as_int(getattr(request, 'store_id', None)),
+            'store_level': getattr(request, 'store_level', None),
+            'store_name': getattr(request, 'store_name', None),
+            'staff_id': _as_int(getattr(request, 'staff_id', None)),
+            'permission': getattr(request, 'permission', None),
+        }
     
     try:
         # 驗證JWT token
@@ -137,14 +161,23 @@ def get_user_from_token(request):
         
         # 從payload中獲取用戶信息
         user_info = {
-            'store_id': payload.get('store_id'),
+            'store_id': _as_int(payload.get('store_id')),
             'store_level': payload.get('store_level'),
             'store_name': payload.get('store_name'),
-            'staff_id': payload.get('staff_id'),
+            'staff_id': _as_int(payload.get('staff_id')),
             'permission': payload.get('permission')
         }
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, Exception):
-        # 如果token無效或過期，返回空字典
-        pass
-    
+        # 如果token無效或過期，回退到由 auth_required 設置的請求屬性
+        user_info = {}
+
+    if not user_info:
+        user_info = {
+            'store_id': _as_int(getattr(request, 'store_id', None)),
+            'store_level': getattr(request, 'store_level', None),
+            'store_name': getattr(request, 'store_name', None),
+            'staff_id': _as_int(getattr(request, 'staff_id', None)),
+            'permission': getattr(request, 'permission', None),
+        }
+
     return user_info
