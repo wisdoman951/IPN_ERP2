@@ -44,6 +44,7 @@ export interface Product {
     product_name: string;
     product_price: number;
     product_code: string;
+    purchase_price?: number | string | null;
     visible_store_ids?: number[];
     categories?: string[];
 }

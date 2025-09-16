@@ -155,12 +155,31 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                     {error && <Alert variant="danger">{error}</Alert>}
 
                     <Form.Group className="mb-3">
-                        <Form.Label>編號</Form.Label>
+                        <Form.Label>設定編號</Form.Label>
                         <Form.Control type="text" name="bundle_code" value={formData.bundle_code} onChange={handleInputChange} required />
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>項目 (組合名稱)</Form.Label>
+                        <Form.Label>設定療程組合名稱</Form.Label>
                         <Form.Control type="text" name="name" value={formData.name} onChange={handleInputChange} required />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>分類 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {categories.map(cat => (
+                                <Form.Check
+                                    key={cat.category_id}
+                                    type="checkbox"
+                                    label={cat.name}
+                                    checked={selectedCategoryIds.includes(cat.category_id)}
+                                    onChange={e => {
+                                        const checked = e.target.checked;
+                                        setSelectedCategoryIds(prev =>
+                                            checked ? [...prev, cat.category_id] : prev.filter(id => id !== cat.category_id)
+                                        );
+                                    }}
+                                />
+                            ))}
+                        </div>
                     </Form.Group>
 
                     <Row>
@@ -212,31 +231,11 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                     </Row>
 
                     <Form.Group className="mb-3">
-                        <Form.Label>分類 (可複選)</Form.Label>
-                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
-                            {categories.map(cat => (
-                                <Form.Check
-                                    key={cat.category_id}
-                                    type="checkbox"
-                                    label={cat.name}
-                                    checked={selectedCategoryIds.includes(cat.category_id)}
-                                    onChange={e => {
-                                        const checked = e.target.checked;
-                                        setSelectedCategoryIds(prev =>
-                                            checked ? [...prev, cat.category_id] : prev.filter(id => id !== cat.category_id)
-                                        );
-                                    }}
-                                />
-                            ))}
-                        </div>
-                    </Form.Group>
-
-                    <Form.Group className="mb-3">
-                        <Form.Label>原價總計</Form.Label>
+                        <Form.Label>試算金額</Form.Label>
                         <Form.Control type="number" value={calculatedPrice} readOnly />
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>設定售價</Form.Label>
+                        <Form.Label>最終售價</Form.Label>
                         <Form.Control type="number" name="selling_price" min={0} value={formData.selling_price} onChange={handlePriceChange} required />
                     </Form.Group>
                 </Modal.Body>

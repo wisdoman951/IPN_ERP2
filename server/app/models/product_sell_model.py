@@ -474,6 +474,7 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 p.code AS product_code,
                 p.name AS product_name,
                 p.price AS product_price,
+                p.purchase_price AS purchase_price,
                 p.visible_store_ids,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id,
@@ -495,7 +496,7 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
         if status:
             query += " WHERE p.status = %s"
             params.append(status)
-        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.visible_store_ids ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.purchase_price, p.visible_store_ids ORDER BY p.name"
         cursor.execute(query, tuple(params))
     result = cursor.fetchall()
     conn.close()
@@ -532,6 +533,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 p.code AS product_code,
                 p.name AS product_name,
                 p.price AS product_price,
+                p.purchase_price AS purchase_price,
                 p.visible_store_ids,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id,
@@ -562,7 +564,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.visible_store_ids ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.purchase_price, p.visible_store_ids ORDER BY p.name"
 
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()

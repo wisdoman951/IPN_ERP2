@@ -184,8 +184,12 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                     {error && <Alert variant="danger">{error}</Alert>}
                     
                     <Form.Group className="mb-3">
-                        <Form.Label>編號</Form.Label>
+                        <Form.Label>設定編號</Form.Label>
                         <Form.Control type="text" name="bundle_code" value={formData.bundle_code} onChange={handleInputChange} required />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>設定產品組合名稱</Form.Label>
+                        <Form.Control type="text" name="name" value={formData.name} onChange={handleInputChange} required />
                     </Form.Group>
                     <Form.Group className="mb-3">
                         <Form.Label>分類 (可複選)</Form.Label>
@@ -205,10 +209,6 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                                 />
                             ))}
                         </div>
-                    </Form.Group>
-                    <Form.Group className="mb-3">
-                        <Form.Label>項目 (組合名稱)</Form.Label>
-                        <Form.Control type="text" name="name" value={formData.name} onChange={handleInputChange} required />
                     </Form.Group>
                     
                     <Row>
