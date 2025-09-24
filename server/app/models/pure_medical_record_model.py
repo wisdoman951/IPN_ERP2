@@ -17,14 +17,15 @@ def get_all_pure_records(store_level: str, store_id: int, keyword: str = None):
         with conn.cursor() as cursor:
             # 基礎查詢，關聯 member 和 staff 表以獲取姓名，並包含新欄位
             query = """
-            SELECT 
+            SELECT
                 p.ipn_pure_id, p.member_id, m.Name, p.staff_id, s.name as staff_name,
-                p.visceral_fat, p.body_fat_percentage, p.blood_preasure, p.basal_metabolic_rate, 
+                p.visceral_fat, p.body_fat_percentage, p.blood_preasure, p.basal_metabolic_rate,
                 p.date, p.body_age, p.height, p.weight, p.bmi, p.pure_item, p.note,
-                p.store_id
+                p.store_id, st.store_name
             FROM ipn_pure p
             LEFT JOIN member m ON p.member_id = m.member_id
             LEFT JOIN staff s ON p.staff_id = s.staff_id
+            LEFT JOIN store st ON p.store_id = st.store_id
             """
             
             params = []
@@ -99,10 +100,11 @@ def get_pure_record_by_id(pure_id: int):
     try:
         with conn.cursor() as cursor:
             query = """
-            SELECT p.*, m.Name, s.name as staff_name
+            SELECT p.*, m.Name, s.name as staff_name, st.store_name
             FROM ipn_pure p
             LEFT JOIN member m ON p.member_id = m.member_id
             LEFT JOIN staff s ON p.staff_id = s.staff_id
+            LEFT JOIN store st ON p.store_id = st.store_id
             WHERE p.ipn_pure_id = %s
             """
             cursor.execute(query, (pure_id,))
@@ -178,11 +180,13 @@ def get_pure_records_by_member_id(member_id: int, store_level: str, store_id: in
 
             query = f"""
             SELECT p.ipn_pure_id, p.member_id, m.Name, p.staff_id, s.name as staff_name,
-                   p.visceral_fat, p.body_fat_percentage, p.blood_preasure, p.basal_metabolic_rate, 
-                   p.date, p.body_age, p.height, p.weight, p.bmi, p.pure_item, p.note
+                   p.visceral_fat, p.body_fat_percentage, p.blood_preasure, p.basal_metabolic_rate,
+                   p.date, p.body_age, p.height, p.weight, p.bmi, p.pure_item, p.note,
+                   p.store_id, st.store_name
             FROM ipn_pure p
             LEFT JOIN member m ON p.member_id = m.member_id
             LEFT JOIN staff s ON p.staff_id = s.staff_id
+            LEFT JOIN store st ON p.store_id = st.store_id
             WHERE {where_clause}
             ORDER BY p.date DESC, p.ipn_pure_id DESC
             """

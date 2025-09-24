@@ -12,6 +12,7 @@ interface StressTest {
   c_score: number;
   d_score: number;
   total_score: number;
+  store_name?: string;
 }
 
 export interface SearchFilters {

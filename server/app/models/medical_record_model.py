@@ -65,8 +65,9 @@ def format_record(record):
 
     return (
         record.get('medical_record_id'),
-        record.get('name'),
+        record.get('store_name') or record.get('store_id'),
         record.get('member_code'),
+        record.get('name'),
         record.get('height'),
         record.get('weight'),
         record.get('blood_preasure') or '',
@@ -123,6 +124,7 @@ def format_record_for_edit(record: dict):
         record['cosmeticDesc'] = record.pop('micro_surgery_description', None)
         # 將 member_code 轉換為前端使用的 camelCase
         record['memberCode'] = record.pop('member_code', None)
+        record['storeName'] = record.pop('store_name', None)
         
         # 將產生的新欄位加入 record 中
         record['symptom'] = symptom
@@ -150,9 +152,10 @@ BASE_MEDICAL_RECORD_QUERY = """
         mr.remark,
         mr.health_status_id,
         mr.store_id,
-        MAX(m.name) as name, 
+        MAX(m.name) as name,
         MAX(m.member_code) as member_code,
-        MAX(us.HPA_selection) as HPA_selection, 
+        MAX(st.store_name) as store_name,
+        MAX(us.HPA_selection) as HPA_selection,
         MAX(us.meridian_selection) as meridian_selection, 
         MAX(us.neck_and_shoulder_selection) as neck_and_shoulder_selection,
         MAX(us.anus_selection) as anus_selection, 
@@ -169,6 +172,7 @@ BASE_MEDICAL_RECORD_QUERY = """
     LEFT JOIN micro_surgery ms ON mr.micro_surgery = ms.micro_surgery_id
     LEFT JOIN health_status hs ON mr.health_status_id = hs.health_status_id
     LEFT JOIN ipn_pure ip ON mr.member_id = ip.member_id
+    LEFT JOIN store st ON mr.store_id = st.store_id
 """
 
 def get_all_medical_records(store_level: str, store_id: int):

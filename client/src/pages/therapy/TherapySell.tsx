@@ -31,6 +31,7 @@ export interface TherapySellRow { // 更改 interface 名稱以避免與組件�
     Note?: string;          // 備註 - API 需返回此欄位
     UnitPrice?: number;     // 單價
     therapy_id?: number;    // 對應的療程 ID
+    store_name?: string;
 }
 
 // --- 新增/修改映射表 ---
@@ -219,6 +220,7 @@ const TherapySell: React.FC = () => {
     const tableHeader = (
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
+            <th className="text-center">店別</th>
             <th className="text-center">會員編號</th>
             <th className="text-center">購買人</th>
             <th className="text-center">購買日期</th>
@@ -235,7 +237,7 @@ const TherapySell: React.FC = () => {
     // 表格內容 - 依照 Figma 修改
     const tableBody = loading ? (
         <tr>
-            <td colSpan={11} className="text-center py-5"> {/* 更新 colSpan */}
+            <td colSpan={12} className="text-center py-5"> {/* 更新 colSpan */}
                 <Spinner animation="border" variant="info"/>
             </td>
         </tr>
@@ -249,6 +251,7 @@ const TherapySell: React.FC = () => {
                         onChange={() => handleCheckboxChange(sale.Order_ID)}
                     />
                 </td>
+                <td className="align-middle">{sale.store_name ?? '-'}</td>
                 <td className="align-middle">{sale.MemberCode || "-"}</td>
                 <td className="align-middle">{sale.MemberName || "-"}</td>
                 <td className="align-middle">{formatDateToYYYYMMDD(sale.PurchaseDate) || "-"}</td>
@@ -270,7 +273,7 @@ const TherapySell: React.FC = () => {
         ))
     ) : (
         <tr>
-            <td colSpan={11} className="text-center text-muted py-5">尚無資料</td> {/* 更新 colSpan */}
+            <td colSpan={12} className="text-center text-muted py-5">尚無資料</td> {/* 更新 colSpan */}
         </tr>
     );
 

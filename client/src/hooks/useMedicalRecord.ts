@@ -10,14 +10,15 @@ import {
 // 定義健康檢查紀錄的常量
 export enum HealthRecordIndex {
     ID = 0,
-    MEMBER_ID = 1,
-    NAME = 2,
-    HEIGHT = 3,
-    WEIGHT = 4,
-    BLOOD_PRESSURE = 5,
-    MEDICAL_HISTORY = 6,
-    MICRO_SURGERY = 7,
-    MICRO_SURGERY_NOTES = 8
+    STORE_NAME = 1,
+    MEMBER_CODE = 2,
+    NAME = 3,
+    HEIGHT = 4,
+    WEIGHT = 5,
+    BLOOD_PRESSURE = 6,
+    MEDICAL_HISTORY = 7,
+    MICRO_SURGERY = 8,
+    MICRO_SURGERY_NOTES = 9
 }
 
 // 更新類型定義，使用陣列形式

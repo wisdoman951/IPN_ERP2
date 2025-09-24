@@ -46,12 +46,14 @@ def get_all_therapy_records():
                     tr.member_id, m.member_code, m.name AS member_name,
                     tr.therapy_id, t.name AS package_name, t.content AS therapy_content,
                     tr.staff_id, s.name AS staff_name,
+                    tr.store_id, st.store_name,
                     tr.deduct_sessions,
                     tr.remaining_sessions_at_time AS remaining_sessions
                 FROM therapy_record tr
                 LEFT JOIN member m ON tr.member_id = m.member_id
                 LEFT JOIN therapy t ON tr.therapy_id = t.therapy_id
                 LEFT JOIN staff s ON tr.staff_id = s.staff_id
+                LEFT JOIN store st ON tr.store_id = st.store_id
                 ORDER BY tr.date DESC, tr.therapy_record_id DESC
             """
             cursor.execute(sql)
@@ -115,12 +117,14 @@ def search_therapy_records(filters):
                     tr.member_id, m.member_code, m.name AS member_name,
                     tr.therapy_id, t.name AS package_name, t.content AS therapy_content,
                     tr.staff_id, s.name AS staff_name,
+                    tr.store_id, st.store_name,
                     tr.deduct_sessions,
                     tr.remaining_sessions_at_time AS remaining_sessions
                 FROM therapy_record tr
                 LEFT JOIN member m ON tr.member_id = m.member_id
                 LEFT JOIN therapy t ON tr.therapy_id = t.therapy_id
                 LEFT JOIN staff s ON tr.staff_id = s.staff_id
+                LEFT JOIN store st ON tr.store_id = st.store_id
                 WHERE 1=1
             """
             

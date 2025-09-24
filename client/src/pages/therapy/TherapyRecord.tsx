@@ -34,7 +34,6 @@ const TherapyRecord: React.FC = () => {
         selectedIds,
         handleCheckboxChange,
         handleSearch,
-        handleDelete,
     } = useTherapyRecord();
 
     const handleExport = async () => {
@@ -216,6 +215,7 @@ const TherapyRecord: React.FC = () => {
                     tableHeader={
                         <tr>
                             <th style={{ width: '50px' }}>勾選</th>
+                            <th>店別</th>
                             <th>姓名</th>
                             <th>會員編號</th>
                             <th>療程日期</th>
@@ -230,7 +230,7 @@ const TherapyRecord: React.FC = () => {
                     tableBody={
                         loading ? (
                             <tr>
-                                <td colSpan={10} className="text-center py-5">
+                                <td colSpan={11} className="text-center py-5">
                                     <div className="spinner-border text-info" role="status">
                                         <span className="visually-hidden">Loading...</span>
                                     </div>
@@ -246,6 +246,7 @@ const TherapyRecord: React.FC = () => {
                                             onChange={(e) => handleCheckboxChange(record.therapy_record_id, e.target.checked)}
                                         />
                                     </td>
+                                    <td className="align-middle">{record.store_name || '-'}</td>
                                     <td className="align-middle">{record.member_name || "-"}</td>
                                     <td className="align-middle">{record.member_code || "-"}</td>
                                     <td className="align-middle">{formatDate(record.date)}</td>
@@ -259,7 +260,7 @@ const TherapyRecord: React.FC = () => {
                             ))
                         ) : (
                             <tr>
-                                <td colSpan={10} className="text-center text-muted py-5">
+                                <td colSpan={11} className="text-center text-muted py-5">
                                     尚無資料
                                 </td>
                             </tr>
