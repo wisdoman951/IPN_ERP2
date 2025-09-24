@@ -79,7 +79,6 @@ def get_all_members(store_level: str, store_id: int):
                 " ORDER BY m.store_id IS NULL, m.store_id, m.member_code IS NULL,"
                 " COALESCE(CHAR_LENGTH(m.member_code), 0), m.member_code, m.member_id"
             )
-            
             cursor.execute(base_sql, tuple(params))
             result = cursor.fetchall()
             return result
