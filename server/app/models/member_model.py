@@ -64,9 +64,10 @@ def get_all_members(store_level: str, store_id: int):
     try:
         with conn.cursor() as cursor:
             base_sql = """
-                SELECT member_id, member_code, name, birthday, address, phone, gender, blood_type,
-                       line_id, inferrer_id, occupation, note, store_id
-                FROM member
+                SELECT m.member_id, m.member_code, m.name, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+                       m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
+                FROM member AS m
+                LEFT JOIN store AS s ON m.store_id = s.store_id
             """
             params = []
             
@@ -74,7 +75,7 @@ def get_all_members(store_level: str, store_id: int):
                 base_sql += " WHERE store_id = %s"
                 params.append(store_id)
             
-            base_sql += " ORDER BY member_id DESC"
+            base_sql += " ORDER BY m.member_id DESC"
             
             cursor.execute(base_sql, tuple(params))
             result = cursor.fetchall()
@@ -92,12 +93,13 @@ def search_members(keyword: str, store_level: str, store_id: int):
     try:
         with conn.cursor() as cursor:
             like_keyword = f"%{keyword}%"
-            
+
             base_sql = """
-                SELECT member_id, member_code, name, birthday, address, phone, gender, blood_type,
-                       line_id, inferrer_id, occupation, note, store_id
-                FROM member
-                WHERE (name LIKE %s OR phone LIKE %s OR member_code LIKE %s)
+                SELECT m.member_id, m.member_code, m.name, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+                       m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
+                FROM member AS m
+                LEFT JOIN store AS s ON m.store_id = s.store_id
+                WHERE (m.name LIKE %s OR m.phone LIKE %s OR m.member_code LIKE %s)
             """
             params = [like_keyword, like_keyword, like_keyword]
 
@@ -105,7 +107,7 @@ def search_members(keyword: str, store_level: str, store_id: int):
                 base_sql += " AND store_id = %s"
                 params.append(store_id)
 
-            base_sql += " ORDER BY member_id DESC"
+            base_sql += " ORDER BY m.member_id DESC"
 
             cursor.execute(base_sql, tuple(params))
             result = cursor.fetchall()
@@ -188,10 +190,11 @@ def get_member_by_id(member_id: int):
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT member_id, member_code, name, birthday, address, phone, gender, blood_type,
-                       line_id, inferrer_id, occupation, note, store_id
-                FROM member
-                WHERE member_id = %s
+                SELECT m.member_id, m.member_code, m.name, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+                       m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
+                FROM member AS m
+                LEFT JOIN store AS s ON m.store_id = s.store_id
+                WHERE m.member_id = %s
             """, (member_id,))
             result = cursor.fetchone()
         return result

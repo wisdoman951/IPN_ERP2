@@ -29,6 +29,7 @@ const MemberInfo: React.FC = () => {
     const tableHeader = (
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
+            <th>店別</th>
             <th>姓名</th>
             <th style={{ minWidth: '8ch' }}>會員編號</th>
             <th>生日</th>
@@ -45,20 +46,21 @@ const MemberInfo: React.FC = () => {
     
     // 定義表格內容
     const tableBody = loading ? (
-        <tr><td colSpan={12} className="text-center py-5"><Spinner animation="border" variant="info" /></td></tr>
+        <tr><td colSpan={13} className="text-center py-5"><Spinner animation="border" variant="info" /></td></tr>
     ) : error ? (
-        <tr><td colSpan={12} className="text-center text-danger py-5">{error}</td></tr>
+        <tr><td colSpan={13} className="text-center text-danger py-5">{error}</td></tr>
     ) : members.length > 0 ? (
         members.map((member) => (
             <tr key={member.Member_ID}>
                 <td className="text-center align-middle"> {/* 垂直居中 */}
-                    <Form.Check 
-                        type="checkbox" 
+                    <Form.Check
+                        type="checkbox"
                         id={`member-${member.Member_ID}`}
                         checked={selectedMemberIds.includes(member.Member_ID)} // 確保 Member_ID 是 number 或 string，與 selectedMemberIds 類型一致
                         onChange={(e) => handleCheckboxChange(member.Member_ID, e.target.checked)}
                     />
                 </td>
+                <td className="align-middle">{member.StoreName ?? (member.StoreId ?? "")}</td>
                 <td className="align-middle">{member.Name}</td>
                 {/* 顯示資料庫中的 member_code */}
                 <td className="align-middle" style={{ whiteSpace: 'nowrap' }}>{member.member_code ?? ""}</td>
@@ -74,7 +76,7 @@ const MemberInfo: React.FC = () => {
             </tr>
         ))
     ) : (
-        <tr><td colSpan={12} className="text-center text-muted py-5">尚無資料</td></tr>
+        <tr><td colSpan={13} className="text-center text-muted py-5">尚無資料</td></tr>
     );
     
     // 新增：處理修改按鈕的點擊事件
