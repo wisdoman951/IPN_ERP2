@@ -63,6 +63,7 @@ def export_stress_tests_route():
         df = pd.DataFrame([
             {
                 '壓力測試ID': r.get('ipn_stress_id'),
+                '店別': r.get('store_name'),
                 '會員編號': r.get('member_code'),
                 '姓名': r.get('Name'),
                 '職稱': r.get('position'),
