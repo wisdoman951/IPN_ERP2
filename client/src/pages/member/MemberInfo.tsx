@@ -1,6 +1,6 @@
 // client/src/pages/member/MemberInfo.tsx (修改版)
 
-import React from "react"; // 您提供的程式碼中缺少這行，補上
+import React, { useMemo } from "react"; // 您提供的程式碼中缺少這行，補上
 import { Button, Row, Col, Form, Container, Spinner } from "react-bootstrap"; // 新增 Container 和 Spinner
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -25,6 +25,42 @@ const MemberInfo: React.FC = () => {
         handleExport 
     } = useMemberManagement();
     
+    const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }), []);
+
+    const sortedMembers = useMemo(() => {
+        const compareStrings = (valueA: string, valueB: string) => collator.compare(valueA, valueB);
+
+        return [...members].sort((a, b) => {
+            const storeA = (a.StoreName ?? a.StoreId ?? "").toString();
+            const storeB = (b.StoreName ?? b.StoreId ?? "").toString();
+            const storeAEmpty = storeA.length === 0;
+            const storeBEmpty = storeB.length === 0;
+            if (storeAEmpty !== storeBEmpty) {
+                return storeAEmpty ? 1 : -1;
+            }
+
+            const storeComparison = compareStrings(storeA, storeB);
+            if (storeComparison !== 0) {
+                return storeComparison;
+            }
+
+            const codeA = a.member_code ?? "";
+            const codeB = b.member_code ?? "";
+            const codeAEmpty = codeA.length === 0;
+            const codeBEmpty = codeB.length === 0;
+            if (codeAEmpty !== codeBEmpty) {
+                return codeAEmpty ? 1 : -1;
+            }
+
+            const codeComparison = compareStrings(codeA, codeB);
+            if (codeComparison !== 0) {
+                return codeComparison;
+            }
+
+            return compareStrings(a.Member_ID, b.Member_ID);
+        });
+    }, [collator, members]);
+
     // 定義表格標頭
     const tableHeader = (
         <tr>
@@ -49,8 +85,8 @@ const MemberInfo: React.FC = () => {
         <tr><td colSpan={13} className="text-center py-5"><Spinner animation="border" variant="info" /></td></tr>
     ) : error ? (
         <tr><td colSpan={13} className="text-center text-danger py-5">{error}</td></tr>
-    ) : members.length > 0 ? (
-        members.map((member) => (
+    ) : sortedMembers.length > 0 ? (
+        sortedMembers.map((member) => (
             <tr key={member.Member_ID}>
                 <td className="text-center align-middle"> {/* 垂直居中 */}
                     <Form.Check

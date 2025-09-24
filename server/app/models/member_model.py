@@ -70,13 +70,15 @@ def get_all_members(store_level: str, store_id: int):
                 LEFT JOIN store AS s ON m.store_id = s.store_id
             """
             params = []
-            
+
             if store_level == "分店":
-                base_sql += " WHERE store_id = %s"
+                base_sql += " WHERE m.store_id = %s"
                 params.append(store_id)
-            
-            base_sql += " ORDER BY m.member_id DESC"
-            
+
+            base_sql += (
+                " ORDER BY m.store_id IS NULL, m.store_id, m.member_code IS NULL,"
+                " COALESCE(CHAR_LENGTH(m.member_code), 0), m.member_code, m.member_id"
+            )
             cursor.execute(base_sql, tuple(params))
             result = cursor.fetchall()
             return result
@@ -104,10 +106,13 @@ def search_members(keyword: str, store_level: str, store_id: int):
             params = [like_keyword, like_keyword, like_keyword]
 
             if store_level == "分店":
-                base_sql += " AND store_id = %s"
+                base_sql += " AND m.store_id = %s"
                 params.append(store_id)
 
-            base_sql += " ORDER BY m.member_id DESC"
+            base_sql += (
+                " ORDER BY m.store_id IS NULL, m.store_id, m.member_code IS NULL,"
+                " COALESCE(CHAR_LENGTH(m.member_code), 0), m.member_code, m.member_id"
+            )
 
             cursor.execute(base_sql, tuple(params))
             result = cursor.fetchall()
