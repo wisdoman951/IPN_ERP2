@@ -7,6 +7,7 @@ interface StressTest {
   ipn_stress_id: number;
   member_id: number;
   Name: string;
+  member_code?: string;
   a_score: number;
   b_score: number;
   c_score: number;

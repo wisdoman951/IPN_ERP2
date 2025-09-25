@@ -74,6 +74,8 @@ const ProductSell: React.FC = () => {
         return sale.note || "-";
     };
 
+    const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }), []);
+
     const groupedSales = useMemo(() => {
         const bundles: Record<string, ProductSellType & { product_sell_ids: number[] }> = {};
         const singles: (ProductSellType & { product_sell_ids?: number[] })[] = [];
@@ -103,8 +105,49 @@ const ProductSell: React.FC = () => {
             }
         });
 
-        return [...Object.values(bundles), ...singles];
-    }, [sales]);
+        const combined = [...Object.values(bundles), ...singles];
+        const compareStrings = (valueA: string, valueB: string) => collator.compare(valueA, valueB);
+
+        return combined.sort((saleA, saleB) => {
+            const storeA = (saleA.store_name ?? "").toString();
+            const storeB = (saleB.store_name ?? "").toString();
+            const storeAEmpty = storeA.length === 0;
+            const storeBEmpty = storeB.length === 0;
+
+            if (storeAEmpty !== storeBEmpty) {
+                return storeAEmpty ? 1 : -1;
+            }
+
+            const storeComparison = compareStrings(storeA, storeB);
+            if (storeComparison !== 0) {
+                return storeComparison;
+            }
+
+            const memberCodeA = (saleA.member_code ?? "").toString();
+            const memberCodeB = (saleB.member_code ?? "").toString();
+            const memberCodeAEmpty = memberCodeA.length === 0;
+            const memberCodeBEmpty = memberCodeB.length === 0;
+
+            if (memberCodeAEmpty !== memberCodeBEmpty) {
+                return memberCodeAEmpty ? 1 : -1;
+            }
+
+            const memberCodeComparison = compareStrings(memberCodeA, memberCodeB);
+            if (memberCodeComparison !== 0) {
+                return memberCodeComparison;
+            }
+
+            const nameComparison = compareStrings(saleA.member_name ?? "", saleB.member_name ?? "");
+            if (nameComparison !== 0) {
+                return nameComparison;
+            }
+
+            return compareStrings(
+                (saleA.product_sell_id ?? "").toString(),
+                (saleB.product_sell_id ?? "").toString()
+            );
+        });
+    }, [collator, sales]);
 
     const tableHeader = (
         <tr>

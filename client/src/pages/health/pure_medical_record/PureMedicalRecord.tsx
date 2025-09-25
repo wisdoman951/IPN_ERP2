@@ -1,5 +1,5 @@
 // .\src\pages\health\pure_medical_record\PureMedicalRecord.tsx
-import React from "react";
+import React, { useMemo } from "react";
 import { Button, Col, Container, Form, Row, Spinner, Badge } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Header from "../../../components/Header";
@@ -23,6 +23,52 @@ const PureMedicalRecord: React.FC = () => {
     handleDelete,
     handleExport
   } = usePureMedicalRecord();
+
+  const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }), []);
+
+  const sortedRecords = useMemo(() => {
+    const compareStrings = (valueA: string, valueB: string) => collator.compare(valueA, valueB);
+
+    return [...records].sort((recordA, recordB) => {
+      const storeA = (recordA.store_name ?? "").toString();
+      const storeB = (recordB.store_name ?? "").toString();
+      const storeAEmpty = storeA.length === 0;
+      const storeBEmpty = storeB.length === 0;
+
+      if (storeAEmpty !== storeBEmpty) {
+        return storeAEmpty ? 1 : -1;
+      }
+
+      const storeComparison = compareStrings(storeA, storeB);
+      if (storeComparison !== 0) {
+        return storeComparison;
+      }
+
+      const memberCodeA = (recordA.member_code ?? "").toString();
+      const memberCodeB = (recordB.member_code ?? "").toString();
+      const memberCodeAEmpty = memberCodeA.length === 0;
+      const memberCodeBEmpty = memberCodeB.length === 0;
+
+      if (memberCodeAEmpty !== memberCodeBEmpty) {
+        return memberCodeAEmpty ? 1 : -1;
+      }
+
+      const memberCodeComparison = compareStrings(memberCodeA, memberCodeB);
+      if (memberCodeComparison !== 0) {
+        return memberCodeComparison;
+      }
+
+      const nameComparison = compareStrings(recordA.Name ?? "", recordB.Name ?? "");
+      if (nameComparison !== 0) {
+        return nameComparison;
+      }
+
+      return compareStrings(
+        (recordA.ipn_pure_id ?? "").toString(),
+        (recordB.ipn_pure_id ?? "").toString()
+      );
+    });
+  }, [collator, records]);
 
   const content = (
     <>
@@ -92,12 +138,12 @@ const PureMedicalRecord: React.FC = () => {
                   <Spinner animation="border" />
                 </td>
               </tr>
-            ) : records.length === 0 ? (
+            ) : sortedRecords.length === 0 ? (
               <tr>
                 <td colSpan={14} className="text-center text-muted py-5">尚無資料</td>
               </tr>
             ) : (
-              records.map(record => {
+              sortedRecords.map(record => {
                 const bmiStatus = getBMIStatus(record.bmi || '-');
 
                 return (

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import { Button, Form, Row, Col } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -10,8 +10,8 @@ import "./medicalRecord.css";
 
 const MedicalRecord: React.FC = () => {
     const navigate = useNavigate();
-    const { 
-        records, 
+    const {
+        records,
         searchValue, 
         setSearchValue, 
         selectedIds, 
@@ -20,6 +20,56 @@ const MedicalRecord: React.FC = () => {
         handleSearch, 
         handleExport,
     } = useMedicalRecordManagement();
+
+    const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }), []);
+
+    const sortedRecords = useMemo(() => {
+        const compareStrings = (valueA: string, valueB: string) => collator.compare(valueA, valueB);
+
+        return [...records].sort((recordA, recordB) => {
+            const storeA = (recordA[HealthRecordIndex.STORE_NAME] ?? "").toString();
+            const storeB = (recordB[HealthRecordIndex.STORE_NAME] ?? "").toString();
+            const storeAEmpty = storeA.length === 0;
+            const storeBEmpty = storeB.length === 0;
+
+            if (storeAEmpty !== storeBEmpty) {
+                return storeAEmpty ? 1 : -1;
+            }
+
+            const storeComparison = compareStrings(storeA, storeB);
+            if (storeComparison !== 0) {
+                return storeComparison;
+            }
+
+            const memberCodeA = (recordA[HealthRecordIndex.MEMBER_CODE] ?? "").toString();
+            const memberCodeB = (recordB[HealthRecordIndex.MEMBER_CODE] ?? "").toString();
+            const memberCodeAEmpty = memberCodeA.length === 0;
+            const memberCodeBEmpty = memberCodeB.length === 0;
+
+            if (memberCodeAEmpty !== memberCodeBEmpty) {
+                return memberCodeAEmpty ? 1 : -1;
+            }
+
+            const memberCodeComparison = compareStrings(memberCodeA, memberCodeB);
+            if (memberCodeComparison !== 0) {
+                return memberCodeComparison;
+            }
+
+            const nameComparison = compareStrings(
+                (recordA[HealthRecordIndex.NAME] ?? "").toString(),
+                (recordB[HealthRecordIndex.NAME] ?? "").toString()
+            );
+
+            if (nameComparison !== 0) {
+                return nameComparison;
+            }
+
+            return compareStrings(
+                (recordA[HealthRecordIndex.ID] ?? "").toString(),
+                (recordB[HealthRecordIndex.ID] ?? "").toString()
+            );
+        });
+    }, [collator, records]);
 
     // 定義表格標頭
     const tableHeader = (
@@ -50,8 +100,8 @@ const MedicalRecord: React.FC = () => {
     };
     // 定義表格內容
     const tableBody = (
-        records.length > 0 ? (
-            records.map((r) => (
+        sortedRecords.length > 0 ? (
+            sortedRecords.map((r) => (
                 <tr key={r[HealthRecordIndex.ID]}>
                     <td>
                         <Form.Check

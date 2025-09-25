@@ -1,5 +1,5 @@
 // ./src/pages/health-stress-test/StressTest.tsx
-import React, { useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Button, Col, Form, Row } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Header from "../../../components/Header";
@@ -79,6 +79,52 @@ const StressTest: React.FC = () => {
     navigate('/health-data-analysis/stress-test/add');
   };
 
+  const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }), []);
+
+  const sortedTests = useMemo(() => {
+    const compareStrings = (valueA: string, valueB: string) => collator.compare(valueA, valueB);
+
+    return [...tests].sort((testA, testB) => {
+      const storeA = (testA.store_name ?? "").toString();
+      const storeB = (testB.store_name ?? "").toString();
+      const storeAEmpty = storeA.length === 0;
+      const storeBEmpty = storeB.length === 0;
+
+      if (storeAEmpty !== storeBEmpty) {
+        return storeAEmpty ? 1 : -1;
+      }
+
+      const storeComparison = compareStrings(storeA, storeB);
+      if (storeComparison !== 0) {
+        return storeComparison;
+      }
+
+      const memberCodeA = (testA.member_code ?? "").toString();
+      const memberCodeB = (testB.member_code ?? "").toString();
+      const memberCodeAEmpty = memberCodeA.length === 0;
+      const memberCodeBEmpty = memberCodeB.length === 0;
+
+      if (memberCodeAEmpty !== memberCodeBEmpty) {
+        return memberCodeAEmpty ? 1 : -1;
+      }
+
+      const memberCodeComparison = compareStrings(memberCodeA, memberCodeB);
+      if (memberCodeComparison !== 0) {
+        return memberCodeComparison;
+      }
+
+      const nameComparison = compareStrings(testA.Name ?? "", testB.Name ?? "");
+      if (nameComparison !== 0) {
+        return nameComparison;
+      }
+
+      return compareStrings(
+        (testA.ipn_stress_id ?? "").toString(),
+        (testB.ipn_stress_id ?? "").toString()
+      );
+    });
+  }, [collator, tests]);
+
   const tableHeader = (
     <tr>
       <th className="text-center" style={{ width: '60px' }}>勾選</th>
@@ -94,8 +140,8 @@ const StressTest: React.FC = () => {
     </tr>
   );
 
-  const tableBody = tests.length > 0 ? (
-    tests.map((test) => (
+  const tableBody = sortedTests.length > 0 ? (
+    sortedTests.map((test) => (
       <tr key={test.ipn_stress_id}>
         <td className="text-center">
           <Form.Check

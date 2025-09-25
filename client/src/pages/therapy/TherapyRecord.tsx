@@ -1,5 +1,5 @@
 // .\src\pages\therapy\TherapyRecord.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button, Container, Row, Col, Form, InputGroup } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -81,6 +81,52 @@ const TherapyRecord: React.FC = () => {
             salesperson
         });
     };
+
+    const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }), []);
+
+    const sortedRecords = useMemo(() => {
+        const compareStrings = (valueA: string, valueB: string) => collator.compare(valueA, valueB);
+
+        return [...records].sort((recordA, recordB) => {
+            const storeA = (recordA.store_name ?? "").toString();
+            const storeB = (recordB.store_name ?? "").toString();
+            const storeAEmpty = storeA.length === 0;
+            const storeBEmpty = storeB.length === 0;
+
+            if (storeAEmpty !== storeBEmpty) {
+                return storeAEmpty ? 1 : -1;
+            }
+
+            const storeComparison = compareStrings(storeA, storeB);
+            if (storeComparison !== 0) {
+                return storeComparison;
+            }
+
+            const memberCodeA = (recordA.member_code ?? "").toString();
+            const memberCodeB = (recordB.member_code ?? "").toString();
+            const memberCodeAEmpty = memberCodeA.length === 0;
+            const memberCodeBEmpty = memberCodeB.length === 0;
+
+            if (memberCodeAEmpty !== memberCodeBEmpty) {
+                return memberCodeAEmpty ? 1 : -1;
+            }
+
+            const memberCodeComparison = compareStrings(memberCodeA, memberCodeB);
+            if (memberCodeComparison !== 0) {
+                return memberCodeComparison;
+            }
+
+            const nameComparison = compareStrings(recordA.member_name ?? "", recordB.member_name ?? "");
+            if (nameComparison !== 0) {
+                return nameComparison;
+            }
+
+            return compareStrings(
+                (recordA.therapy_record_id ?? "").toString(),
+                (recordB.therapy_record_id ?? "").toString()
+            );
+        });
+    }, [collator, records]);
 
     // 主要內容
     const content = (
@@ -236,8 +282,8 @@ const TherapyRecord: React.FC = () => {
                                     </div>
                                 </td>
                             </tr>
-                        ) : records.length > 0 ? (
-                            records.map((record) => (
+                        ) : sortedRecords.length > 0 ? (
+                            sortedRecords.map((record) => (
                                 <tr key={record.therapy_record_id}>
                                     <td className="text-center align-middle">
                                         <Form.Check

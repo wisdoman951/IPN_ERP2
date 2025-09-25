@@ -1,5 +1,5 @@
 // ./src/pages/therapy/TherapySell.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button, Container, Row, Col, Form, Spinner } from "react-bootstrap"; // 確保 Spinner 已匯入
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -235,14 +235,60 @@ const TherapySell: React.FC = () => {
     );
 
     // 表格內容 - 依照 Figma 修改
+    const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }), []);
+
+    const sortedSales = useMemo(() => {
+        const compareStrings = (valueA: string, valueB: string) => collator.compare(valueA, valueB);
+
+        return [...sales].sort((saleA, saleB) => {
+            const storeA = (saleA.store_name ?? "").toString();
+            const storeB = (saleB.store_name ?? "").toString();
+            const storeAEmpty = storeA.length === 0;
+            const storeBEmpty = storeB.length === 0;
+
+            if (storeAEmpty !== storeBEmpty) {
+                return storeAEmpty ? 1 : -1;
+            }
+
+            const storeComparison = compareStrings(storeA, storeB);
+            if (storeComparison !== 0) {
+                return storeComparison;
+            }
+
+            const memberCodeA = (saleA.MemberCode ?? "").toString();
+            const memberCodeB = (saleB.MemberCode ?? "").toString();
+            const memberCodeAEmpty = memberCodeA.length === 0;
+            const memberCodeBEmpty = memberCodeB.length === 0;
+
+            if (memberCodeAEmpty !== memberCodeBEmpty) {
+                return memberCodeAEmpty ? 1 : -1;
+            }
+
+            const memberCodeComparison = compareStrings(memberCodeA, memberCodeB);
+            if (memberCodeComparison !== 0) {
+                return memberCodeComparison;
+            }
+
+            const nameComparison = compareStrings(saleA.MemberName ?? "", saleB.MemberName ?? "");
+            if (nameComparison !== 0) {
+                return nameComparison;
+            }
+
+            return compareStrings(
+                (saleA.Order_ID ?? "").toString(),
+                (saleB.Order_ID ?? "").toString()
+            );
+        });
+    }, [collator, sales]);
+
     const tableBody = loading ? (
         <tr>
             <td colSpan={12} className="text-center py-5"> {/* 更新 colSpan */}
                 <Spinner animation="border" variant="info"/>
             </td>
         </tr>
-    ) : sales.length > 0 ? (
-        sales.map((sale) => (
+    ) : sortedSales.length > 0 ? (
+        sortedSales.map((sale) => (
             <tr key={sale.Order_ID}>
                 <td className="text-center align-middle">
                     <Form.Check
