@@ -36,7 +36,6 @@ const MemberInfo: React.FC = () => {
             ),
         [members]
     );
-
     // 定義表格標頭
     const tableHeader = (
         <tr>
