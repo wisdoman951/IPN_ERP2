@@ -137,7 +137,16 @@ const TherapySell: React.FC = () => {
         try {
             const response = await getAllTherapySells(storeId);
             const parsed = normalizeSalesResponse(response);
-            if (parsed.length === 0 && response && !(Array.isArray(response))) {
+            const anyResponse = response as { success?: boolean; error?: string; message?: string; data?: unknown } | null;
+            const isApiResponse = !!anyResponse && typeof anyResponse === "object" && typeof anyResponse.success !== "undefined";
+
+            if (isApiResponse && anyResponse?.success === false) {
+                setError(anyResponse.error || anyResponse.message || "獲取療程銷售數據失敗，請重試");
+                setSales([]);
+                return;
+            }
+
+            if (parsed.length === 0 && !isApiResponse && response && !(Array.isArray(response))) {
                 setError("無法正確解析療程銷售數據");
             }
             setSales(parsed);
@@ -154,16 +163,19 @@ const TherapySell: React.FC = () => {
         try {
             setLoading(true);
             setError(null);
-    
-            let response;
-            if (isAdmin) {
-                response = await searchTherapySells(searchKeyword); // 不帶 storeId
-            } else {
-                response = await searchTherapySells(searchKeyword, storeId);
-            }
-    
+
+            const response = await (isAdmin ? searchTherapySells(searchKeyword) : searchTherapySells(searchKeyword, storeId));
             const parsed = normalizeSalesResponse(response);
-            if (parsed.length === 0 && response && !(Array.isArray(response))) {
+            const anyResponse = response as { success?: boolean; error?: string; message?: string; data?: unknown } | null;
+            const isApiResponse = !!anyResponse && typeof anyResponse === "object" && typeof anyResponse.success !== "undefined";
+
+            if (isApiResponse && anyResponse?.success === false) {
+                setError(anyResponse.error || anyResponse.message || "搜索失敗，請重試");
+                setSales([]);
+                return;
+            }
+
+            if (parsed.length === 0 && !isApiResponse && response && !(Array.isArray(response))) {
                 console.error("API 返回的搜尋結果不是預期的格式:", response);
                 setError("無法正確解析搜尋結果");
             }
