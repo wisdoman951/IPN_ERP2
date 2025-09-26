@@ -1,5 +1,5 @@
 // ./src/pages/therapy/TherapySell.tsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Button, Container, Row, Col, Form, Spinner } from "react-bootstrap"; // 確保 Spinner 已匯入
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
@@ -14,6 +14,7 @@ import {
 import { formatDateToYYYYMMDD } from "../../utils/dateUtils";
 import { formatCurrency } from "../../utils/productSellUtils"; // 借用金額格式化
 import { fetchAllTherapyBundles, TherapyBundle } from "../../services/TherapyBundleService";
+import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
 
 // 更新 interface 以符合 Figma 需求
 export interface TherapySellRow { // 更改 interface 名稱以避免與組件名衝突
@@ -31,6 +32,8 @@ export interface TherapySellRow { // 更改 interface 名稱以避免與組件�
     Note?: string;          // 備註 - API 需返回此欄位
     UnitPrice?: number;     // 單價
     therapy_id?: number;    // 對應的療程 ID
+    store_name?: string;
+    store_id?: number;
 }
 
 // --- 新增/修改映射表 ---
@@ -108,17 +111,36 @@ const TherapySell: React.FC = () => {
     }, []);
     
 
+    const normalizeSalesResponse = (response: any): TherapySellRow[] => {
+        if (!response) {
+            return [];
+        }
+
+        if (Array.isArray(response)) {
+            return response;
+        }
+
+        if (Array.isArray(response.data)) {
+            return response.data;
+        }
+
+        if (response.data && Array.isArray(response.data.data)) {
+            return response.data.data;
+        }
+
+        return [];
+    };
+
     const fetchSales = async () => {
         setLoading(true);
         setError(null);
         try {
             const response = await getAllTherapySells(storeId);
-            if (response && response.success && Array.isArray(response.data)) {
-                setSales(response.data);
-            } else {
-                setSales([]);
+            const parsed = normalizeSalesResponse(response);
+            if (parsed.length === 0 && response && !(Array.isArray(response))) {
                 setError("無法正確解析療程銷售數據");
             }
+            setSales(parsed);
         } catch (error) {
             setSales([]);
             setError("獲取療程銷售數據失敗，請重試");
@@ -140,17 +162,12 @@ const TherapySell: React.FC = () => {
                 response = await searchTherapySells(searchKeyword, storeId);
             }
     
-            if (response && Array.isArray(response.data)) {
-                setSales(response.data);
-            } else if (response && Array.isArray(response)) {
-                setSales(response);
-            } else if (response && response.data && Array.isArray(response.data.data)) {
-                setSales(response.data.data);
-            } else {
-                setSales([]);
+            const parsed = normalizeSalesResponse(response);
+            if (parsed.length === 0 && response && !(Array.isArray(response))) {
                 console.error("API 返回的搜尋結果不是預期的格式:", response);
                 setError("無法正確解析搜尋結果");
             }
+            setSales(parsed);
         } catch (error) {
             console.error("搜索療程銷售失敗:", error);
             setError("搜索失敗，請重試");
@@ -216,9 +233,21 @@ const TherapySell: React.FC = () => {
     };
 
     // 表格頭部 - 依照 Figma 修改
+    const sortedSales = useMemo(
+        () =>
+            sortByStoreAndMemberCode(
+                sales,
+                (sale) => sale.store_name ?? sale.store_id ?? "",
+                (sale) => sale.MemberCode ?? "",
+                (sale) => sale.Order_ID
+            ),
+        [sales]
+    );
+
     const tableHeader = (
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
+            <th className="text-center">店別</th>
             <th className="text-center">會員編號</th>
             <th className="text-center">購買人</th>
             <th className="text-center">購買日期</th>
@@ -235,12 +264,12 @@ const TherapySell: React.FC = () => {
     // 表格內容 - 依照 Figma 修改
     const tableBody = loading ? (
         <tr>
-            <td colSpan={11} className="text-center py-5"> {/* 更新 colSpan */}
+            <td colSpan={12} className="text-center py-5"> {/* 更新 colSpan */}
                 <Spinner animation="border" variant="info"/>
             </td>
         </tr>
-    ) : sales.length > 0 ? (
-        sales.map((sale) => (
+    ) : sortedSales.length > 0 ? (
+        sortedSales.map((sale) => (
             <tr key={sale.Order_ID}>
                 <td className="text-center align-middle">
                     <Form.Check
@@ -249,6 +278,7 @@ const TherapySell: React.FC = () => {
                         onChange={() => handleCheckboxChange(sale.Order_ID)}
                     />
                 </td>
+                <td className="align-middle">{sale.store_name ?? '-'}</td>
                 <td className="align-middle">{sale.MemberCode || "-"}</td>
                 <td className="align-middle">{sale.MemberName || "-"}</td>
                 <td className="align-middle">{formatDateToYYYYMMDD(sale.PurchaseDate) || "-"}</td>
@@ -270,7 +300,7 @@ const TherapySell: React.FC = () => {
         ))
     ) : (
         <tr>
-            <td colSpan={11} className="text-center text-muted py-5">尚無資料</td> {/* 更新 colSpan */}
+            <td colSpan={12} className="text-center text-muted py-5">尚無資料</td> {/* 更新 colSpan */}
         </tr>
     );
 

@@ -48,6 +48,8 @@ export interface Member {
   Referrer: string;  // 介紹人 ID
   Occupation: string;
   Note: string;
+  StoreId?: string;
+  StoreName?: string;
 }
 
 /**
@@ -66,6 +68,8 @@ interface BackendMember {
   phone: string;
   occupation: string;
   note: string;
+  store_id?: number | string | null;
+  store_name?: string | null;
 }
 
 /**
@@ -84,7 +88,11 @@ const transformBackendToFrontend = (member: BackendMember): Member => {
     BloodType: member.blood_type || '',
     Referrer: member.inferrer_id ? String(member.inferrer_id) : '',
     Occupation: member.occupation || '',
-    Note: member.note || ''
+    Note: member.note || '',
+    StoreId: member.store_id !== undefined && member.store_id !== null && member.store_id !== ''
+      ? String(member.store_id)
+      : undefined,
+    StoreName: member.store_name || undefined
   };
 };
 

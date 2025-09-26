@@ -9,6 +9,7 @@ import {
   ProductSell 
 } from '../services/ProductSellService';
 import { downloadBlob } from '../utils/downloadBlob';
+import { sortByStoreAndMemberCode } from '../utils/storeMemberSort';
 
 interface UseProductSellReturn {
   sales: ProductSell[];
@@ -36,13 +37,21 @@ export const useProductSell = (): UseProductSellReturn => {
   const [error, setError] = useState<string | null>(null);
   const [keyword, setKeyword] = useState("");
 
+  const sortSales = (list: ProductSell[]) =>
+    sortByStoreAndMemberCode(
+      list,
+      (sale) => sale.store_name ?? sale.store_id ?? "",
+      (sale) => sale.member_code ?? "",
+      (sale) => sale.product_sell_id
+    );
+
   // 獲取所有產品銷售記錄
   const fetchSales = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getAllProductSells();
-      setSales(data);
+      setSales(Array.isArray(data) ? sortSales(data) : []);
     } catch (error) {
       console.error("獲取產品銷售記錄失敗：", error);
       setError("獲取產品銷售記錄失敗");
@@ -57,7 +66,7 @@ export const useProductSell = (): UseProductSellReturn => {
       setLoading(true);
       setError(null);
       const data = await searchProductSells(keyword);
-      setSales(data);
+      setSales(Array.isArray(data) ? sortSales(data) : []);
     } catch (error) {
       console.error("搜尋產品銷售記錄失敗：", error);
       setError("搜尋產品銷售記錄失敗");
