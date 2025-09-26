@@ -1,6 +1,7 @@
 import axios from "axios";
 import { base_url } from "./BASE_URL";
 import { getAuthHeaders as getTokenHeaders } from "./AuthUtils";
+import { ViewerRole } from "../types/viewerRole";
 
 const API_URL = `${base_url}/therapy-bundles`;
 const API_URL_THERAPIES = `${base_url}/therapy`;
@@ -25,6 +26,7 @@ export interface TherapyBundle {
     created_at: string;
     visible_store_ids?: number[];
     categories?: string[];
+    visible_permissions?: ViewerRole[];
 }
 
 export interface TherapyBundleDetails extends TherapyBundle {
@@ -41,6 +43,7 @@ export interface Therapy {
     price: number;
     code: string;
     content?: string;
+    visible_permissions?: ViewerRole[];
 }
 
 export const fetchAllTherapyBundles = async (status: string = 'PUBLISHED'): Promise<TherapyBundle[]> => {

@@ -467,7 +467,15 @@ def delete_product_sell(sell_id: int):
         if conn:
             conn.close()
 
-def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISHED'):
+def _permission_is_allowed(allowed_permissions, user_permission):
+    if user_permission is None or not allowed_permissions:
+        return True
+    if isinstance(allowed_permissions, list):
+        return user_permission in allowed_permissions
+    return user_permission == allowed_permissions
+
+
+def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISHED', user_permission: str | None = None):
     """
     獲取所有產品及其匯總後的庫存數量。
     - 使用 SUM() 和 GROUP BY 確保每個產品只返回一筆紀錄，包含其總庫存。
@@ -485,6 +493,7 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 p.price AS product_price,
                 p.purchase_price AS purchase_price,
                 p.visible_store_ids,
+                p.visible_permissions,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories
@@ -505,13 +514,14 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
         if status:
             query += " WHERE p.status = %s"
             params.append(status)
-        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.purchase_price, p.visible_store_ids ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.purchase_price, p.visible_store_ids, p.visible_permissions ORDER BY p.name"
         cursor.execute(query, tuple(params))
     result = cursor.fetchall()
     conn.close()
     filtered = []
     for row in result:
         store_ids = None
+        permissions = None
         if row.get('visible_store_ids'):
             try:
                 store_ids = json.loads(row['visible_store_ids'])
@@ -519,15 +529,24 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                     store_ids = [int(store_ids)]
             except Exception:
                 store_ids = None
-        if store_id is None or not store_ids or int(store_id) in store_ids:
+        if row.get('visible_permissions'):
+            try:
+                permissions = json.loads(row['visible_permissions'])
+                if isinstance(permissions, str):
+                    permissions = [permissions]
+            except Exception:
+                permissions = None
+        if (store_id is None or not store_ids or int(store_id) in store_ids) and _permission_is_allowed(permissions, user_permission):
             if store_ids is not None:
                 row['visible_store_ids'] = store_ids
+            if permissions is not None:
+                row['visible_permissions'] = permissions
             if row.get('categories'):
                 row['categories'] = row['categories'].split(',')
             filtered.append(row)
     return filtered
 
-def search_products_with_inventory(keyword, store_id=None, status: str | None = 'PUBLISHED'):
+def search_products_with_inventory(keyword, store_id=None, status: str | None = 'PUBLISHED', user_permission: str | None = None):
     """
     根據關鍵字搜尋產品及其匯總後的庫存信息。
     邏輯同上，但增加了關鍵字和 store_id 的過濾。
@@ -544,6 +563,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 p.price AS product_price,
                 p.purchase_price AS purchase_price,
                 p.visible_store_ids,
+                p.visible_permissions,
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories
@@ -573,7 +593,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.purchase_price, p.visible_store_ids ORDER BY p.name"
+        query += " GROUP BY p.product_id, p.code, p.name, p.price, p.purchase_price, p.visible_store_ids, p.visible_permissions ORDER BY p.name"
 
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()
@@ -581,6 +601,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
     filtered = []
     for row in result:
         store_ids = None
+        permissions = None
         if row.get('visible_store_ids'):
             try:
                 store_ids = json.loads(row['visible_store_ids'])
@@ -588,9 +609,18 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                     store_ids = [int(store_ids)]
             except Exception:
                 store_ids = None
-        if store_id is None or not store_ids or int(store_id) in store_ids:
+        if row.get('visible_permissions'):
+            try:
+                permissions = json.loads(row['visible_permissions'])
+                if isinstance(permissions, str):
+                    permissions = [permissions]
+            except Exception:
+                permissions = None
+        if (store_id is None or not store_ids or int(store_id) in store_ids) and _permission_is_allowed(permissions, user_permission):
             if store_ids is not None:
                 row['visible_store_ids'] = store_ids
+            if permissions is not None:
+                row['visible_permissions'] = permissions
             if row.get('categories'):
                 row['categories'] = row['categories'].split(',')
             filtered.append(row)

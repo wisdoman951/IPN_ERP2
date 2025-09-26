@@ -1,5 +1,6 @@
 import axios from "axios";
 import { base_url } from "./BASE_URL";
+import { ViewerRole } from "../types/viewerRole";
 
 const API_URL = `${base_url}/product`;
 
@@ -13,6 +14,7 @@ export interface Product {
   purchase_price?: number | string | null;
   inventory_count?: number;
   visible_store_ids?: number[];
+  visible_permissions?: ViewerRole[];
 }
 
 // 獲取所有產品
@@ -51,7 +53,7 @@ export const getProductById = async (productId: number): Promise<Product> => {
   }
 };
 
-export const addProduct = async (data: { code: string; name: string; price: number; purchase_price?: number | null; visible_store_ids?: number[] | null; category_ids?: number[] }) => {
+export const addProduct = async (data: { code: string; name: string; price: number; purchase_price?: number | null; visible_store_ids?: number[] | null; visible_permissions?: ViewerRole[] | null; category_ids?: number[] }) => {
   try {
     const token = localStorage.getItem("token");
     const response = await axios.post(`${API_URL}/`, data, {
@@ -70,7 +72,7 @@ export const addProduct = async (data: { code: string; name: string; price: numb
 
 export const updateProduct = async (
   productId: number,
-  data: { code: string; name: string; price: number; purchase_price?: number | null; visible_store_ids?: number[] | null; category_ids?: number[] }
+  data: { code: string; name: string; price: number; purchase_price?: number | null; visible_store_ids?: number[] | null; visible_permissions?: ViewerRole[] | null; category_ids?: number[] }
 ) => {
   try {
     const token = localStorage.getItem("token");

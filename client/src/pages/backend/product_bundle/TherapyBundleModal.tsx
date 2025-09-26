@@ -11,6 +11,7 @@ import {
 } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
 import { getCategories, Category } from '../../../services/CategoryService';
+import { VIEWER_ROLE_OPTIONS, ViewerRole } from '../../../types/viewerRole';
 
 interface TherapyBundleModalProps {
     show: boolean;
@@ -31,6 +32,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
     const [selectedTherapyIds, setSelectedTherapyIds] = useState<number[]>([]);
     const [therapyQuantities, setTherapyQuantities] = useState<{ [id: number]: number }>({});
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
+    const [selectedViewerRoles, setSelectedViewerRoles] = useState<ViewerRole[]>([]);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -56,6 +58,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                         const ids = data.items.map(i => i.item_id);
                         setSelectedTherapyIds(ids);
                         setSelectedStoreIds(data.visible_store_ids || []);
+                        setSelectedViewerRoles(data.visible_permissions || []);
                         setSelectedCategoryIds(data.category_ids || []);
                         const quantities: { [id: number]: number } = {};
                         data.items.forEach(item => {
@@ -74,6 +77,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
         setSelectedTherapyIds([]);
         setTherapyQuantities({});
         setSelectedStoreIds([]);
+        setSelectedViewerRoles([]);
         setSelectedCategoryIds([]);
         setError(null);
         setLoading(false);
@@ -115,6 +119,10 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
         setSelectedStoreIds(prev => (checked ? [...prev, id] : prev.filter(sid => sid !== id)));
     };
 
+    const handleViewerRoleChange = (role: ViewerRole, checked: boolean) => {
+        setSelectedViewerRoles(prev => (checked ? [...prev, role] : prev.filter(r => r !== role)));
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -124,6 +132,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
             ...formData,
             calculated_price: calculatedPrice,
             visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
+            visible_permissions: selectedViewerRoles.length > 0 ? selectedViewerRoles : null,
             items: selectedTherapyIds.map(id => ({ item_id: id, quantity: therapyQuantities[id] || 1 })),
             category_ids: selectedCategoryIds
         };
@@ -223,6 +232,21 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                                             checked={selectedStoreIds.includes(s.store_id)}
                                             onChange={e => handleStoreCheckChange(s.store_id, e.target.checked)}
                                             label={s.store_name}
+                                        />
+                                    ))}
+                                </div>
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>限定可見身份 (可複選)</Form.Label>
+                                <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                                    {VIEWER_ROLE_OPTIONS.map(option => (
+                                        <Form.Check
+                                            key={`therapy-bundle-viewer-${option.value}`}
+                                            type="checkbox"
+                                            id={`therapy-bundle-viewer-${option.value}`}
+                                            label={option.label}
+                                            checked={selectedViewerRoles.includes(option.value)}
+                                            onChange={e => handleViewerRoleChange(option.value, e.target.checked)}
                                         />
                                     ))}
                                 </div>

@@ -4,6 +4,7 @@ import { addTherapy, updateTherapy } from '../../../services/TherapyService';
 import { Therapy } from '../../../services/ProductBundleService';
 import { getCategories, Category } from '../../../services/CategoryService';
 import { Store } from '../../../services/StoreService';
+import { VIEWER_ROLE_OPTIONS, ViewerRole } from '../../../types/viewerRole';
 
 interface AddTherapyModalProps {
     show: boolean;
@@ -17,6 +18,7 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
     const [name, setName] = useState('');
     const [price, setPrice] = useState('');
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
+    const [selectedViewerRoles, setSelectedViewerRoles] = useState<ViewerRole[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
 
@@ -26,12 +28,14 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
             setName(editingTherapy.name);
             setPrice(String(editingTherapy.price));
             setSelectedStoreIds(editingTherapy.visible_store_ids || []);
+            setSelectedViewerRoles(editingTherapy.visible_permissions || []);
             setSelectedCategoryIds([]);
         } else {
             setCode('');
             setName('');
             setPrice('');
             setSelectedStoreIds([]);
+            setSelectedViewerRoles([]);
             setSelectedCategoryIds([]);
         }
     }, [editingTherapy]);
@@ -44,6 +48,10 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
         setSelectedStoreIds(prev => checked ? [...prev, id] : prev.filter(sid => sid !== id));
     };
 
+    const handleViewerRoleChange = (role: ViewerRole, checked: boolean) => {
+        setSelectedViewerRoles(prev => checked ? [...prev, role] : prev.filter(r => r !== role));
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -52,6 +60,7 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
                 name,
                 price: Number(price),
                 visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
+                visible_permissions: selectedViewerRoles.length > 0 ? selectedViewerRoles : null,
                 category_ids: selectedCategoryIds,
             };
             if (editingTherapy) {
@@ -110,6 +119,21 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
                                     label={s.store_name}
                                     checked={selectedStoreIds.includes(s.store_id)}
                                     onChange={e => handleStoreCheckChange(s.store_id, e.target.checked)}
+                                />
+                            ))}
+                        </div>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>限定可見身份 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {VIEWER_ROLE_OPTIONS.map(option => (
+                                <Form.Check
+                                    key={`therapy-viewer-${option.value}`}
+                                    type="checkbox"
+                                    id={`therapy-viewer-${option.value}`}
+                                    label={option.label}
+                                    checked={selectedViewerRoles.includes(option.value)}
+                                    onChange={e => handleViewerRoleChange(option.value, e.target.checked)}
                                 />
                             ))}
                         </div>
