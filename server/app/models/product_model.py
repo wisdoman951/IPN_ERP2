@@ -15,8 +15,8 @@ def create_product(data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "INSERT INTO product (code, name, price, purchase_price, visible_store_ids, status) "
-                "VALUES (%s, %s, %s, %s, %s, 'PUBLISHED')"
+                "INSERT INTO product (code, name, price, purchase_price, visible_store_ids, visible_permissions, status) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'PUBLISHED')"
             )
             cursor.execute(query, (
                 data.get("code"),
@@ -24,6 +24,7 @@ def create_product(data: dict):
                 data.get("price"),
                 data.get("purchase_price"),
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
+                json.dumps(data.get("visible_permissions")) if data.get("visible_permissions") is not None else None,
             ))
             product_id = conn.insert_id()
 
@@ -49,7 +50,7 @@ def update_product(product_id: int, data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "UPDATE product SET code=%s, name=%s, price=%s, purchase_price=%s, visible_store_ids=%s WHERE product_id=%s"
+                "UPDATE product SET code=%s, name=%s, price=%s, purchase_price=%s, visible_store_ids=%s, visible_permissions=%s WHERE product_id=%s"
             )
             cursor.execute(query, (
                 data.get("code"),
@@ -57,6 +58,7 @@ def update_product(product_id: int, data: dict):
                 data.get("price"),
                 data.get("purchase_price"),
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
+                json.dumps(data.get("visible_permissions")) if data.get("visible_permissions") is not None else None,
                 product_id,
             ))
 
