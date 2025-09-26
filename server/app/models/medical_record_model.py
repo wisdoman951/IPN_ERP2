@@ -190,7 +190,13 @@ def get_all_medical_records(store_level: str, store_id: int):
                 {BASE_MEDICAL_RECORD_QUERY}
                 {where_clause}
                 GROUP BY mr.medical_record_id
-                ORDER BY mr.medical_record_id DESC
+                ORDER BY
+                    (COALESCE(NULLIF(store_name, ''), CAST(mr.store_id AS CHAR)) = ''),
+                    COALESCE(NULLIF(store_name, ''), CAST(mr.store_id AS CHAR)),
+                    (COALESCE(NULLIF(member_code, ''), '') = ''),
+                    CHAR_LENGTH(COALESCE(NULLIF(member_code, ''), '')),
+                    COALESCE(NULLIF(member_code, ''), ''),
+                    mr.medical_record_id
             """
             
             cursor.execute(sql, tuple(params))
@@ -219,7 +225,13 @@ def search_medical_records(keyword: str, store_level: str, store_id: int):
                 {BASE_MEDICAL_RECORD_QUERY}
                 {where_clause}
                 GROUP BY mr.medical_record_id
-                ORDER BY mr.medical_record_id DESC
+                ORDER BY
+                    (COALESCE(NULLIF(store_name, ''), CAST(mr.store_id AS CHAR)) = ''),
+                    COALESCE(NULLIF(store_name, ''), CAST(mr.store_id AS CHAR)),
+                    (COALESCE(NULLIF(member_code, ''), '') = ''),
+                    CHAR_LENGTH(COALESCE(NULLIF(member_code, ''), '')),
+                    COALESCE(NULLIF(member_code, ''), ''),
+                    mr.medical_record_id
             """
             
             cursor.execute(sql, tuple(params))

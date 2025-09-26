@@ -27,6 +27,7 @@ axiosInstance.interceptors.request.use(config => {
 export interface PureMedicalRecord {
   ipn_pure_id: number;
   Name?: string;
+  member_code?: string;
   blood_preasure?: string;
   date?: string;
   height?: number;

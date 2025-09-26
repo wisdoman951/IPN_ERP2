@@ -132,10 +132,26 @@ def get_all_therapy_sells(store_id=None):
             
             if store_id:
                 query += " WHERE ts.store_id = %s"
-                query += " ORDER BY ts.date DESC"
+                query += (
+                    " ORDER BY"
+                    " (COALESCE(NULLIF(st.store_name, ''), CAST(ts.store_id AS CHAR)) = ''),"
+                    " COALESCE(NULLIF(st.store_name, ''), CAST(ts.store_id AS CHAR)),"
+                    " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+                    " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+                    " COALESCE(NULLIF(m.member_code, ''), ''),"
+                    " ts.date DESC"
+                )
                 cursor.execute(query, (store_id,))
             else:
-                query += " ORDER BY ts.date DESC"
+                query += (
+                    " ORDER BY"
+                    " (COALESCE(NULLIF(st.store_name, ''), CAST(ts.store_id AS CHAR)) = ''),"
+                    " COALESCE(NULLIF(st.store_name, ''), CAST(ts.store_id AS CHAR)),"
+                    " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+                    " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+                    " COALESCE(NULLIF(m.member_code, ''), ''),"
+                    " ts.date DESC"
+                )
                 cursor.execute(query)
                 
             result = cursor.fetchall()
@@ -189,11 +205,27 @@ def search_therapy_sells(keyword, store_id=None):
             # 如果指定了店鋪ID，則只搜尋該店鋪的銷售記錄
             if store_id:
                 query += " AND ts.store_id = %s"
-                query += " ORDER BY ts.date DESC"
+                query += (
+                    " ORDER BY"
+                    " (COALESCE(NULLIF(st.store_name, ''), CAST(ts.store_id AS CHAR)) = ''),"
+                    " COALESCE(NULLIF(st.store_name, ''), CAST(ts.store_id AS CHAR)),"
+                    " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+                    " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+                    " COALESCE(NULLIF(m.member_code, ''), ''),"
+                    " ts.date DESC"
+                )
                 like = f"%{keyword}%"
                 cursor.execute(query, (like, like, like, store_id))
             else:
-                query += " ORDER BY ts.date DESC"
+                query += (
+                    " ORDER BY"
+                    " (COALESCE(NULLIF(st.store_name, ''), CAST(ts.store_id AS CHAR)) = ''),"
+                    " COALESCE(NULLIF(st.store_name, ''), CAST(ts.store_id AS CHAR)),"
+                    " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+                    " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+                    " COALESCE(NULLIF(m.member_code, ''), ''),"
+                    " ts.date DESC"
+                )
                 like = f"%{keyword}%"
                 cursor.execute(query, (like, like, like))
                 

@@ -31,7 +31,16 @@ def get_all_product_sells(store_id=None):
             query += " WHERE ps.store_id = %s"
             params.append(store_id)
         
-        query += " ORDER BY ps.date DESC, ps.product_sell_id DESC"
+        query += (
+            " ORDER BY"
+            " (COALESCE(NULLIF(st.store_name, ''), CAST(ps.store_id AS CHAR)) = ''),"
+            " COALESCE(NULLIF(st.store_name, ''), CAST(ps.store_id AS CHAR)),"
+            " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+            " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+            " COALESCE(NULLIF(m.member_code, ''), ''),"
+            " ps.date DESC,"
+            " ps.product_sell_id DESC"
+        )
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()
     conn.close()
@@ -610,7 +619,16 @@ def export_product_sells(store_id=None):
             query += " WHERE ps.store_id = %s"
             params.append(store_id)
         
-        query += " ORDER BY ps.date DESC, ps.product_sell_id DESC"
+        query += (
+            " ORDER BY"
+            " (COALESCE(NULLIF(st.store_name, ''), CAST(ps.store_id AS CHAR)) = ''),"
+            " COALESCE(NULLIF(st.store_name, ''), CAST(ps.store_id AS CHAR)),"
+            " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+            " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+            " COALESCE(NULLIF(m.member_code, ''), ''),"
+            " ps.date DESC,"
+            " ps.product_sell_id DESC"
+        )
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()
     conn.close()
@@ -655,7 +673,16 @@ def search_product_sells(keyword, store_id=None):
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
 
-        query += " ORDER BY ps.date DESC, ps.product_sell_id DESC"
+        query += (
+            " ORDER BY"
+            " (COALESCE(NULLIF(st.store_name, ''), CAST(ps.store_id AS CHAR)) = ''),"
+            " COALESCE(NULLIF(st.store_name, ''), CAST(ps.store_id AS CHAR)),"
+            " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+            " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+            " COALESCE(NULLIF(m.member_code, ''), ''),"
+            " ps.date DESC,"
+            " ps.product_sell_id DESC"
+        )
         
         cursor.execute(query, tuple(params))
         result = cursor.fetchall()

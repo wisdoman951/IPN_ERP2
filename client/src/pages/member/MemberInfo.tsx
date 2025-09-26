@@ -9,6 +9,7 @@ import ScrollableTable from "../../components/ScrollableTable";
 import { formatGregorianBirthday, formatGender, calculateAge } from "../../utils/memberUtils";
 import { useMemberManagement } from "../../hooks/useMemberManagement";
 import "./memberInfo.css";
+import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
 
 const MemberInfo: React.FC = () => {
     const navigate = useNavigate();
@@ -25,42 +26,16 @@ const MemberInfo: React.FC = () => {
         handleExport 
     } = useMemberManagement();
     
-    const collator = useMemo(() => new Intl.Collator(undefined, { numeric: true, sensitivity: "base" }), []);
-
-    const sortedMembers = useMemo(() => {
-        const compareStrings = (valueA: string, valueB: string) => collator.compare(valueA, valueB);
-
-        return [...members].sort((a, b) => {
-            const storeA = (a.StoreName ?? a.StoreId ?? "").toString();
-            const storeB = (b.StoreName ?? b.StoreId ?? "").toString();
-            const storeAEmpty = storeA.length === 0;
-            const storeBEmpty = storeB.length === 0;
-            if (storeAEmpty !== storeBEmpty) {
-                return storeAEmpty ? 1 : -1;
-            }
-
-            const storeComparison = compareStrings(storeA, storeB);
-            if (storeComparison !== 0) {
-                return storeComparison;
-            }
-
-            const codeA = a.member_code ?? "";
-            const codeB = b.member_code ?? "";
-            const codeAEmpty = codeA.length === 0;
-            const codeBEmpty = codeB.length === 0;
-            if (codeAEmpty !== codeBEmpty) {
-                return codeAEmpty ? 1 : -1;
-            }
-
-            const codeComparison = compareStrings(codeA, codeB);
-            if (codeComparison !== 0) {
-                return codeComparison;
-            }
-
-            return compareStrings(a.Member_ID, b.Member_ID);
-        });
-    }, [collator, members]);
-
+    const sortedMembers = useMemo(
+        () =>
+            sortByStoreAndMemberCode(
+                members,
+                (member) => member.StoreName ?? member.StoreId ?? "",
+                (member) => member.member_code ?? "",
+                (member) => member.Member_ID
+            ),
+        [members]
+    );
     // 定義表格標頭
     const tableHeader = (
         <tr>

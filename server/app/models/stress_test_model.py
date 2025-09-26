@@ -130,7 +130,16 @@ def get_all_stress_tests(store_level: str, store_id: int, filters=None):
             if where_conditions:
                 base_sql += " WHERE " + " AND ".join(where_conditions)
             
-            base_sql += " ORDER BY s.test_date DESC, s.ipn_stress_id DESC"
+            base_sql += (
+                " ORDER BY"
+                " (COALESCE(NULLIF(st.store_name, ''), CAST(s.store_id AS CHAR)) = ''),"
+                " COALESCE(NULLIF(st.store_name, ''), CAST(s.store_id AS CHAR)),"
+                " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+                " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+                " COALESCE(NULLIF(m.member_code, ''), ''),"
+                " s.test_date DESC,"
+                " s.ipn_stress_id DESC"
+            )
             print("SQL:", base_sql)
             print("Params:", params)
             cursor.execute(base_sql, tuple(params))
@@ -262,7 +271,14 @@ def get_stress_tests_by_member_id(member_id: int, store_level: str, store_id: in
             LEFT JOIN member m ON s.member_id = m.member_id
             LEFT JOIN store st ON s.store_id = st.store_id
             WHERE {where_clause}
-            ORDER BY s.test_date DESC, s.ipn_stress_id DESC
+            ORDER BY
+                (COALESCE(NULLIF(st.store_name, ''), CAST(s.store_id AS CHAR)) = ''),
+                COALESCE(NULLIF(st.store_name, ''), CAST(s.store_id AS CHAR)),
+                (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                COALESCE(NULLIF(m.member_code, ''), ''),
+                s.test_date DESC,
+                s.ipn_stress_id DESC
             """
             
             cursor.execute(query, tuple(params))

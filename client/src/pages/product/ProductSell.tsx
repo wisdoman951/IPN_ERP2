@@ -10,6 +10,7 @@ import { formatCurrency } from "../../utils/productSellUtils"; // formatDiscount
 import { useProductSell } from "../../hooks/useProductSell";
 import { ProductSell as ProductSellType } from "../../services/ProductSellService"; // 匯入更新後的型別
 import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
+import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
 
 const paymentMethodValueToDisplayMap: { [key: string]: string } = {
     Cash: "現金",
@@ -106,6 +107,17 @@ const ProductSell: React.FC = () => {
         return [...Object.values(bundles), ...singles];
     }, [sales]);
 
+    const sortedGroupedSales = useMemo(
+        () =>
+            sortByStoreAndMemberCode(
+                groupedSales,
+                (sale) => sale.store_name ?? sale.store_id ?? "",
+                (sale) => sale.member_code ?? "",
+                (sale) => sale.product_sell_id
+            ),
+        [groupedSales]
+    );
+
     const tableHeader = (
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
@@ -130,8 +142,8 @@ const ProductSell: React.FC = () => {
                 <Spinner animation="border" variant="info" /> {/* 使用 Spinner 並指定 variant */}
             </td>
         </tr>
-    ) : groupedSales.length > 0 ? (
-        groupedSales.map((sale: ProductSellType & { product_sell_ids?: number[] }) => (
+    ) : sortedGroupedSales.length > 0 ? (
+        sortedGroupedSales.map((sale: ProductSellType & { product_sell_ids?: number[] }) => (
             <tr key={sale.product_sell_id}>
                 <td className="text-center align-middle">
                     <Form.Check

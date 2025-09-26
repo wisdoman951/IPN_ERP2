@@ -54,7 +54,14 @@ def get_all_therapy_records():
                 LEFT JOIN therapy t ON tr.therapy_id = t.therapy_id
                 LEFT JOIN staff s ON tr.staff_id = s.staff_id
                 LEFT JOIN store st ON tr.store_id = st.store_id
-                ORDER BY tr.date DESC, tr.therapy_record_id DESC
+                ORDER BY
+                    (COALESCE(NULLIF(st.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),
+                    COALESCE(NULLIF(st.store_name, ''), CAST(tr.store_id AS CHAR)),
+                    (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                    CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                    COALESCE(NULLIF(m.member_code, ''), ''),
+                    tr.date DESC,
+                    tr.therapy_record_id DESC
             """
             cursor.execute(sql)
             return cursor.fetchall()
@@ -87,7 +94,14 @@ def get_therapy_records_by_store(store_id):
             LEFT JOIN staff st ON tr.staff_id = st.staff_id
             LEFT JOIN therapy t ON tr.therapy_id = t.therapy_id
             WHERE tr.store_id = %s
-            ORDER BY tr.date DESC, tr.therapy_record_id DESC
+            ORDER BY
+                (COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),
+                COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)),
+                (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                COALESCE(NULLIF(m.member_code, ''), ''),
+                tr.date DESC,
+                tr.therapy_record_id DESC
         """
         cursor.execute(query, (store_id,))
         result = cursor.fetchall()
@@ -157,7 +171,16 @@ def search_therapy_records(filters):
             sql += where_clause
             sql_params.extend(store_params)
 
-            sql += " ORDER BY tr.date DESC, tr.therapy_record_id DESC"
+            sql += (
+                " ORDER BY"
+                " (COALESCE(NULLIF(st.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),"
+                " COALESCE(NULLIF(st.store_name, ''), CAST(tr.store_id AS CHAR)),"
+                " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+                " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+                " COALESCE(NULLIF(m.member_code, ''), ''),"
+                " tr.date DESC,"
+                " tr.therapy_record_id DESC"
+            )
             
             cursor.execute(sql, sql_params)
             # 因為已在 SQL 中處理，不再需要 for 迴圈計算
@@ -333,7 +356,14 @@ def export_therapy_records(store_id=None):
                     LEFT JOIN store s ON tr.store_id = s.store_id
                     LEFT JOIN staff st ON tr.staff_id = st.staff_id
                     WHERE tr.store_id = %s
-                    ORDER BY tr.date DESC, tr.therapy_record_id DESC
+                    ORDER BY
+                        (COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),
+                        COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)),
+                        (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                        CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                        COALESCE(NULLIF(m.member_code, ''), ''),
+                        tr.date DESC,
+                        tr.therapy_record_id DESC
                 """
                 cursor.execute(query, (store_id,))
             else:
@@ -352,7 +382,14 @@ def export_therapy_records(store_id=None):
                     LEFT JOIN member m ON tr.member_id = m.member_id
                     LEFT JOIN store s ON tr.store_id = s.store_id
                     LEFT JOIN staff st ON tr.staff_id = st.staff_id
-                    ORDER BY tr.date DESC, tr.therapy_record_id DESC
+                    ORDER BY
+                        (COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),
+                        COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)),
+                        (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                        CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                        COALESCE(NULLIF(m.member_code, ''), ''),
+                        tr.date DESC,
+                        tr.therapy_record_id DESC
                 """
                 cursor.execute(query)
                 

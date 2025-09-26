@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { downloadBlob } from '../utils/downloadBlob';
-import { 
-    getAllMedicalRecords, 
-    searchMedicalRecords, 
-    deleteMedicalRecord, 
-    exportMedicalRecords 
+import {
+    getAllMedicalRecords,
+    searchMedicalRecords,
+    deleteMedicalRecord,
+    exportMedicalRecords
 } from '../services/MedicalService';
+import { sortByStoreAndMemberCode } from '../utils/storeMemberSort';
 
 // 定義健康檢查紀錄的常量
 export enum HealthRecordIndex {
@@ -38,10 +39,18 @@ export const useMedicalRecordManagement = () => {
     }, []);
 
     // 獲取所有健康檢查紀錄
+    const sortRecords = (data: MedicalRecordType[]) =>
+        sortByStoreAndMemberCode(
+            data,
+            (record) => record?.[HealthRecordIndex.STORE_NAME] ?? "",
+            (record) => record?.[HealthRecordIndex.MEMBER_CODE] ?? "",
+            (record) => record?.[HealthRecordIndex.ID] ?? ""
+        );
+
     const fetchAllRecords = async () => {
         try {
             const data = await getAllMedicalRecords();
-            setRecords(data);
+            setRecords(Array.isArray(data) ? sortRecords(data) : []);
             setSelectedIds([]); // 重新載入後清空勾選
         } catch (error) {
             console.error("獲取紀錄失敗:", error);
@@ -56,7 +65,7 @@ export const useMedicalRecordManagement = () => {
     const handleSearch = async () => {
         try {
             const data = await searchMedicalRecords(searchValue);
-            setRecords(data);
+            setRecords(Array.isArray(data) ? sortRecords(data) : []);
         } catch (err) {
             console.error("搜尋失敗", err);
         }
