@@ -15,6 +15,7 @@ import { formatDateToYYYYMMDD } from "../../utils/dateUtils";
 import { formatCurrency } from "../../utils/productSellUtils"; // 借用金額格式化
 import { fetchAllTherapyBundles, TherapyBundle } from "../../services/TherapyBundleService";
 import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 // 更新 interface 以符合 Figma 需求
 export interface TherapySellRow { // 更改 interface 名稱以避免與組件名衝突
@@ -70,7 +71,7 @@ const TherapySell: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
-    const isTherapist = localStorage.getItem('permission') === 'therapist';
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
 
 
@@ -218,9 +219,8 @@ const TherapySell: React.FC = () => {
             alert("請先選擇要刪除的項目");
             return;
         }
-        if (isTherapist) {
+        if (!checkPermission()) {
             setError('無操作權限');
-            alert('無操作權限');
             return;
         }
         if (window.confirm(`確定要刪除選定的 ${selectedItems.length} 筆紀錄嗎？`)) {
@@ -240,7 +240,7 @@ const TherapySell: React.FC = () => {
                 const message = error.message || "刪除失敗，請重試";
                 setError(message);
                 if (message === '無操作權限') {
-                    alert('無操作權限');
+                    checkPermission();
                 }
             } finally {
                 setLoading(false);
@@ -379,9 +379,8 @@ const TherapySell: React.FC = () => {
                             variant="info"
                             className="text-white px-4"
                             onClick={() => {
-                                if (isTherapist) {
+                                if (!checkPermission()) {
                                     setError('無操作權限');
-                                    alert('無操作權限');
                                     return;
                                 }
                                 if (selectedItems.length === 1) {
@@ -404,6 +403,7 @@ const TherapySell: React.FC = () => {
         <>
             <Header />
             <DynamicContainer content={content} />
+            {permissionModal}
         </>
     );
 };
