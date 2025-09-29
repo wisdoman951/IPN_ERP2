@@ -2,6 +2,7 @@ import axios from "axios";
 import { base_url } from "./BASE_URL";
 import { TherapySearchParams } from "../hooks/useTherapyRecord";
 import { getAuthHeaders } from "./AuthUtils";
+import { ViewerRole } from "../types/viewerRole";
 
 const API_URL = `${base_url}/therapy`;
 
@@ -164,7 +165,7 @@ export const getAllTherapiesForDropdown = async () => {
     return response.data;
 };
 
-export const addTherapy = async (data: { code: string; name: string; price: number; visible_store_ids?: number[] | null; category_ids?: number[] }) => {
+export const addTherapy = async (data: { code: string; name: string; price: number; visible_store_ids?: number[] | null; visible_permissions?: ViewerRole[] | null; category_ids?: number[] }) => {
     try {
         const token = localStorage.getItem("token");
         const response = await axios.post(`${API_URL}/package`, data, {
@@ -183,7 +184,7 @@ export const addTherapy = async (data: { code: string; name: string; price: numb
 
 export const updateTherapy = async (
     therapyId: number,
-    data: { code: string; name: string; price: number; content?: string; visible_store_ids?: number[] | null; category_ids?: number[] }
+    data: { code: string; name: string; price: number; content?: string; visible_store_ids?: number[] | null; visible_permissions?: ViewerRole[] | null; category_ids?: number[] }
 ) => {
     try {
         const token = localStorage.getItem("token");

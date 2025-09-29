@@ -10,6 +10,7 @@ import {
     fetchRemainingSessionsBulk
 } from '../../services/TherapySellService';
 import { fetchAllTherapyBundles, TherapyBundle } from '../../services/TherapyBundleService';
+import { getCategories, Category } from '../../services/CategoryService';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
 export interface PackageInSelection extends TherapyPackageBaseType {
@@ -27,6 +28,10 @@ const TherapyPackageSelection: React.FC = () => {
     const [memberId, setMemberId] = useState<string>('');
     const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
     const [activeTab, setActiveTab] = useState<'therapy' | 'bundle'>('therapy');
+    const [activeTherapyTab, setActiveTherapyTab] = useState<string>('all');
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
+    const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
 
 
     useEffect(() => {
@@ -80,9 +85,11 @@ const TherapyPackageSelection: React.FC = () => {
     const fetchPackages = async () => {
         setLoading(true); setPageError(null);
         try {
-            const [therapyRes, bundleData] = await Promise.all([
+            const [therapyRes, bundleData, categoryData, bundleCatData] = await Promise.all([
                 fetchAllTherapyPackagesService(),
-                fetchAllTherapyBundles()
+                fetchAllTherapyBundles(),
+                getCategories('therapy'),
+                getCategories('therapy_bundle')
             ]);
 
             let packages: TherapyPackageBaseType[] = [];
@@ -91,6 +98,7 @@ const TherapyPackageSelection: React.FC = () => {
                     ...p,
                     type: 'therapy',
                     therapy_id: Number(p.therapy_id),
+                    categories: p.categories || []
                 }));
             }
 
@@ -100,12 +108,15 @@ const TherapyPackageSelection: React.FC = () => {
                 TherapyCode: b.bundle_code,
                 TherapyName: b.name,
                 TherapyContent: b.bundle_contents,
-                TherapyPrice: Number(b.selling_price)
+                TherapyPrice: Number(b.selling_price),
+                categories: b.categories || []
             }));
 
             const combined = [...packages, ...bundlePackages];
             setAllPackages(combined);
-            setDisplayedPackages(combined.filter(pkg => pkg.type === activeTab));
+            setCategories(categoryData);
+            setBundleCategories(bundleCatData);
+            setDisplayedPackages(combined.filter(pkg => pkg.type === 'therapy'));
         } catch (err: unknown) {
             setPageError((err as Error).message || "載入療程套餐時發生嚴重錯誤");
             setAllPackages([]); setDisplayedPackages([]);
@@ -138,7 +149,18 @@ const TherapyPackageSelection: React.FC = () => {
     }, [memberId, allPackages]);
 
     useEffect(() => {
-        let filtered = allPackages.filter(pkg => pkg.type === activeTab);
+        let filtered: TherapyPackageBaseType[] = [];
+        if (activeTab === 'bundle') {
+            filtered = allPackages.filter(pkg => pkg.type === 'bundle');
+            if (activeBundleTab !== 'all') {
+                filtered = filtered.filter(pkg => pkg.categories?.includes(activeBundleTab));
+            }
+        } else {
+            filtered = allPackages.filter(pkg => pkg.type === 'therapy');
+            if (activeTherapyTab !== 'all') {
+                filtered = filtered.filter(pkg => pkg.categories?.includes(activeTherapyTab));
+            }
+        }
         if (searchTerm.trim() !== "") {
             const lowerSearchTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(pkg =>
@@ -148,7 +170,7 @@ const TherapyPackageSelection: React.FC = () => {
             );
         }
         setDisplayedPackages(filtered);
-    }, [searchTerm, allPackages, activeTab]);
+    }, [searchTerm, allPackages, activeTab, activeTherapyTab, activeBundleTab]);
 
     const getPkgKey = (pkg: TherapyPackageBaseType) =>
         pkg.type === 'bundle' ? `b-${pkg.bundle_id}` : `t-${pkg.therapy_id}`;
@@ -221,15 +243,31 @@ const TherapyPackageSelection: React.FC = () => {
                     </Row>
 
                     <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'therapy' | 'bundle') || 'therapy')} className="mb-3">
-                        <Tab eventKey="therapy" title="療程" />
-                        <Tab eventKey="bundle" title="療程組合" />
+                        <Tab eventKey="therapy" title="療程">
+                            <Tabs activeKey={activeTherapyTab} onSelect={(k) => setActiveTherapyTab(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {categories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                                ))}
+                            </Tabs>
+                        </Tab>
+                        <Tab eventKey="bundle" title="療程組合">
+                            <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {bundleCategories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                                ))}
+                            </Tabs>
+                        </Tab>
                     </Tabs>
 
                     {loading && (
                         <div className="text-center p-5"><Spinner animation="border" variant="info" /> <p className="mt-2">載入中...</p></div>
                     )}
                     {!loading && displayedPackages.length === 0 && (
-                        <Alert variant="secondary">目前沒有符合條件的療程套餐。</Alert>
+                        <Alert variant="secondary">
+                              目前沒有符合條件的{activeTab === 'therapy' ? '療程' : '療程組合'}。
+                        </Alert>
                     )}
                     {!loading && displayedPackages.length > 0 && (
                         <ListGroup variant="flush" style={{maxHeight: 'calc(100vh - 380px)', overflowY: 'auto'}}>

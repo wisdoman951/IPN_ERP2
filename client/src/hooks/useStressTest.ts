@@ -2,16 +2,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { getAllStressTests, deleteStressTest, exportStressTests, StressTestData } from '../services/StressTestService';
 import { downloadBlob } from '../utils/downloadBlob';
+import { sortByStoreAndMemberCode } from '../utils/storeMemberSort';
 
 interface StressTest {
   ipn_stress_id: number;
   member_id: number;
   Name: string;
+  member_code?: string;
   a_score: number;
   b_score: number;
   c_score: number;
   d_score: number;
   total_score: number;
+  store_name?: string;
 }
 
 export interface SearchFilters {
@@ -35,7 +38,16 @@ export const useStressTest = () => {
     try {
       setLoading(true);
       const response = await getAllStressTests(filters);
-      setTests(response);
+      setTests(
+        Array.isArray(response)
+          ? sortByStoreAndMemberCode(
+              response,
+              (test) => test.store_name ?? (test as any).store_id ?? "",
+              (test) => test.member_code ?? "",
+              (test) => test.ipn_stress_id
+            )
+          : []
+      );
     } catch (error) {
       console.error('Error fetching stress tests:', error);
     } finally {

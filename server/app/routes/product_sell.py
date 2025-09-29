@@ -147,6 +147,7 @@ def delete_sale(sale_id):
             return jsonify({"error": "找不到產品銷售記錄"}), 404
 
         if permission != 'admin' and sale.get('store_id') != user.get('store_id'):
+
             return jsonify({"error": "無權限刪除其他商店的記錄"}), 403
 
         delete_product_sell(sale_id)
@@ -172,7 +173,12 @@ def get_products():
             target_store_id = user.get('store_id')
 
         status = request.args.get("status", 'PUBLISHED')
-        products = get_all_products_with_inventory(store_id=target_store_id, status=status)
+        user_permission = user.get('permission') if user else None
+        products = get_all_products_with_inventory(
+            store_id=target_store_id,
+            status=status,
+            user_permission=user_permission,
+        )
         return jsonify(products)
     except Exception as e:
         print(f"Error in get_products: {e}")
@@ -195,7 +201,13 @@ def search_product():
             target_store_id = user.get('store_id')
 
         status = request.args.get("status", 'PUBLISHED')
-        products = search_products_with_inventory(keyword, store_id=target_store_id, status=status)
+        user_permission = user.get('permission') if user else None
+        products = search_products_with_inventory(
+            keyword,
+            store_id=target_store_id,
+            status=status,
+            user_permission=user_permission,
+        )
         return jsonify(products)
     except Exception as e:
         print(f"Error in search_product: {e}")

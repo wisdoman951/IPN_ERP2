@@ -7,6 +7,8 @@ import {
     Product, Therapy, Bundle
 } from '../../../services/ProductBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
+import { getCategories, Category } from '../../../services/CategoryService';
+import { VIEWER_ROLE_OPTIONS, ViewerRole } from '../../../types/viewerRole';
 
 interface BundleCreateModalProps {
     show: boolean;
@@ -24,9 +26,12 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     const [products, setProducts] = useState<Product[]>([]);
     const [therapies, setTherapies] = useState<Therapy[]>([]);
     const [stores, setStores] = useState<Store[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [selectedProductIds, setSelectedProductIds] = useState<number[]>([]);
     const [selectedTherapyIds, setSelectedTherapyIds] = useState<number[]>([]);
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
+    const [selectedViewerRoles, setSelectedViewerRoles] = useState<ViewerRole[]>([]);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     // 新增數量 state
@@ -45,6 +50,7 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
             fetchAllStores()
                 .then(data => setStores(data.filter(s => s.store_name !== '總店')))
                 .catch(() => setError("無法載入分店列表"));
+            getCategories('product_bundle').then(setCategories).catch(() => setCategories([]));
 
             // 如果是編輯模式，則獲取該組合的詳細資料並填充表單
             if (editingBundle) {
@@ -61,6 +67,8 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                         setSelectedProductIds(prodIds);
                         setSelectedTherapyIds(thrpIds);
                         setSelectedStoreIds(data.visible_store_ids || []);
+                        setSelectedViewerRoles(data.visible_permissions || []);
+                        setSelectedCategoryIds(data.category_ids || []);
                         // 填充數量
                         prodIds.forEach(id => {
                             const item = data.items.find(i => i.item_id === id && i.item_type === 'Product');
@@ -80,11 +88,13 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     const resetStates = () => {
         setFormData({ bundle_code: '', name: '', selling_price: '' });
         setSelectedProductIds([]);
-        setSelectedTherapyIds([]);
-        setSelectedStoreIds([]);
-        setError(null);
-        setLoading(false);
-        setProductQuantities({});
+            setSelectedTherapyIds([]);
+            setSelectedStoreIds([]);
+            setSelectedViewerRoles([]);
+            setSelectedCategoryIds([]);
+            setError(null);
+            setLoading(false);
+            setProductQuantities({});
         setTherapyQuantities({});
     };
 
@@ -135,6 +145,10 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
         setSelectedStoreIds(prev => checked ? [...prev, id] : prev.filter(sid => sid !== id));
     };
 
+    const handleViewerRoleChange = (role: ViewerRole, checked: boolean) => {
+        setSelectedViewerRoles(prev => checked ? [...prev, role] : prev.filter(r => r !== role));
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -144,10 +158,12 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
             ...formData,
             calculated_price: calculatedPrice,
             visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
+            visible_permissions: selectedViewerRoles.length > 0 ? selectedViewerRoles : null,
             items: [
                 ...selectedProductIds.map(id => ({ item_id: id, item_type: 'Product', quantity: productQuantities[id] || 1 })),
                 ...selectedTherapyIds.map(id => ({ item_id: id, item_type: 'Therapy', quantity: therapyQuantities[id] || 1 }))
-            ]
+            ],
+            category_ids: selectedCategoryIds
         };
 
         try {
@@ -177,12 +193,31 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                     {error && <Alert variant="danger">{error}</Alert>}
                     
                     <Form.Group className="mb-3">
-                        <Form.Label>編號</Form.Label>
+                        <Form.Label>設定編號</Form.Label>
                         <Form.Control type="text" name="bundle_code" value={formData.bundle_code} onChange={handleInputChange} required />
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>項目 (組合名稱)</Form.Label>
+                        <Form.Label>設定產品組合名稱</Form.Label>
                         <Form.Control type="text" name="name" value={formData.name} onChange={handleInputChange} required />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>分類 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {categories.map(cat => (
+                                <Form.Check
+                                    key={cat.category_id}
+                                    type="checkbox"
+                                    label={cat.name}
+                                    checked={selectedCategoryIds.includes(cat.category_id)}
+                                    onChange={e => {
+                                        const checked = e.target.checked;
+                                        setSelectedCategoryIds(prev =>
+                                            checked ? [...prev, cat.category_id] : prev.filter(id => id !== cat.category_id)
+                                        );
+                                    }}
+                                />
+                            ))}
+                        </div>
                     </Form.Group>
                     
                     <Row>
@@ -254,6 +289,21 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                                     label={s.store_name}
                                     checked={selectedStoreIds.includes(s.store_id)}
                                     onChange={e => handleStoreCheckChange(s.store_id, e.target.checked)}
+                                />
+                            ))}
+                        </div>
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>限定可見身份 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {VIEWER_ROLE_OPTIONS.map(option => (
+                                <Form.Check
+                                    key={`bundle-viewer-${option.value}`}
+                                    type="checkbox"
+                                    id={`bundle-viewer-${option.value}`}
+                                    label={option.label}
+                                    checked={selectedViewerRoles.includes(option.value)}
+                                    onChange={e => handleViewerRoleChange(option.value, e.target.checked)}
                                 />
                             ))}
                         </div>

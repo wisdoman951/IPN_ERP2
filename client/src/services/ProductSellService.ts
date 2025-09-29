@@ -22,8 +22,10 @@ export interface Product {
   product_code?: string;
   product_name: string;
   product_price: number;
+  purchase_price?: number | string | null;
   inventory_id: number;
   inventory_quantity: number;
+  categories?: string[];
 }
 
 export interface ProductSellData {

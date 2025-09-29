@@ -42,7 +42,8 @@ def get_bundles():
         print(
             f"[DEBUG] get_product_bundles status={status}, token_user={user}, header_store_level={header_store_level}, header_store_id={header_store_id}, resolved_store_level={store_level}, resolved_store_id={store_id}"
         )
-        bundles = get_all_product_bundles(status, store_id)
+        user_permission = user.get('permission') if user else None
+        bundles = get_all_product_bundles(status, store_id, user_permission)
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching product bundles: {e}")
@@ -67,7 +68,8 @@ def get_available_bundles():
             except (TypeError, ValueError):
                 store_id = None
         print(f"[DEBUG] get_available_product_bundles user={user}, store_id={store_id}, store_level={store_level}")
-        bundles = get_all_product_bundles(status="PUBLISHED", store_id=store_id)
+        user_permission = user.get('permission') if user else None
+        bundles = get_all_product_bundles(status="PUBLISHED", store_id=store_id, user_permission=user_permission)
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching available product bundles: {e}")

@@ -1,4 +1,5 @@
 // client\src\hooks\useProductSell.ts
+import axios from 'axios';
 import { useState, useEffect, useCallback } from 'react';
 import { 
   getAllProductSells, 
@@ -8,6 +9,7 @@ import {
   ProductSell 
 } from '../services/ProductSellService';
 import { downloadBlob } from '../utils/downloadBlob';
+import { sortByStoreAndMemberCode } from '../utils/storeMemberSort';
 
 interface UseProductSellReturn {
   sales: ProductSell[];
@@ -35,13 +37,21 @@ export const useProductSell = (): UseProductSellReturn => {
   const [error, setError] = useState<string | null>(null);
   const [keyword, setKeyword] = useState("");
 
+  const sortSales = (list: ProductSell[]) =>
+    sortByStoreAndMemberCode(
+      list,
+      (sale) => sale.store_name ?? sale.store_id ?? "",
+      (sale) => sale.member_code ?? "",
+      (sale) => sale.product_sell_id
+    );
+
   // 獲取所有產品銷售記錄
   const fetchSales = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await getAllProductSells();
-      setSales(data);
+      setSales(Array.isArray(data) ? sortSales(data) : []);
     } catch (error) {
       console.error("獲取產品銷售記錄失敗：", error);
       setError("獲取產品銷售記錄失敗");
@@ -56,7 +66,7 @@ export const useProductSell = (): UseProductSellReturn => {
       setLoading(true);
       setError(null);
       const data = await searchProductSells(keyword);
-      setSales(data);
+      setSales(Array.isArray(data) ? sortSales(data) : []);
     } catch (error) {
       console.error("搜尋產品銷售記錄失敗：", error);
       setError("搜尋產品銷售記錄失敗");
@@ -84,8 +94,28 @@ export const useProductSell = (): UseProductSellReturn => {
         fetchSales();
       } catch (error) {
         console.error("刪除產品銷售記錄失敗：", error);
-        setError("刪除產品銷售記錄失敗");
-        alert("刪除失敗，請稍後再試！");
+
+        let message = "刪除產品銷售記錄失敗";
+        let alertMessage = "刪除失敗，請稍後再試！";
+
+        if (axios.isAxiosError(error) && error.response) {
+          const { status, data } = error.response;
+          const serverMessage = typeof data === "string" ? data : data?.error;
+
+          if (status === 403) {
+            const permissionMessage = serverMessage === "無操作權限"
+              ? "沒有權限刪除"
+              : (serverMessage || "沒有權限刪除");
+            message = permissionMessage;
+            alertMessage = permissionMessage;
+          } else if (serverMessage) {
+            message = serverMessage;
+            alertMessage = serverMessage;
+          }
+        }
+
+        setError(message);
+        alert(alertMessage);
       } finally {
         setLoading(false);
       }

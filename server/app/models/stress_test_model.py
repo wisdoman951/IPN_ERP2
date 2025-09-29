@@ -73,23 +73,26 @@ def format_stress_test_record(record: dict):
         'd_score': record.get('d_score'),
         'test_date': test_date_str,
         'total_score': record.get('total_score'),
-        'store_id': record.get('store_id')
+        'store_id': record.get('store_id'),
+        'store_name': record.get('store_name')
     }
 
 def get_all_stress_tests(store_level: str, store_id: int, filters=None):
     """根據權限和過濾條件獲取所有壓力測試記錄"""
     conn = connect_to_db()
+    filters = filters or {}
     print("收到的 filters:", filters)
 
     try:
         with conn.cursor() as cursor:
             base_sql = """
             SELECT s.ipn_stress_id, s.member_id, m.name, m.member_code, m.occupation,
-                   s.a_score, s.b_score, s.c_score, s.d_score, s.test_date, 
+                   s.a_score, s.b_score, s.c_score, s.d_score, s.test_date,
                    (s.a_score + s.b_score + s.c_score + s.d_score) AS total_score,
-                   s.store_id
+                   s.store_id, st.store_name
             FROM ipn_stress s
             LEFT JOIN member m ON s.member_id = m.member_id
+            LEFT JOIN store st ON s.store_id = st.store_id
             """
 
             params = []
@@ -127,7 +130,16 @@ def get_all_stress_tests(store_level: str, store_id: int, filters=None):
             if where_conditions:
                 base_sql += " WHERE " + " AND ".join(where_conditions)
             
-            base_sql += " ORDER BY s.test_date DESC, s.ipn_stress_id DESC"
+            base_sql += (
+                " ORDER BY"
+                " (COALESCE(NULLIF(st.store_name, ''), CAST(s.store_id AS CHAR)) = ''),"
+                " COALESCE(NULLIF(st.store_name, ''), CAST(s.store_id AS CHAR)),"
+                " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+                " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+                " COALESCE(NULLIF(m.member_code, ''), ''),"
+                " s.test_date DESC,"
+                " s.ipn_stress_id DESC"
+            )
             print("SQL:", base_sql)
             print("Params:", params)
             cursor.execute(base_sql, tuple(params))
@@ -184,9 +196,10 @@ def get_stress_test_by_id(stress_id: int):
             SELECT s.ipn_stress_id, s.member_id, m.name, m.member_code, m.occupation,
                    s.a_score, s.b_score, s.c_score, s.d_score, s.test_date,
                    (s.a_score + s.b_score + s.c_score + s.d_score) AS total_score,
-                   s.store_id
+                   s.store_id, st.store_name
             FROM ipn_stress s
             LEFT JOIN member m ON s.member_id = m.member_id
+            LEFT JOIN store st ON s.store_id = st.store_id
             WHERE s.ipn_stress_id = %s
             """
             cursor.execute(query, (stress_id,))
@@ -253,11 +266,19 @@ def get_stress_tests_by_member_id(member_id: int, store_level: str, store_id: in
             SELECT s.ipn_stress_id, s.member_id, m.name, m.member_code, m.occupation,
                    s.a_score, s.b_score, s.c_score, s.d_score, s.test_date,
                    (s.a_score + s.b_score + s.c_score + s.d_score) AS total_score,
-                   s.store_id
+                   s.store_id, st.store_name
             FROM ipn_stress s
             LEFT JOIN member m ON s.member_id = m.member_id
+            LEFT JOIN store st ON s.store_id = st.store_id
             WHERE {where_clause}
-            ORDER BY s.test_date DESC, s.ipn_stress_id DESC
+            ORDER BY
+                (COALESCE(NULLIF(st.store_name, ''), CAST(s.store_id AS CHAR)) = ''),
+                COALESCE(NULLIF(st.store_name, ''), CAST(s.store_id AS CHAR)),
+                (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                COALESCE(NULLIF(m.member_code, ''), ''),
+                s.test_date DESC,
+                s.ipn_stress_id DESC
             """
             
             cursor.execute(query, tuple(params))
