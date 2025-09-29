@@ -74,10 +74,22 @@ def add_sale():
     data = request.json or {}
     try:
         user = get_user_from_token(request)
+        permission = user.get('permission') if user else getattr(request, 'permission', None)
         if user and user.get("store_id") and not data.get("store_id"):
             data["store_id"] = user.get("store_id")
         if user and user.get("staff_id") and not data.get("staff_id"):
             data["staff_id"] = user.get("staff_id")
+
+        if permission == 'therapist':
+            discount_value = data.get("discount_amount")
+            if discount_value is None:
+                discount_value = data.get("discountAmount")
+            try:
+                discount_numeric = float(discount_value or 0)
+            except (TypeError, ValueError):
+                discount_numeric = 0
+            if discount_numeric:
+                return jsonify({"error": "無操作權限"}), 403
 
         # 驗證必要欄位
         required_fields = [
@@ -107,11 +119,13 @@ def update_sale(sale_id):
         sale = get_product_sell_by_id(sale_id)
         if not sale:
             return jsonify({"error": "找不到產品銷售記錄"}), 404
-            
+
         user = get_user_from_token(request)
+        permission = user.get('permission') if user else getattr(request, 'permission', None)
+        if permission == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         if user and user.get('permission') != 'admin' and sale.get('store_id') != user.get('store_id'):
             return jsonify({"error": "無權限修改其他商店的記錄"}), 403
-            
         update_product_sell(sale_id, data)
         return jsonify({"message": "產品銷售記錄更新成功"}), 200
     except ValueError as e:
@@ -124,15 +138,16 @@ def update_sale(sale_id):
 def delete_sale(sale_id):
     try:
         user = get_user_from_token(request)
-
-        if user and user.get('permission') == 'therapist':
+        permission = user.get('permission') if user else getattr(request, 'permission', None)
+        if permission != 'admin':
             return jsonify({"error": "無操作權限"}), 403
 
         sale = get_product_sell_by_id(sale_id)
         if not sale:
             return jsonify({"error": "找不到產品銷售記錄"}), 404
 
-        if user and user.get('permission') != 'admin' and sale.get('store_id') != user.get('store_id'):
+        if permission != 'admin' and sale.get('store_id') != user.get('store_id'):
+
             return jsonify({"error": "無權限刪除其他商店的記錄"}), 403
 
         delete_product_sell(sale_id)

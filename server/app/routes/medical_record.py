@@ -75,6 +75,8 @@ def create():
 def delete(record_id):
     """刪除健康理療記錄，並進行權限檢查"""
     try:
+        if getattr(request, 'permission', None) != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         # --- 權限檢查 ---
         user_store_level = request.store_level
         user_store_id = request.store_id
@@ -160,6 +162,8 @@ def get_record(record_id):
 def update(record_id):
     """更新健康理療記錄，並進行權限檢查"""
     try:
+        if getattr(request, 'permission', None) == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         # --- 權限檢查 ---
         user_store_level = request.store_level
         user_store_id = request.store_id
