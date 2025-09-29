@@ -237,7 +237,11 @@ const TherapySell: React.FC = () => {
                 setSelectedItems([]);
             } catch (error: any) {
                 console.error("刪除療程銷售失敗:", error);
-                setError(error.message || "刪除失敗，請重試");
+                const message = error.message || "刪除失敗，請重試";
+                setError(message);
+                if (message === '無操作權限') {
+                    alert('無操作權限');
+                }
             } finally {
                 setLoading(false);
             }
