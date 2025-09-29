@@ -212,37 +212,6 @@ const AddTherapySell: React.FC = () => {
     setFinalPayableAmount(packagesOriginalTotal - Number(formData.discountAmount || 0));
   }, [packagesOriginalTotal, formData.discountAmount]);
 
-  useEffect(() => {
-    const code = formData.memberCode?.trim();
-    if (!code) {
-      if (selectedMember) {
-        setSelectedMember(null);
-      }
-      return;
-    }
-
-    if (!isEditMode) {
-      return;
-    }
-
-    if (selectedMember?.member_code === code) {
-      return;
-    }
-
-    const loadMember = async () => {
-      try {
-        const member = await getMemberByCode(code);
-        setSelectedMember(member);
-        if (member?.name) {
-          setMemberName(member.name);
-        }
-      } catch (err) {
-        console.error("載入會員資料失敗", err);
-      }
-    };
-
-    loadMember();
-  }, [formData.memberCode, isEditMode, selectedMember]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -423,7 +392,7 @@ const AddTherapySell: React.FC = () => {
               {error && <Alert variant="danger">{error}</Alert>}
               <Form onSubmit={handleSubmit}>
                 <Row className="g-4">
-                  <Col lg={8}>
+                  <Col>
                     <Row className="mb-3">
                       <Col>
                         <MemberColumn
@@ -433,14 +402,12 @@ const AddTherapySell: React.FC = () => {
                             onMemberChange={(code, name, data) => {
                               setFormData(prev => ({ ...prev, memberCode: code, memberId: data?.member_id?.toString() || "" }));
                               setMemberName(name);
-                              setSelectedMember(data);
                               if (data) {
                                 setError(null);
                               }
                             }}
                           onError={(msg) => {
                             setError(msg);
-                            setSelectedMember(null);
                           }}
                         />
                       </Col>
@@ -561,14 +528,6 @@ const AddTherapySell: React.FC = () => {
                         列印
                       </Button>
                     </div>
-                  </Col>
-                  <Col lg={4}>
-                    <MemberSummaryCard
-                      member={selectedMember}
-                      memberCode={formData.memberCode}
-                      fallbackName={memberName}
-                      className="shadow-sm h-100"
-                    />
                   </Col>
                 </Row>
               </Form>

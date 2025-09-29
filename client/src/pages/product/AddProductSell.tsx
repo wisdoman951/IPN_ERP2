@@ -223,6 +223,9 @@ const AddProductSell: React.FC = () => {
     setError(errorMsg);
     setSelectedMember(null);
   };
+  const handleError = (errorMsg: string) => {
+    setError(errorMsg);
+  };
   const openProductSelection = () => {
     const formState = {
       selectedStore,
