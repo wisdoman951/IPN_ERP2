@@ -19,14 +19,35 @@ logging.basicConfig(level=logging.DEBUG)
 therapy_sell = Blueprint('therapy_sell', __name__)
 
 
+def _extract_discount_value(payload):
+    if not isinstance(payload, dict):
+        return 0.0
+    for key in ("discount_amount", "discountAmount", "discount", "totalDiscount"):
+        if key in payload:
+            value = payload.get(key)
+            try:
+                numeric_value = float(value or 0)
+            except (TypeError, ValueError):
+                numeric_value = 0.0
+            if numeric_value:
+                return numeric_value
+    return 0.0
+
+
 @therapy_sell.route('/sales', methods=['POST'])
+@auth_required
 def add_therapy_transaction_route():
     sales_list_from_request = request.json
 
     if not isinstance(sales_list_from_request, list) or not sales_list_from_request:
         return jsonify({"success": False, "error": "請求數據應為一個包含療程銷售項目的非空陣列"}), 400
-    
+
     try:
+        permission = getattr(request, 'permission', None)
+        if permission == 'therapist':
+            for item in sales_list_from_request:
+                if _extract_discount_value(item):
+                    return jsonify({"error": "無操作權限"}), 403
         result = insert_many_therapy_sells(sales_list_from_request) # 將解析後的列表傳遞
 
         if isinstance(result, dict) and result.get("success"):
@@ -128,7 +149,10 @@ def create_sale():
                 data['storeId'] = user.get('store_id')
             if user.get('staff_id') and not data.get('staffId'):
                 data['staffId'] = user.get('staff_id')
-                
+        permission = user.get('permission') if user else getattr(request, 'permission', None)
+        if permission == 'therapist' and _extract_discount_value(data):
+            return jsonify({"error": "無操作權限"}), 403
+
         # 驗證必要數據
         if not data.get('memberId'):
             return jsonify({"error": "會員ID不能為空"}), 400
@@ -160,6 +184,9 @@ def update_sale(sale_id):
                 data['storeId'] = user.get('store_id')
             if user.get('staff_id') and not data.get('staffId'):
                 data['staffId'] = user.get('staff_id')
+        permission = user.get('permission') if user else getattr(request, 'permission', None)
+        if permission == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
 
         result = update_therapy_sell(sale_id, data)
         if "error" in result:
@@ -176,6 +203,11 @@ def update_sale(sale_id):
 def delete_sale(sale_id):
     """刪除療程銷售紀錄"""
     try:
+        user = get_user_from_token(request)
+        permission = user.get('permission') if user else getattr(request, 'permission', None)
+        if permission != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
+
         result = delete_therapy_sell(sale_id)
         if "error" in result:
             return jsonify(result), 400
