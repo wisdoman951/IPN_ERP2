@@ -12,16 +12,24 @@ from datetime import datetime
 import traceback
 import pandas as pd
 import io
+from app.middleware import auth_required
 
 sales_order_bp = Blueprint('sales_order_bp', __name__, url_prefix='/api/sales-orders')
 
+
+def _finance_permission():
+    return getattr(request, 'permission', None)
+
 @sales_order_bp.route('', methods=['POST'])
+@auth_required
 def add_sales_order_route():
     order_data = request.json
     if not order_data or not isinstance(order_data.get('items'), list):
         return jsonify({"success": False, "error": "請求數據無效或缺少品項列表"}), 400
-    
+
     try:
+        if _finance_permission() == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         def generate_order_number(prefix: str = "TP") -> str:
             now = datetime.now()
             return f"{prefix}{now.strftime('%Y%m%d%H%M%S%f')[:-3]}"
@@ -44,9 +52,12 @@ def add_sales_order_route():
 
 # ***** 新增：獲取銷售單列表的路由 *****
 @sales_order_bp.route('', methods=['GET'])
+@auth_required
 def get_sales_orders_route():
     """獲取銷售單列表 (可帶 keyword 搜尋)"""
     try:
+        if _finance_permission() == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         keyword = request.args.get('keyword', None)
         result = get_all_sales_orders(keyword)
         if result.get("success"):
@@ -59,9 +70,12 @@ def get_sales_orders_route():
         return jsonify({"error": "伺服器內部錯誤"}), 500
 
 @sales_order_bp.route('/export', methods=['GET'])
+@auth_required
 def export_sales_orders_route():
     """匯出銷售單列表為 Excel"""
     try:
+        if _finance_permission() == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         keyword = request.args.get('keyword', None)
         result = get_all_sales_orders(keyword)
         if not result.get('success'):
@@ -105,9 +119,12 @@ def export_sales_orders_route():
         return jsonify({'error': f'匯出時發生錯誤: {str(e)}'}), 500
 
 @sales_order_bp.route('/export-selected', methods=['POST'])
+@auth_required
 def export_selected_sales_orders_route():
     """匯出勾選的銷售單列表為 Excel"""
     try:
+        if _finance_permission() == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         data = request.json or {}
         ids = data.get('ids')
         if not ids or not isinstance(ids, list):
@@ -155,14 +172,17 @@ def export_selected_sales_orders_route():
 
 # ***** 新增：刪除銷售單的路由 *****
 @sales_order_bp.route('/delete', methods=['POST'])
+@auth_required
 def delete_sales_orders_route():
     """根據 ID 列表刪除銷售單"""
     data = request.json
     ids_to_delete = data.get('ids')
     if not ids_to_delete or not isinstance(ids_to_delete, list):
         return jsonify({"error": "請提供一個包含銷售單 ID 的列表"}), 400
-    
+
     try:
+        if _finance_permission() != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         result = delete_sales_orders_by_ids(ids_to_delete)
         return jsonify(result)
     except Exception as e:
@@ -170,8 +190,11 @@ def delete_sales_orders_route():
         return jsonify({"error": "伺服器內部錯誤"}), 500
 
 @sales_order_bp.route('/<int:order_id>', methods=['GET'])
+@auth_required
 def get_sales_order_detail_route(order_id):
     try:
+        if _finance_permission() == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         order = get_sales_order_by_id(order_id)
         if not order:
             return jsonify({'error': '找不到銷售單'}), 404
@@ -182,11 +205,14 @@ def get_sales_order_detail_route(order_id):
 
 
 @sales_order_bp.route('/<int:order_id>', methods=['PUT'])
+@auth_required
 def update_sales_order_route(order_id):
     order_data = request.json
     if not order_data or not isinstance(order_data.get('items'), list):
         return jsonify({"success": False, "error": "請求數據無效或缺少品項列表"}), 400
     try:
+        if _finance_permission() == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         result = update_sales_order(order_id, order_data)
         status_code = 200 if result.get("success") else 400
         return jsonify(result), status_code

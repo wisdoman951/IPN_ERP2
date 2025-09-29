@@ -1,7 +1,7 @@
 import io
 import xlsxwriter
 
-from flask import Blueprint, request, jsonify, send_file
+from flask import Blueprint, request, jsonify, send_file, g
 from app.models.health_check_model import (
     get_all_health_checks,
     search_health_checks,
@@ -14,6 +14,13 @@ from app.models.health_check_model import (
 from app.middleware import auth_required, login_required
 
 health_check_bp = Blueprint("health-check", __name__)
+
+
+def _get_current_permission():
+    user = getattr(g, "user", None)
+    if isinstance(user, dict):
+        return user.get("permission")
+    return None
 
 @health_check_bp.route("", methods=["GET"])
 @login_required
@@ -65,6 +72,8 @@ def create_health_check_record():
 def update_health_check_record(check_id):
     data = request.json
     try:
+        if _get_current_permission() == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         success = update_health_check(check_id, data)
         if success:
             return jsonify({"message": "更新成功"}), 200
@@ -77,6 +86,8 @@ def update_health_check_record(check_id):
 @login_required
 def delete_health_check_record(check_id):
     try:
+        if _get_current_permission() != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         success = delete_health_check(check_id)
         if success:
             return jsonify({"message": "刪除成功"}), 200

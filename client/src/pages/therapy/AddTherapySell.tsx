@@ -11,6 +11,7 @@ import {
   InputGroup,
 } from "react-bootstrap";
 import MemberColumn from "../../components/MemberColumn";
+import MemberSummaryCard from "../../components/MemberSummaryCard";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
@@ -18,6 +19,8 @@ import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData, TherapyS
 import { SalesOrderItemData } from "../../services/SalesOrderService";
 import { getStoreName } from "../../utils/authUtils";
 import { fetchTherapyBundlesForSale, TherapyBundle } from "../../services/TherapyBundleService";
+import { getMemberByCode } from "../../services/MedicalService";
+import { MemberData } from "../../types/medicalTypes";
 
 interface DropdownItem {
   id: number;
@@ -54,6 +57,7 @@ const AddTherapySell: React.FC = () => {
   const saleCategoryOptions = ["銷售", "贈品", "折扣", "預購", "暫借"];
 
   const [memberName, setMemberName] = useState<string>("");
+  const [selectedMember, setSelectedMember] = useState<MemberData | null>(null);
   const [staffList, setStaffList] = useState<DropdownItem[]>([]);
   const [therapyPackages, setTherapyPackages] = useState<SelectedTherapyPackageUIData[]>([]);
   const [error, setError] = useState<string | null>(null);
