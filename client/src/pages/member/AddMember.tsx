@@ -16,6 +16,7 @@ const AddMember: React.FC = () => {
 
     const initialFormState = {
         member_code: "",
+        identity_type: "一般會員",
         name: "",
         birthday: "",
         age: "",
@@ -113,6 +114,7 @@ const AddMember: React.FC = () => {
         const dataToSubmit = { // <-- 我們先將要提交的資料建立成一個物件
             member_code: form.member_code,
             name: form.name,
+            identity_type: form.identity_type,
             birthday: form.birthday,
             address: form.address,
             phone: form.phone,
@@ -165,7 +167,26 @@ const AddMember: React.FC = () => {
                             )}
                         </Form.Group>
                     </Col>
-                    <Col md={6}></Col>
+                    <Col md={6}>
+                        <Form.Group>
+                            <Form.Label>身份別</Form.Label>
+                            <Form.Select
+                                name="identity_type"
+                                value={form.identity_type}
+                                onChange={handleSelectChange}
+                                required
+                            >
+                                <option value="直營店">直營店</option>
+                                <option value="加盟店">加盟店</option>
+                                <option value="合夥商">合夥商</option>
+                                <option value="推廣商(分店能量師)">推廣商(分店能量師)</option>
+                                <option value="B2B合作專案">B2B合作專案</option>
+                                <option value="心耀商">心耀商</option>
+                                <option value="會員">會員</option>
+                                <option value="一般會員">一般會員</option>
+                            </Form.Select>
+                        </Form.Group>
+                    </Col>
 
                     <Col md={6}>
                         <Form.Group>
