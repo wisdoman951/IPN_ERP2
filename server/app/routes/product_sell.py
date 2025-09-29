@@ -147,7 +147,6 @@ def delete_sale(sale_id):
             return jsonify({"error": "找不到產品銷售記錄"}), 404
 
         if permission != 'admin' and sale.get('store_id') != user.get('store_id'):
-
             return jsonify({"error": "無權限刪除其他商店的記錄"}), 403
 
         delete_product_sell(sale_id)

@@ -82,6 +82,13 @@ export const useProductSell = (): UseProductSellReturn => {
       return;
     }
 
+    const permission = localStorage.getItem('permission');
+    if (permission === 'therapist') {
+      setError('無操作權限');
+      alert('無操作權限');
+      return;
+    }
+
     if (window.confirm("確定要刪除選中的記錄嗎？")) {
       try {
         setLoading(true);
