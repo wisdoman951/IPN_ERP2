@@ -74,6 +74,8 @@ def create_pure_record():
 def update_record(pure_id):
     """更新淨化健康紀錄，並進行權限檢查"""
     try:
+        if getattr(request, 'permission', None) == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         # 權限檢查
         existing_record = get_pure_record_by_id(pure_id)
         if not existing_record:
@@ -96,6 +98,8 @@ def update_record(pure_id):
 def delete_record(pure_id):
     """刪除淨化健康紀錄，並進行權限檢查"""
     try:
+        if getattr(request, 'permission', None) != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         # 權限檢查
         existing_record = get_pure_record_by_id(pure_id)
         if not existing_record:
