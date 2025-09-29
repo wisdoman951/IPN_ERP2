@@ -43,6 +43,7 @@ const MemberInfo: React.FC = () => {
             <th>店別</th>
             <th>姓名</th>
             <th style={{ minWidth: '8ch' }}>會員編號</th>
+            <th>身份別</th>
             <th>生日</th>
             <th>年齡</th>
             <th>住址</th>
@@ -57,9 +58,9 @@ const MemberInfo: React.FC = () => {
     
     // 定義表格內容
     const tableBody = loading ? (
-        <tr><td colSpan={13} className="text-center py-5"><Spinner animation="border" variant="info" /></td></tr>
+        <tr><td colSpan={14} className="text-center py-5"><Spinner animation="border" variant="info" /></td></tr>
     ) : error ? (
-        <tr><td colSpan={13} className="text-center text-danger py-5">{error}</td></tr>
+        <tr><td colSpan={14} className="text-center text-danger py-5">{error}</td></tr>
     ) : sortedMembers.length > 0 ? (
         sortedMembers.map((member) => (
             <tr key={member.Member_ID}>
@@ -75,6 +76,7 @@ const MemberInfo: React.FC = () => {
                 <td className="align-middle">{member.Name}</td>
                 {/* 顯示資料庫中的 member_code */}
                 <td className="align-middle" style={{ whiteSpace: 'nowrap' }}>{member.member_code ?? ""}</td>
+                <td className="align-middle">{member.IdentityType || ""}</td>
                 <td className="align-middle">{formatGregorianBirthday(member.Birth, 'YYYY/MM/DD')}</td>
                 <td className="align-middle">{calculateAge(member.Birth)}</td>
                 <td className="align-middle">{member.Address}</td>
@@ -87,7 +89,7 @@ const MemberInfo: React.FC = () => {
             </tr>
         ))
     ) : (
-        <tr><td colSpan={13} className="text-center text-muted py-5">尚無資料</td></tr>
+        <tr><td colSpan={14} className="text-center text-muted py-5">尚無資料</td></tr>
     );
     
     // 新增：處理修改按鈕的點擊事件
