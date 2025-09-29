@@ -1,3 +1,25 @@
+.screen-only {
+  display: block;
+}
+
+.print-only {
+  display: none;
+}
+
+.copy-label {
+  font-weight: 600;
+}
+
+.print-footer {
+  font-size: 0.9rem;
+}
+
+.print-duplicate {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 @media print {
   /* Ensure table uses full width and wraps text */
   .print-table {
@@ -14,5 +36,27 @@
   .print-table th:nth-child(3),
   .print-table td:nth-child(3) {
     width: 25%;
+  }
+
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .print-duplicate {
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+  }
+
+  .print-card {
+    page-break-inside: avoid;
+  }
+
+  .print-footer {
+    border-top: 1px solid #000;
   }
 }
