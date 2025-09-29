@@ -5,6 +5,7 @@ import {
   deleteTherapyRecord,
   TherapyRecord
 } from "../services/TherapyService";
+import { sortByStoreAndMemberCode } from "../utils/storeMemberSort";
 
 // 擴展搜尋參數類型
 export interface TherapySearchParams {
@@ -49,7 +50,16 @@ export const useTherapyRecord = () => {
       setLoading(true);
       setError(null);
       const data = await getAllTherapyRecords();
-      setRecords(data);
+      setRecords(
+        Array.isArray(data)
+          ? sortByStoreAndMemberCode(
+              data,
+              (record) => record.store_name ?? record.store_id ?? "",
+              (record) => record.member_code ?? "",
+              (record) => record.therapy_record_id
+            )
+          : []
+      );
     } catch (err) {
       console.error("載入療程紀錄失敗：", err);
       setError("載入療程紀錄失敗");
@@ -68,7 +78,16 @@ export const useTherapyRecord = () => {
       const searchParams: TherapySearchParams = params || { keyword };
       
       const data = await searchTherapyRecords(searchParams);
-      setRecords(data);
+      setRecords(
+        Array.isArray(data)
+          ? sortByStoreAndMemberCode(
+              data,
+              (record) => record.store_name ?? record.store_id ?? "",
+              (record) => record.member_code ?? "",
+              (record) => record.therapy_record_id
+            )
+          : []
+      );
     } catch (err) {
       console.error("搜尋失敗：", err);
       setError("搜尋失敗");

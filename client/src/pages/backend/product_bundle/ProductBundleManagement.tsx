@@ -6,12 +6,15 @@ import BundleCreateModal from './BundleCreateModal';
 import AddTherapyModal from './AddTherapyModal';
 import AddProductModal from './AddProductModal';
 import AddCategoryModal from './AddCategoryModal';
+import DeleteCategoryModal from './DeleteCategoryModal';
 import TherapyBundleModal from './TherapyBundleModal';
 import { fetchAllBundles, deleteBundle, fetchProductsForDropdown, fetchTherapiesForDropdown, publishBundle, unpublishBundle, Bundle, Product as ProductItem, Therapy as TherapyItem } from '../../../services/ProductBundleService';
 import { fetchAllTherapyBundles, deleteTherapyBundle, publishTherapyBundle, unpublishTherapyBundle, TherapyBundle } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
 import { deleteProduct, publishProduct, unpublishProduct } from '../../../services/ProductService';
 import { deleteTherapy, publishTherapy, unpublishTherapy } from '../../../services/TherapyService';
+import { getCategories, Category } from '../../../services/CategoryService';
+import { VIEWER_ROLE_LABELS, ViewerRole } from '../../../types/viewerRole';
 
 const ProductBundleManagement: React.FC = () => {
     const [bundles, setBundles] = useState<Bundle[]>([]);
@@ -47,6 +50,22 @@ const ProductBundleManagement: React.FC = () => {
     const [productStoreFilter, setProductStoreFilter] = useState('');
     const [therapyStoreFilter, setTherapyStoreFilter] = useState('');
     const [showCategoryModal, setShowCategoryModal] = useState(false);
+    const [productCategories, setProductCategories] = useState<Category[]>([]);
+    const [therapyCategories, setTherapyCategories] = useState<Category[]>([]);
+    const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
+    const [therapyBundleCategories, setTherapyBundleCategories] = useState<Category[]>([]);
+    const [activeProductCategory, setActiveProductCategory] = useState<string>('all');
+    const [activeTherapyCategory, setActiveTherapyCategory] = useState<string>('all');
+    const [activeBundleCategory, setActiveBundleCategory] = useState<string>('all');
+    const [activeTherapyBundleCategory, setActiveTherapyBundleCategory] = useState<string>('all');
+    const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
+
+    const formatViewerRoles = (roles?: ViewerRole[]) => {
+        if (!roles || roles.length === 0) {
+            return '---';
+        }
+        return roles.map(role => VIEWER_ROLE_LABELS[role] ?? role).join(', ');
+    };
 
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
@@ -112,6 +131,15 @@ const ProductBundleManagement: React.FC = () => {
     useEffect(() => {
         fetchAllStores().then(setStores).catch(() => {});
     }, []);
+
+    const refreshCategories = useCallback(() => {
+        getCategories('product').then(setProductCategories).catch(() => {});
+        getCategories('therapy').then(setTherapyCategories).catch(() => {});
+        getCategories('product_bundle').then(setBundleCategories).catch(() => {});
+        getCategories('therapy_bundle').then(setTherapyBundleCategories).catch(() => {});
+    }, []);
+
+    useEffect(() => { refreshCategories(); }, [refreshCategories]);
 
     const handleCloseModal = () => {
         setShowModal(false);
@@ -182,6 +210,20 @@ const ProductBundleManagement: React.FC = () => {
 
     const handleCloseCategoryModal = () => {
         setShowCategoryModal(false);
+        refreshCategories();
+    };
+
+    const handleShowDeleteCategoryModal = () => {
+        setShowDeleteCategoryModal(true);
+    };
+
+    const handleCloseDeleteCategoryModal = () => {
+        setShowDeleteCategoryModal(false);
+        refreshCategories();
+        fetchBundles();
+        fetchTherapyBundlesData();
+        fetchProducts();
+        fetchTherapies();
     };
 
     const confirmDeletion = (): string | null => {
@@ -358,6 +400,9 @@ const ProductBundleManagement: React.FC = () => {
         .filter(bundle =>
             bundleStoreFilter === '' ||
             (bundle.visible_store_ids && bundle.visible_store_ids.includes(Number(bundleStoreFilter)))
+        )
+        .filter(bundle =>
+            activeBundleCategory === 'all' || (bundle.categories && bundle.categories.includes(activeBundleCategory))
         );
 
     const filteredTherapyBundles = therapyBundles
@@ -368,6 +413,9 @@ const ProductBundleManagement: React.FC = () => {
         .filter(bundle =>
             therapyBundleStoreFilter === '' ||
             (bundle.visible_store_ids && bundle.visible_store_ids.includes(Number(therapyBundleStoreFilter)))
+        )
+        .filter(bundle =>
+            activeTherapyBundleCategory === 'all' || (bundle.categories && bundle.categories.includes(activeTherapyBundleCategory))
         );
 
     const filteredProducts = products
@@ -378,6 +426,9 @@ const ProductBundleManagement: React.FC = () => {
         .filter(product =>
             productStoreFilter === '' ||
             (product.visible_store_ids && product.visible_store_ids.includes(Number(productStoreFilter)))
+        )
+        .filter(product =>
+            activeProductCategory === 'all' || (product.categories && product.categories.includes(activeProductCategory))
         );
 
     const filteredTherapies = therapies
@@ -388,6 +439,9 @@ const ProductBundleManagement: React.FC = () => {
         .filter(therapy =>
             therapyStoreFilter === '' ||
             (therapy.visible_store_ids && therapy.visible_store_ids.includes(Number(therapyStoreFilter)))
+        )
+        .filter(therapy =>
+            activeTherapyCategory === 'all' || (therapy.categories && therapy.categories.includes(activeTherapyCategory))
         );
 
     const content = (
@@ -427,11 +481,18 @@ const ProductBundleManagement: React.FC = () => {
                             新增療程
                         </Button>
                         <Button
-                            variant="secondary"
-                            className="px-4"
+                            variant="info"
+                            className="text-white px-4"
                             onClick={handleShowCategoryModal}
                         >
                             新增分類
+                        </Button>
+                        <Button
+                            variant="info"
+                            className="text-white px-4"
+                            onClick={handleShowDeleteCategoryModal}
+                        >
+                            刪除分類
                         </Button>
                     </Col>
                 </Row>
@@ -450,6 +511,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'bundle' && (
                     <>
+                        <Tabs activeKey={activeBundleCategory} onSelect={(k) => setActiveBundleCategory(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {bundleCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
                         <Row className="mb-3">
                             <Col xs={12} md={4}>
                                 <Form.Control
@@ -481,13 +548,14 @@ const ProductBundleManagement: React.FC = () => {
                                     <th>項目 (組合名稱)</th>
                                     <th>組合內容</th>
                                     <th>限定分店</th>
+                                    <th>限定身份</th>
                                     <th>售價</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {bundleLoading ? (
-                                    <tr><td colSpan={6} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                    <tr><td colSpan={7} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                                 ) : filteredBundles.length > 0 ? (
                                     filteredBundles.map(bundle => (
                                         <tr key={bundle.bundle_id}>
@@ -501,6 +569,7 @@ const ProductBundleManagement: React.FC = () => {
                                                         .join(', ')
                                                     : '---'}
                                             </td>
+                                            <td className="align-middle">{formatViewerRoles(bundle.visible_permissions)}</td>
                                             <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditModal(bundle)}>修改</Button>
@@ -544,7 +613,7 @@ const ProductBundleManagement: React.FC = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan={6} className="text-center text-muted py-5">尚無資料</td></tr>
+                                    <tr><td colSpan={7} className="text-center text-muted py-5">尚無資料</td></tr>
                                 )}
                             </tbody>
                         </Table>
@@ -553,6 +622,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'therapy_bundle' && (
                     <>
+                        <Tabs activeKey={activeTherapyBundleCategory} onSelect={(k) => setActiveTherapyBundleCategory(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {therapyBundleCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
                         <Row className="mb-3">
                             <Col xs={12} md={4}>
                                 <Form.Control
@@ -584,13 +659,14 @@ const ProductBundleManagement: React.FC = () => {
                                     <th>項目 (組合名稱)</th>
                                     <th>組合內容</th>
                                     <th>限定分店</th>
+                                    <th>限定身份</th>
                                     <th>售價</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {therapyBundleLoading ? (
-                                    <tr><td colSpan={5} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                    <tr><td colSpan={7} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                                 ) : filteredTherapyBundles.length > 0 ? (
                                     filteredTherapyBundles.map(bundle => (
                                         <tr key={bundle.bundle_id}>
@@ -604,6 +680,7 @@ const ProductBundleManagement: React.FC = () => {
                                                         .join(', ')
                                                     : '---'}
                                             </td>
+                                            <td className="align-middle">{formatViewerRoles(bundle.visible_permissions)}</td>
                                             <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditTherapyBundleModal(bundle)}>修改</Button>
@@ -647,7 +724,7 @@ const ProductBundleManagement: React.FC = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan={6} className="text-center text-muted py-5">尚無資料</td></tr>
+                                    <tr><td colSpan={7} className="text-center text-muted py-5">尚無資料</td></tr>
                                 )}
                             </tbody>
                         </Table>
@@ -656,6 +733,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'product' && (
                     <>
+                        <Tabs activeKey={activeProductCategory} onSelect={(k) => setActiveProductCategory(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {productCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
                         <Row className="mb-3">
                             <Col xs={12} md={4}>
                                 <Form.Control
@@ -686,13 +769,14 @@ const ProductBundleManagement: React.FC = () => {
                                     <th>產品編號</th>
                                     <th>項目名稱</th>
                                     <th>限定分店</th>
+                                    <th>限定身份</th>
                                     <th>售價</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {productLoading ? (
-                                    <tr><td colSpan={5} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                    <tr><td colSpan={6} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                                 ) : filteredProducts.length > 0 ? (
                                     filteredProducts.map(product => (
                                         <tr key={product.product_id}>
@@ -705,6 +789,7 @@ const ProductBundleManagement: React.FC = () => {
                                                         .join(', ')
                                                     : '---'}
                                             </td>
+                                            <td className="align-middle">{formatViewerRoles(product.visible_permissions)}</td>
                                             <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditProductModal(product)}>修改</Button>
@@ -748,7 +833,7 @@ const ProductBundleManagement: React.FC = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan={5} className="text-center text-muted py-5">尚無資料</td></tr>
+                                    <tr><td colSpan={6} className="text-center text-muted py-5">尚無資料</td></tr>
                                 )}
                             </tbody>
                         </Table>
@@ -757,6 +842,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'therapy' && (
                     <>
+                        <Tabs activeKey={activeTherapyCategory} onSelect={(k) => setActiveTherapyCategory(k || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {therapyCategories.map(cat => (
+                                <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                            ))}
+                        </Tabs>
                         <Row className="mb-3">
                             <Col xs={12} md={4}>
                                 <Form.Control
@@ -787,13 +878,14 @@ const ProductBundleManagement: React.FC = () => {
                                     <th>療程編號</th>
                                     <th>項目名稱</th>
                                     <th>限定分店</th>
+                                    <th>限定身份</th>
                                     <th>售價</th>
                                     <th>操作</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {therapyLoading ? (
-                                    <tr><td colSpan={5} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                                    <tr><td colSpan={6} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                                 ) : filteredTherapies.length > 0 ? (
                                     filteredTherapies.map(therapy => (
                                         <tr key={therapy.therapy_id}>
@@ -806,6 +898,7 @@ const ProductBundleManagement: React.FC = () => {
                                                         .join(', ')
                                                     : '---'}
                                             </td>
+                                            <td className="align-middle">{formatViewerRoles(therapy.visible_permissions)}</td>
                                             <td className="align-middle">{`$${Number(therapy.price).toLocaleString()}`}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditTherapyModal(therapy)}>修改</Button>
@@ -849,7 +942,7 @@ const ProductBundleManagement: React.FC = () => {
                                         </tr>
                                     ))
                                 ) : (
-                                    <tr><td colSpan={5} className="text-center text-muted py-5">尚無資料</td></tr>
+                                    <tr><td colSpan={6} className="text-center text-muted py-5">尚無資料</td></tr>
                                 )}
                             </tbody>
                         </Table>
@@ -890,6 +983,10 @@ const ProductBundleManagement: React.FC = () => {
             <AddCategoryModal
                 show={showCategoryModal}
                 onHide={handleCloseCategoryModal}
+            />
+            <DeleteCategoryModal
+                show={showDeleteCategoryModal}
+                onHide={handleCloseDeleteCategoryModal}
             />
         </>
     );

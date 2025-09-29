@@ -12,7 +12,8 @@ DB_CONFIG = {
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD"),
     "database": os.getenv("DB_DATABASE"),
-    "charset": "utf8mb4"
+    "charset": "utf8mb4",
+    "init_command": "SET NAMES utf8mb4 COLLATE utf8mb4_bin"
 }
 
 

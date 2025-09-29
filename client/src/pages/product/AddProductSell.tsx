@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import MemberColumn from "../../components/MemberColumn";
+import MemberSummaryCard from "../../components/MemberSummaryCard";
 import { MemberData } from "../../types/medicalTypes";
 import { addProductSell, ProductSellData, getProductSellById, updateProductSell, ProductSell } from "../../services/ProductSellService";
 import { getStoreId } from "../../services/LoginService";
@@ -68,6 +69,7 @@ const AddProductSell: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
+  const [selectedMember, setSelectedMember] = useState<MemberData | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -215,8 +217,12 @@ const AddProductSell: React.FC = () => {
     setMemberName(name);
     setMemberId(data?.member_id?.toString() || "");
     setError(null);
+    setSelectedMember(data);
   };
-  const handleError = (errorMsg: string) => setError(errorMsg);
+  const handleError = (errorMsg: string) => {
+    setError(errorMsg);
+    setSelectedMember(null);
+  };
   const openProductSelection = () => {
     const formState = {
       selectedStore,
@@ -479,6 +485,12 @@ const AddProductSell: React.FC = () => {
 
           {/* --- Right Column --- */}
           <Col md={6}>
+            <MemberSummaryCard
+              member={selectedMember}
+              memberCode={memberCode}
+              fallbackName={memberName}
+              className="mb-3 shadow-sm"
+            />
             <Form.Group className="mb-3">
               <Form.Label>購買日期</Form.Label>
               <Form.Control type="date" lang="en-CA" value={purchaseDate} max={new Date().toISOString().split("T")[0]} onChange={(e) => setPurchaseDate(e.target.value)} required />

@@ -667,7 +667,8 @@ def get_product_list():
                     p.product_id AS Product_ID,
                     p.name AS ProductName,
                     p.code AS ProductCode,
-                    p.price AS ProductPrice
+                    p.price AS ProductPrice,
+                    p.purchase_price AS PurchasePrice
                 FROM product p
                 WHERE p.status = 'PUBLISHED'
                 ORDER BY p.name

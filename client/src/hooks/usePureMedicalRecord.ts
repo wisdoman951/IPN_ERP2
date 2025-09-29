@@ -1,12 +1,13 @@
 // .\src\hooks\usePureMedicalRecord.ts
 import { useState, useEffect, useCallback } from 'react';
 import { downloadBlob } from '../utils/downloadBlob';
-import { 
+import {
   fetchPureRecords, // <-- 改為 import fetchPureRecords
-  deletePureRecord, 
+  deletePureRecord,
   exportPureRecords,
-  PureMedicalRecord 
+  PureMedicalRecord
 } from '../services/PureMedicalRecordService';
+import { sortByStoreAndMemberCode } from '../utils/storeMemberSort';
 
 /**
  * 淨化健康紀錄 Hook 的返回類型
@@ -40,11 +41,20 @@ export const usePureMedicalRecord = (): UsePureMedicalRecordReturn => {
    * 獲取或搜尋淨化健康紀錄
    */
   const fetchAndSetRecords = useCallback(async (keyword?: string) => {
-    try {
-      setLoading(true);
+    try {
+      setLoading(true);
       // 使用新的 service 函式，傳入關鍵字 (可選)
-      const data = await fetchPureRecords(keyword);
-      setRecords(data);
+     const data = await fetchPureRecords(keyword);
+     setRecords(
+      Array.isArray(data)
+        ? sortByStoreAndMemberCode(
+          data,
+          (record) => record.store_name ?? (record as any).store_id ?? "",
+          (record) => record.member_code ?? "",
+          (record) => record.ipn_pure_id
+        )
+      : []
+     );
       setError(null);
     } catch (err) {
       console.error("Error fetching pure medical records:", err);

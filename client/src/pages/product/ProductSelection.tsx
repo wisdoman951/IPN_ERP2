@@ -6,6 +6,10 @@ import DynamicContainer from '../../components/DynamicContainer';
 import { getAllProducts, Product } from '../../services/ProductSellService';
 import { fetchAllBundles, Bundle } from '../../services/ProductBundleService';
 import { getStoreId } from '../../services/AuthUtils';
+import { getCategories, Category } from '../../services/CategoryService';
+import MemberSummaryCard from '../../components/MemberSummaryCard';
+import { getMemberByCode as fetchMemberByCode } from '../../services/MedicalService';
+import { MemberData } from '../../types/medicalTypes';
 
 interface ItemBase {
   type: 'product' | 'bundle';
@@ -17,6 +21,7 @@ interface ItemBase {
   inventory_id?: number;
   stock_quantity?: number;
   content?: string;
+  categories?: string[];
 }
 
 interface SelectedItem extends ItemBase {
@@ -30,16 +35,25 @@ const ProductSelection: React.FC = () => {
   const [selectedItemsMap, setSelectedItemsMap] = useState<Map<string, SelectedItem>>(new Map());
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState<'product' | 'bundle'>('product');
+  const [activeProductTab, setActiveProductTab] = useState<string>('all');
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
+  const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [memberCode, setMemberCode] = useState<string>('');
+  const [memberName, setMemberName] = useState<string>('');
+  const [memberSummary, setMemberSummary] = useState<MemberData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true); setPageError(null);
       try {
-        const [productData, bundleData] = await Promise.all([
+        const [productData, bundleData, categoryData, bundleCatData] = await Promise.all([
           getAllProducts(),
-          fetchAllBundles()
+          fetchAllBundles(),
+          getCategories('product'),
+          getCategories('product_bundle')
         ]);
 
         const products: ItemBase[] = productData.map((p: Product) => ({
@@ -49,7 +63,8 @@ const ProductSelection: React.FC = () => {
           code: p.product_code,
           price: Number(p.product_price),
           inventory_id: p.inventory_id,
-          stock_quantity: p.inventory_quantity
+          stock_quantity: p.inventory_quantity,
+          categories: p.categories || []
         }));
 
         const storeId = Number(getStoreId());
@@ -66,12 +81,15 @@ const ProductSelection: React.FC = () => {
           name: b.name || b.bundle_contents,
           code: b.bundle_code,
           price: Number(b.selling_price),
-          content: b.bundle_contents
+          content: b.bundle_contents,
+          categories: b.categories || []
         }));
 
         const combined = [...products, ...bundles];
         setAllItems(combined);
-        setDisplayedItems(combined.filter(item => item.type === activeTab));
+        setCategories(categoryData);
+        setBundleCategories(bundleCatData);
+        setDisplayedItems(combined.filter(item => item.type === 'product'));
       } catch (err) {
         console.error('載入產品資料失敗：', err);
         setPageError('載入產品資料失敗，請稍後再試。');
@@ -81,6 +99,21 @@ const ProductSelection: React.FC = () => {
     };
 
     fetchData();
+
+    const formState = localStorage.getItem('productSellFormState');
+    if (formState) {
+      try {
+        const parsed = JSON.parse(formState);
+        if (parsed.memberCode) {
+          setMemberCode(parsed.memberCode);
+        }
+        if (parsed.memberName) {
+          setMemberName(parsed.memberName);
+        }
+      } catch (e) {
+        console.error('解析 productSellFormState 失敗', e);
+      }
+    }
 
     // Restore selections from localStorage
     const stored = localStorage.getItem('selectedProducts');
@@ -99,8 +132,63 @@ const ProductSelection: React.FC = () => {
     }
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const normalizeMember = (raw: any): MemberData => ({
+      member_id: Number(raw?.member_id) || 0,
+      member_code: raw?.member_code || undefined,
+      name: raw?.name || '',
+      identity_type: raw?.identity_type || '',
+      address: raw?.address || '',
+      birthday: raw?.birthday || '',
+      blood_type: raw?.blood_type || '',
+      gender: raw?.gender || '',
+      inferrer_id: Number(raw?.inferrer_id) || 0,
+      line_id: raw?.line_id || '',
+      note: raw?.note || '',
+      occupation: raw?.occupation || '',
+      phone: raw?.phone || '',
+    });
+
+    const fetchMember = async () => {
+      if (!memberCode) {
+        setMemberSummary(null);
+        return;
+      }
+      try {
+        const data = await fetchMemberByCode(memberCode);
+        if (!cancelled) {
+          setMemberSummary(data ? normalizeMember(data) : null);
+        }
+      } catch (err) {
+        console.error('載入會員資料失敗', err);
+        if (!cancelled) {
+          setMemberSummary(null);
+        }
+      }
+    };
+
+    fetchMember();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [memberCode]);
+
   useEffect(() => { // 前端篩選
-    let filtered = allItems.filter(item => item.type === activeTab);
+    let filtered: ItemBase[] = [];
+    if (activeTab === 'bundle') {
+      filtered = allItems.filter(item => item.type === 'bundle');
+      if (activeBundleTab !== 'all') {
+        filtered = filtered.filter(item => item.categories?.includes(activeBundleTab));
+      }
+    } else {
+      filtered = allItems.filter(item => item.type === 'product');
+      if (activeProductTab !== 'all') {
+        filtered = filtered.filter(item => item.categories?.includes(activeProductTab));
+      }
+    }
     if (searchTerm.trim() !== '') {
       const lower = searchTerm.toLowerCase();
       filtered = filtered.filter(item =>
@@ -110,7 +198,7 @@ const ProductSelection: React.FC = () => {
       );
     }
     setDisplayedItems(filtered);
-  }, [searchTerm, allItems, activeTab]);
+  }, [searchTerm, allItems, activeTab, activeProductTab, activeBundleTab]);
 
   const getItemKey = (item: ItemBase) =>
     item.type === 'bundle' ? `b-${item.bundle_id}` : `p-${item.product_id}`;
@@ -263,12 +351,10 @@ const ProductSelection: React.FC = () => {
     return null;
   };
 
-  const content = (
-    <Container className="my-4">
-      {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
-      <Card>
-        <Card.Header as="h5">選擇產品並設定數量</Card.Header>
-        <Card.Body>
+  const selectionCard = (
+    <Card>
+      <Card.Header as="h5">選擇產品並設定數量</Card.Header>
+      <Card.Body>
           <Row className="mb-3 gx-2">
             <Col>
               <Form.Control
@@ -288,28 +374,60 @@ const ProductSelection: React.FC = () => {
           </Row>
 
           <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'product' | 'bundle') || 'product')} className="mb-3">
-            <Tab eventKey="product" title="單品" />
-            <Tab eventKey="bundle" title="產品組合" />
+            <Tab eventKey="product" title="產品">
+              <Tabs activeKey={activeProductTab} onSelect={(k) => setActiveProductTab(k || 'all')} className="mt-3 mb-3">
+                <Tab eventKey="all" title="全部" />
+                {categories.map(cat => (
+                  <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                ))}
+              </Tabs>
+            </Tab>
+            <Tab eventKey="bundle" title="產品組合">
+              <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mt-3 mb-3">
+                <Tab eventKey="all" title="全部" />
+                {bundleCategories.map(cat => (
+                  <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                ))}
+              </Tabs>
+            </Tab>
           </Tabs>
 
           {renderItemList()}
-        </Card.Body>
-        {!loading && (
-          <Card.Footer>
-            <div className="d-flex justify-content-between align-items-center">
-              <div>總計金額: <strong className="h5 mb-0" style={{ color: '#00b1c8' }}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
-              <div>
-                <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
-                  取消
-                </Button>
-                <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedItemsMap.size === 0}>
-                  確認選取 ({selectedItemsMap.size} 項)
-                </Button>
-              </div>
+      </Card.Body>
+      {!loading && (
+        <Card.Footer>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>總計金額: <strong className="h5 mb-0" style={{ color: '#00b1c8' }}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
+            <div>
+              <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
+                取消
+              </Button>
+              <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedItemsMap.size === 0}>
+                確認選取 ({selectedItemsMap.size} 項)
+              </Button>
             </div>
-          </Card.Footer>
-        )}
-      </Card>
+          </div>
+        </Card.Footer>
+      )}
+    </Card>
+  );
+
+  const content = (
+    <Container className="my-4">
+      {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
+      <Row className="g-3">
+        <Col xs={12} lg={8}>
+          {selectionCard}
+        </Col>
+        <Col xs={12} lg={4}>
+          <MemberSummaryCard
+            member={memberSummary}
+            memberCode={memberCode}
+            fallbackName={memberName}
+            className="h-100"
+          />
+        </Col>
+      </Row>
     </Container>
   );
 

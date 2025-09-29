@@ -15,11 +15,22 @@ export const getCategories = async (targetType?: string): Promise<Category[]> =>
     params: { target_type: targetType },
     headers: getAuthHeaders(),
   });
-  return response.data;
+  const data: Category[] = response.data;
+  return [
+    ...data.filter(c => c.name !== '未歸類'),
+    ...data.filter(c => c.name === '未歸類')
+  ];
 };
 
 export const addCategory = async (data: { name: string; target_type: string }) => {
   const response = await axios.post(`${API_URL}/`, data, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+export const deleteCategory = async (categoryId: number) => {
+  const response = await axios.delete(`${API_URL}/${categoryId}`, {
     headers: getAuthHeaders(),
   });
   return response.data;
