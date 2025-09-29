@@ -226,6 +226,9 @@ const AddProductSell: React.FC = () => {
   const handleError = (errorMsg: string) => {
     setError(errorMsg);
   };
+  const handleMemberError = (errorMsg: string) => {
+    setError(errorMsg);
+  };
   const openProductSelection = () => {
     const formState = {
       selectedStore,
@@ -437,7 +440,7 @@ const AddProductSell: React.FC = () => {
             </Form.Group>
             <Form.Group className="mb-3">
               <Form.Label>購買人姓名</Form.Label>
-              <MemberColumn memberCode={memberCode} name={memberName} isEditMode={false} onMemberChange={handleMemberChange} onError={handleError} />
+              <MemberColumn memberCode={memberCode} name={memberName} isEditMode={false} onMemberChange={handleMemberChange} onError={handleMemberError} />
               {formSubmitted && (!memberCode || !memberId) && <div className="text-danger d-block small mt-1">請選擇購買會員</div>}
             </Form.Group>
             <Form.Group className="mb-3">
