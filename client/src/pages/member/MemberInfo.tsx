@@ -10,11 +10,12 @@ import { formatGregorianBirthday, formatGender, calculateAge } from "../../utils
 import { useMemberManagement } from "../../hooks/useMemberManagement";
 import "./memberInfo.css";
 import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 const MemberInfo: React.FC = () => {
     const navigate = useNavigate();
-    const { 
-        members, 
+    const {
+        members,
         loading, // 假設您的 hook 返回 loading 狀態
         error,   // 假設您的 hook 返回 error 狀態
         keyword, 
@@ -36,6 +37,7 @@ const MemberInfo: React.FC = () => {
             ),
         [members]
     );
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
     // 定義表格標頭
     const tableHeader = (
         <tr>
@@ -94,6 +96,9 @@ const MemberInfo: React.FC = () => {
     
     // 新增：處理修改按鈕的點擊事件
     const handleEdit = () => {
+        if (!checkPermission()) {
+            return;
+        }
         // 再次確認是否剛好只選取了一項
         if (selectedMemberIds.length === 1) {
             const memberToEditId = selectedMemberIds[0];
@@ -185,10 +190,13 @@ const MemberInfo: React.FC = () => {
     );
     
     return (
-        <div className="d-flex flex-column min-vh-100 bg-light">
-            <Header /> 
-            <DynamicContainer content={content} />
-        </div>
+        <>
+            <div className="d-flex flex-column min-vh-100 bg-light">
+                <Header />
+                <DynamicContainer content={content} />
+            </div>
+            {permissionModal}
+        </>
     );
 };
 

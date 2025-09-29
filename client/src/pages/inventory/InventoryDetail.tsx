@@ -5,6 +5,7 @@ import DynamicContainer from "../../components/DynamicContainer";
 import { getInventoryRecords, exportInventory, deleteInventoryItem } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 const formatDate = (d: string) => {
   const dt = new Date(d);
@@ -41,6 +42,7 @@ const InventoryDetail: React.FC = () => {
   const [endDate, setEndDate] = useState("");
   const [saleStaff, setSaleStaff] = useState("");
   const [buyer, setBuyer] = useState("");
+  const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
   const handleSearch = () => {
     getInventoryRecords({
@@ -215,6 +217,9 @@ const InventoryDetail: React.FC = () => {
             variant="info"
             className="text-white px-4 me-2"
             onClick={() => {
+              if (!checkPermission()) {
+                return;
+              }
               if (!selectedId) {
                 alert('請先勾選要修改的資料');
                 return;
@@ -237,6 +242,7 @@ const InventoryDetail: React.FC = () => {
     <>
       <Header />
       <DynamicContainer content={content} />
+      {permissionModal}
     </>
   );
 };
