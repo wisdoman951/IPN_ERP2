@@ -46,13 +46,22 @@ def get_all_therapy_records():
                     tr.member_id, m.member_code, m.name AS member_name,
                     tr.therapy_id, t.name AS package_name, t.content AS therapy_content,
                     tr.staff_id, s.name AS staff_name,
+                    tr.store_id, st.store_name,
                     tr.deduct_sessions,
                     tr.remaining_sessions_at_time AS remaining_sessions
                 FROM therapy_record tr
                 LEFT JOIN member m ON tr.member_id = m.member_id
                 LEFT JOIN therapy t ON tr.therapy_id = t.therapy_id
                 LEFT JOIN staff s ON tr.staff_id = s.staff_id
-                ORDER BY tr.date DESC, tr.therapy_record_id DESC
+                LEFT JOIN store st ON tr.store_id = st.store_id
+                ORDER BY
+                    (COALESCE(NULLIF(st.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),
+                    COALESCE(NULLIF(st.store_name, ''), CAST(tr.store_id AS CHAR)),
+                    (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                    CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                    COALESCE(NULLIF(m.member_code, ''), ''),
+                    tr.date DESC,
+                    tr.therapy_record_id DESC
             """
             cursor.execute(sql)
             return cursor.fetchall()
@@ -85,7 +94,14 @@ def get_therapy_records_by_store(store_id):
             LEFT JOIN staff st ON tr.staff_id = st.staff_id
             LEFT JOIN therapy t ON tr.therapy_id = t.therapy_id
             WHERE tr.store_id = %s
-            ORDER BY tr.date DESC, tr.therapy_record_id DESC
+            ORDER BY
+                (COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),
+                COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)),
+                (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                COALESCE(NULLIF(m.member_code, ''), ''),
+                tr.date DESC,
+                tr.therapy_record_id DESC
         """
         cursor.execute(query, (store_id,))
         result = cursor.fetchall()
@@ -115,12 +131,14 @@ def search_therapy_records(filters):
                     tr.member_id, m.member_code, m.name AS member_name,
                     tr.therapy_id, t.name AS package_name, t.content AS therapy_content,
                     tr.staff_id, s.name AS staff_name,
+                    tr.store_id, st.store_name,
                     tr.deduct_sessions,
                     tr.remaining_sessions_at_time AS remaining_sessions
                 FROM therapy_record tr
                 LEFT JOIN member m ON tr.member_id = m.member_id
                 LEFT JOIN therapy t ON tr.therapy_id = t.therapy_id
                 LEFT JOIN staff s ON tr.staff_id = s.staff_id
+                LEFT JOIN store st ON tr.store_id = st.store_id
                 WHERE 1=1
             """
             
@@ -153,7 +171,16 @@ def search_therapy_records(filters):
             sql += where_clause
             sql_params.extend(store_params)
 
-            sql += " ORDER BY tr.date DESC, tr.therapy_record_id DESC"
+            sql += (
+                " ORDER BY"
+                " (COALESCE(NULLIF(st.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),"
+                " COALESCE(NULLIF(st.store_name, ''), CAST(tr.store_id AS CHAR)),"
+                " (COALESCE(NULLIF(m.member_code, ''), '') = ''),"
+                " CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),"
+                " COALESCE(NULLIF(m.member_code, ''), ''),"
+                " tr.date DESC,"
+                " tr.therapy_record_id DESC"
+            )
             
             cursor.execute(sql, sql_params)
             # 因為已在 SQL 中處理，不再需要 for 迴圈計算
@@ -329,7 +356,14 @@ def export_therapy_records(store_id=None):
                     LEFT JOIN store s ON tr.store_id = s.store_id
                     LEFT JOIN staff st ON tr.staff_id = st.staff_id
                     WHERE tr.store_id = %s
-                    ORDER BY tr.date DESC, tr.therapy_record_id DESC
+                    ORDER BY
+                        (COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),
+                        COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)),
+                        (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                        CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                        COALESCE(NULLIF(m.member_code, ''), ''),
+                        tr.date DESC,
+                        tr.therapy_record_id DESC
                 """
                 cursor.execute(query, (store_id,))
             else:
@@ -348,7 +382,14 @@ def export_therapy_records(store_id=None):
                     LEFT JOIN member m ON tr.member_id = m.member_id
                     LEFT JOIN store s ON tr.store_id = s.store_id
                     LEFT JOIN staff st ON tr.staff_id = st.staff_id
-                    ORDER BY tr.date DESC, tr.therapy_record_id DESC
+                    ORDER BY
+                        (COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)) = ''),
+                        COALESCE(NULLIF(s.store_name, ''), CAST(tr.store_id AS CHAR)),
+                        (COALESCE(NULLIF(m.member_code, ''), '') = ''),
+                        CHAR_LENGTH(COALESCE(NULLIF(m.member_code, ''), '')),
+                        COALESCE(NULLIF(m.member_code, ''), ''),
+                        tr.date DESC,
+                        tr.therapy_record_id DESC
                 """
                 cursor.execute(query)
                 
@@ -483,13 +524,21 @@ def delete_therapy_sell(sale_id):
     conn.commit()
     conn.close()
 
-def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: int | None = None):
+def _permission_is_allowed(allowed_permissions, user_permission):
+    if user_permission is None or not allowed_permissions:
+        return True
+    if isinstance(allowed_permissions, list):
+        return user_permission in allowed_permissions
+    return user_permission == allowed_permissions
+
+
+def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: int | None = None, user_permission: str | None = None):
     """獲取所有療程的編號、名稱及價格，用於下拉選單。"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
             sql = (
-                "SELECT t.therapy_id, t.code, t.name, t.price, t.visible_store_ids, "
+                "SELECT t.therapy_id, t.code, t.name, t.price, t.visible_store_ids, t.visible_permissions, "
                 "GROUP_CONCAT(c.name) AS categories FROM therapy t "
                 "LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id "
                 "LEFT JOIN category c ON tc.category_id = c.category_id"
@@ -498,12 +547,13 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
             if status:
                 sql += " WHERE t.status = %s"
                 params.append(status)
-            sql += " GROUP BY t.therapy_id, t.code, t.name, t.price, t.visible_store_ids ORDER BY t.name"
+            sql += " GROUP BY t.therapy_id, t.code, t.name, t.price, t.visible_store_ids, t.visible_permissions ORDER BY t.name"
             cursor.execute(sql, tuple(params))
             result = cursor.fetchall()
             filtered = []
             for row in result:
                 store_ids = None
+                permissions = None
                 if row.get('visible_store_ids'):
                     try:
                         store_ids = json.loads(row['visible_store_ids'])
@@ -511,9 +561,21 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
                             store_ids = [int(store_ids)]
                     except Exception:
                         store_ids = None
-                if store_id is None or not store_ids or int(store_id) in store_ids:
+                if row.get('visible_permissions'):
+                    try:
+                        permissions = json.loads(row['visible_permissions'])
+                        if isinstance(permissions, str):
+                            permissions = [permissions]
+                    except Exception:
+                        permissions = None
+                if (
+                    (store_id is None or not store_ids or int(store_id) in store_ids)
+                    and _permission_is_allowed(permissions, user_permission)
+                ):
                     if store_ids is not None:
                         row['visible_store_ids'] = store_ids
+                    if permissions is not None:
+                        row['visible_permissions'] = permissions
                     if row.get('categories'):
                         row['categories'] = row['categories'].split(',')
                     filtered.append(row)
@@ -528,8 +590,8 @@ def create_therapy(data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "INSERT INTO therapy (code, name, price, content, visible_store_ids, status) "
-                "VALUES (%s, %s, %s, %s, %s, 'PUBLISHED')"
+                "INSERT INTO therapy (code, name, price, content, visible_store_ids, visible_permissions, status) "
+                "VALUES (%s, %s, %s, %s, %s, %s, 'PUBLISHED')"
             )
             cursor.execute(query, (
                 data.get("code"),
@@ -537,6 +599,7 @@ def create_therapy(data: dict):
                 data.get("price"),
                 data.get("content", None),
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
+                json.dumps(data.get("visible_permissions")) if data.get("visible_permissions") is not None else None,
             ))
             therapy_id = conn.insert_id()
 
@@ -561,7 +624,7 @@ def update_therapy(therapy_id: int, data: dict):
     try:
         with conn.cursor() as cursor:
             query = (
-                "UPDATE therapy SET code=%s, name=%s, price=%s, content=%s, visible_store_ids=%s WHERE therapy_id=%s"
+                "UPDATE therapy SET code=%s, name=%s, price=%s, content=%s, visible_store_ids=%s, visible_permissions=%s WHERE therapy_id=%s"
             )
             cursor.execute(query, (
                 data.get("code"),
@@ -569,6 +632,7 @@ def update_therapy(therapy_id: int, data: dict):
                 data.get("price"),
                 data.get("content", None),
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
+                json.dumps(data.get("visible_permissions")) if data.get("visible_permissions") is not None else None,
                 therapy_id,
             ))
 

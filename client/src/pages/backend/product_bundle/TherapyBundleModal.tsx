@@ -10,6 +10,8 @@ import {
     TherapyBundle
 } from '../../../services/TherapyBundleService';
 import { fetchAllStores, Store } from '../../../services/StoreService';
+import { getCategories, Category } from '../../../services/CategoryService';
+import { VIEWER_ROLE_OPTIONS, ViewerRole } from '../../../types/viewerRole';
 
 interface TherapyBundleModalProps {
     show: boolean;
@@ -26,9 +28,12 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
     });
     const [therapies, setTherapies] = useState<Therapy[]>([]);
     const [stores, setStores] = useState<Store[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [selectedTherapyIds, setSelectedTherapyIds] = useState<number[]>([]);
     const [therapyQuantities, setTherapyQuantities] = useState<{ [id: number]: number }>({});
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
+    const [selectedViewerRoles, setSelectedViewerRoles] = useState<ViewerRole[]>([]);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -39,6 +44,7 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
             fetchAllStores()
                 .then(data => setStores(data.filter(s => s.store_name !== '總店')))
                 .catch(() => setError('無法載入分店列表'));
+            getCategories('therapy_bundle').then(setCategories).catch(() => setCategories([]));
 
             if (editingBundle) {
                 setLoading(true);
@@ -52,6 +58,8 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                         const ids = data.items.map(i => i.item_id);
                         setSelectedTherapyIds(ids);
                         setSelectedStoreIds(data.visible_store_ids || []);
+                        setSelectedViewerRoles(data.visible_permissions || []);
+                        setSelectedCategoryIds(data.category_ids || []);
                         const quantities: { [id: number]: number } = {};
                         data.items.forEach(item => {
                             quantities[item.item_id] = item.quantity;
@@ -69,6 +77,8 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
         setSelectedTherapyIds([]);
         setTherapyQuantities({});
         setSelectedStoreIds([]);
+        setSelectedViewerRoles([]);
+        setSelectedCategoryIds([]);
         setError(null);
         setLoading(false);
     };
@@ -109,6 +119,10 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
         setSelectedStoreIds(prev => (checked ? [...prev, id] : prev.filter(sid => sid !== id)));
     };
 
+    const handleViewerRoleChange = (role: ViewerRole, checked: boolean) => {
+        setSelectedViewerRoles(prev => (checked ? [...prev, role] : prev.filter(r => r !== role)));
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
@@ -118,7 +132,9 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
             ...formData,
             calculated_price: calculatedPrice,
             visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
-            items: selectedTherapyIds.map(id => ({ item_id: id, quantity: therapyQuantities[id] || 1 }))
+            visible_permissions: selectedViewerRoles.length > 0 ? selectedViewerRoles : null,
+            items: selectedTherapyIds.map(id => ({ item_id: id, quantity: therapyQuantities[id] || 1 })),
+            category_ids: selectedCategoryIds
         };
 
         try {
@@ -148,12 +164,31 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                     {error && <Alert variant="danger">{error}</Alert>}
 
                     <Form.Group className="mb-3">
-                        <Form.Label>編號</Form.Label>
+                        <Form.Label>設定編號</Form.Label>
                         <Form.Control type="text" name="bundle_code" value={formData.bundle_code} onChange={handleInputChange} required />
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>項目 (組合名稱)</Form.Label>
+                        <Form.Label>設定療程組合名稱</Form.Label>
                         <Form.Control type="text" name="name" value={formData.name} onChange={handleInputChange} required />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>分類 (可複選)</Form.Label>
+                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {categories.map(cat => (
+                                <Form.Check
+                                    key={cat.category_id}
+                                    type="checkbox"
+                                    label={cat.name}
+                                    checked={selectedCategoryIds.includes(cat.category_id)}
+                                    onChange={e => {
+                                        const checked = e.target.checked;
+                                        setSelectedCategoryIds(prev =>
+                                            checked ? [...prev, cat.category_id] : prev.filter(id => id !== cat.category_id)
+                                        );
+                                    }}
+                                />
+                            ))}
+                        </div>
                     </Form.Group>
 
                     <Row>
@@ -201,15 +236,30 @@ const TherapyBundleModal: React.FC<TherapyBundleModalProps> = ({ show, onHide, o
                                     ))}
                                 </div>
                             </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>限定可見身份 (可複選)</Form.Label>
+                                <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                                    {VIEWER_ROLE_OPTIONS.map(option => (
+                                        <Form.Check
+                                            key={`therapy-bundle-viewer-${option.value}`}
+                                            type="checkbox"
+                                            id={`therapy-bundle-viewer-${option.value}`}
+                                            label={option.label}
+                                            checked={selectedViewerRoles.includes(option.value)}
+                                            onChange={e => handleViewerRoleChange(option.value, e.target.checked)}
+                                        />
+                                    ))}
+                                </div>
+                            </Form.Group>
                         </Col>
                     </Row>
 
                     <Form.Group className="mb-3">
-                        <Form.Label>原價總計</Form.Label>
+                        <Form.Label>試算金額</Form.Label>
                         <Form.Control type="number" value={calculatedPrice} readOnly />
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>設定售價</Form.Label>
+                        <Form.Label>最終售價</Form.Label>
                         <Form.Control type="number" name="selling_price" min={0} value={formData.selling_price} onChange={handlePriceChange} required />
                     </Form.Group>
                 </Modal.Body>

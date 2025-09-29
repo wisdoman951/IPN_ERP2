@@ -26,7 +26,8 @@ axiosInstance.interceptors.request.use(config => {
 
 export interface PureMedicalRecord {
   ipn_pure_id: number;
-  Name?: string; 
+  Name?: string;
+  member_code?: string;
   blood_preasure?: string;
   date?: string;
   height?: number;
@@ -37,9 +38,10 @@ export interface PureMedicalRecord {
   body_age?: number;
   bmi?: string;
   pure_item?: string;
-  staff_name?: string; 
+  staff_name?: string;
   note?: string;
   member_id?: number;
+  store_name?: string;
 }
 
 // 新增或更新時，傳遞給 API 的資料結構

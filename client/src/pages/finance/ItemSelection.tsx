@@ -10,6 +10,7 @@ import { Product, getAllProducts } from '../../services/ProductSellService'; // 
 import { TherapyPackage, getAllTherapyPackages } from '../../services/TherapySellService'; // 假設從 TherapySellService 獲取
 import { Bundle as ProductBundle, fetchProductBundlesForSale } from '../../services/ProductBundleService';
 import { TherapyBundle, fetchTherapyBundlesForSale } from '../../services/TherapyBundleService';
+import { getCategories, Category } from '../../services/CategoryService';
 export const formatCurrency = (amount: number | undefined): string => {
     if (amount === undefined || isNaN(amount)) return 'N/A';
     return amount.toLocaleString('zh-TW', { style: 'currency', currency: 'TWD' });
@@ -24,17 +25,30 @@ const ItemSelection: React.FC = () => {
     const [selectedItems, setSelectedItems] = useState<SalesOrderItemData[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [productCategories, setProductCategories] = useState<Category[]>([]);
+    const [activeProductCat, setActiveProductCat] = useState('all');
+    const [therapyCategories, setTherapyCategories] = useState<Category[]>([]);
+    const [activeTherapyCat, setActiveTherapyCat] = useState('all');
+    const [productBundleCategories, setProductBundleCategories] = useState<Category[]>([]);
+    const [activeProductBundleCat, setActiveProductBundleCat] = useState('all');
+    const [therapyBundleCategories, setTherapyBundleCategories] = useState<Category[]>([]);
+    const [activeTherapyBundleCat, setActiveTherapyBundleCat] = useState('all');
 
     // 載入所有可選品項 (產品、療程及其組合)
     useEffect(() => {
         const fetchData = async () => {
             setLoading(true);
             try {
-                const [productRes, therapyRes, prodBundleRes, thrBundleRes] = await Promise.all([
+                const [productRes, therapyRes, prodBundleRes, thrBundleRes, prodCats, thrCats, prodBundleCats, thrBundleCats] = await Promise.all([
                     getAllProducts(),
                     getAllTherapyPackages(),
                     fetchProductBundlesForSale(),
-                    fetchTherapyBundlesForSale()
+                    fetchTherapyBundlesForSale(),
+                    getCategories('product'),
+                    getCategories('therapy'),
+                    getCategories('product_bundle'),
+                    getCategories('therapy_bundle')
                 ]);
                 console.log("從 API 獲取的產品資料 (productRes):", productRes);
 
@@ -73,6 +87,10 @@ const ItemSelection: React.FC = () => {
                     });
                     setTherapyBundles(sortedThrBundles);
                 }
+                setProductCategories(prodCats);
+                if (Array.isArray(thrCats)) setTherapyCategories(thrCats);
+                setProductBundleCategories(prodBundleCats);
+                setTherapyBundleCategories(thrBundleCats);
             } catch (err) {
                 setError("載入品項資料時發生錯誤。");
             } finally {
@@ -168,47 +186,101 @@ const ItemSelection: React.FC = () => {
         navigate('/finance/sales/add');
     };
 
+    const filterItems = <T extends { product_name?: string; product_code?: string; TherapyName?: string; TherapyContent?: string; TherapyCode?: string; name?: string; bundle_code?: string; }>(items: T[], activeCat: string) => {
+        let filtered = [...items];
+        if (activeCat !== 'all') {
+            filtered = filtered.filter((item: any) => item.categories?.includes(activeCat));
+        }
+        if (searchTerm.trim() !== '') {
+            const lower = searchTerm.toLowerCase();
+            filtered = filtered.filter((item: any) =>
+                (item.product_name || item.TherapyName || item.name || '').toLowerCase().includes(lower) ||
+                (item.product_code || item.TherapyCode || item.bundle_code || '').toLowerCase().includes(lower) ||
+                (item.TherapyContent || '').toLowerCase().includes(lower)
+            );
+        }
+        return filtered;
+    };
+
     const content = (
         <Container className="my-4">
             {error && <Alert variant="danger">{error}</Alert>}
             <Row>
                 {/* 左側：可選品項列表 */}
                 <Col md={7}>
+                    <Row className="mb-3">
+                        <Col>
+                            <Form.Control
+                                type="text"
+                                placeholder="搜尋品項..."
+                                value={searchTerm}
+                                onChange={e => setSearchTerm(e.target.value)}
+                            />
+                        </Col>
+                    </Row>
                     <Tabs defaultActiveKey="products" id="item-selection-tabs">
                         <Tab eventKey="products" title="產品">
-                            <ListGroup className="mt-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                                {loading ? <Spinner animation="border" /> : products.map(p => (
-                                    <ListGroup.Item key={`prod-${p.product_id}`} action onClick={() => handleSelectItem(p, 'Product')}>
-                                        [{p.product_code ?? ''}] {p.product_name} - {formatCurrency(p.product_price)}
-                                    </ListGroup.Item>
+                            <Tabs activeKey={activeProductCat} onSelect={k => setActiveProductCat(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {productCategories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
                                 ))}
+                            </Tabs>
+                            <ListGroup style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                {loading ? <Spinner animation="border" /> :
+                                    filterItems(products as any, activeProductCat).map(p => (
+                                        <ListGroup.Item key={`prod-${(p as any).product_id}`} action onClick={() => handleSelectItem(p as any, 'Product')}>
+                                            [{(p as any).product_code ?? ''}] {(p as any).product_name} - {formatCurrency((p as any).product_price)}
+                                        </ListGroup.Item>
+                                    ))}
                             </ListGroup>
                         </Tab>
                         <Tab eventKey="therapies" title="療程">
-                             <ListGroup className="mt-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                                {loading ? <Spinner animation="border" /> : therapies.map(t => (
-                                    <ListGroup.Item key={`thr-${t.therapy_id}`} action onClick={() => handleSelectItem(t, 'Therapy')}>
-                                        [{t.TherapyCode}] {t.TherapyContent || t.TherapyName} - NT$ {t.TherapyPrice}
-                                    </ListGroup.Item>
+                            <Tabs activeKey={activeTherapyCat} onSelect={k => setActiveTherapyCat(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {therapyCategories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
                                 ))}
+                            </Tabs>
+                            <ListGroup style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                {loading ? <Spinner animation="border" /> :
+                                    filterItems(therapies as any, activeTherapyCat).map(t => (
+                                        <ListGroup.Item key={`thr-${(t as any).therapy_id}`} action onClick={() => handleSelectItem(t as any, 'Therapy')}>
+                                            [{(t as any).TherapyCode}] {(t as any).TherapyContent || (t as any).TherapyName} - NT$ {(t as any).TherapyPrice}
+                                        </ListGroup.Item>
+                                    ))}
                             </ListGroup>
                         </Tab>
                         <Tab eventKey="productBundles" title="產品組合">
-                            <ListGroup className="mt-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                                {loading ? <Spinner animation="border" /> : productBundles.map(b => (
-                                    <ListGroup.Item key={`pb-${b.bundle_id}`} action onClick={() => handleSelectItem(b, 'ProductBundle')}>
-                                        [{b.bundle_code}] {b.name} - {formatCurrency(b.selling_price)}
-                                    </ListGroup.Item>
+                            <Tabs activeKey={activeProductBundleCat} onSelect={k => setActiveProductBundleCat(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {productBundleCategories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
                                 ))}
+                            </Tabs>
+                            <ListGroup style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                {loading ? <Spinner animation="border" /> :
+                                    filterItems(productBundles as any, activeProductBundleCat).map(b => (
+                                        <ListGroup.Item key={`pb-${(b as any).bundle_id}`} action onClick={() => handleSelectItem(b as any, 'ProductBundle')}>
+                                            [{(b as any).bundle_code}] {(b as any).name} - {formatCurrency((b as any).selling_price)}
+                                        </ListGroup.Item>
+                                    ))}
                             </ListGroup>
                         </Tab>
                         <Tab eventKey="therapyBundles" title="療程組合">
-                            <ListGroup className="mt-2" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-                                {loading ? <Spinner animation="border" /> : therapyBundles.map(b => (
-                                    <ListGroup.Item key={`tb-${b.bundle_id}`} action onClick={() => handleSelectItem(b, 'TherapyBundle')}>
-                                        [{b.bundle_code}] {b.name} - {formatCurrency(b.selling_price)}
-                                    </ListGroup.Item>
+                            <Tabs activeKey={activeTherapyBundleCat} onSelect={k => setActiveTherapyBundleCat(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {therapyBundleCategories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
                                 ))}
+                            </Tabs>
+                            <ListGroup style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+                                {loading ? <Spinner animation="border" /> :
+                                    filterItems(therapyBundles as any, activeTherapyBundleCat).map(b => (
+                                        <ListGroup.Item key={`tb-${(b as any).bundle_id}`} action onClick={() => handleSelectItem(b as any, 'TherapyBundle')}>
+                                            [{(b as any).bundle_code}] {(b as any).name} - {formatCurrency((b as any).selling_price)}
+                                        </ListGroup.Item>
+                                    ))}
                             </ListGroup>
                         </Tab>
                     </Tabs>

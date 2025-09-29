@@ -74,7 +74,24 @@ const ProductSale: React.FC = () => {
                 fetchSales();
             } catch (error) {
                 console.error("刪除產品銷售記錄失敗：", error);
-                alert("刪除失敗，請稍後再試！");
+
+                if (axios.isAxiosError(error) && error.response) {
+                    const { status, data } = error.response;
+                    const serverMessage = typeof data === "string" ? data : data?.error;
+
+                    if (status === 403) {
+                        const message = serverMessage === "無操作權限"
+                            ? "沒有權限刪除"
+                            : (serverMessage || "沒有權限刪除");
+                        alert(message);
+                    } else if (serverMessage) {
+                        alert(serverMessage);
+                    } else {
+                        alert("刪除失敗，請稍後再試！");
+                    }
+                } else {
+                    alert("刪除失敗，請稍後再試！");
+                }
             } finally {
                 setLoading(false);
             }

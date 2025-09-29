@@ -82,6 +82,7 @@ const StressTest: React.FC = () => {
   const tableHeader = (
     <tr>
       <th className="text-center" style={{ width: '60px' }}>勾選</th>
+      <th className="text-center" style={{ width: '120px' }}>店別</th>
       <th className="text-center" style={{ width: '120px' }}>姓名</th>
       <th className="text-center" style={{ width: '150px' }}>檢測日期</th>
       <th className="text-center" style={{ width: '120px' }}>職位</th>
@@ -103,6 +104,7 @@ const StressTest: React.FC = () => {
             onChange={() => handleCheckboxChange(test.ipn_stress_id)}
           />
         </td>
+        <td className="text-center">{test.store_name ?? '-'}</td>
         <td>{test.Name || '-'}</td>
         <td>{formatDateToYYYYMMDD(test.test_date)}</td>
         <td>{test.position || '-'}</td>
@@ -127,7 +129,7 @@ const StressTest: React.FC = () => {
     ))
   ) : (
     <tr>
-      <td colSpan={9} className="text-center">無數據</td>
+      <td colSpan={10} className="text-center">無數據</td>
     </tr>
   );
 

@@ -39,6 +39,7 @@ export interface Member {
   /** 會員代碼 (例如 M001) */
   member_code?: string;
   Name: string;
+  IdentityType?: string;
   Gender: string;
   Birth: string;
   Phone: string;
@@ -48,6 +49,8 @@ export interface Member {
   Referrer: string;  // 介紹人 ID
   Occupation: string;
   Note: string;
+  StoreId?: string;
+  StoreName?: string;
 }
 
 /**
@@ -57,6 +60,7 @@ interface BackendMember {
   member_id: number | string;
   member_code?: string;
   name: string;
+  identity_type?: string;
   birthday: Date | string;
   gender: 'Male' | 'Female' | 'Other' | string;
   blood_type: 'A' | 'B' | 'AB' | 'O' | string;
@@ -66,6 +70,8 @@ interface BackendMember {
   phone: string;
   occupation: string;
   note: string;
+  store_id?: number | string | null;
+  store_name?: string | null;
 }
 
 /**
@@ -76,6 +82,7 @@ const transformBackendToFrontend = (member: BackendMember): Member => {
     Member_ID: String(member.member_id),
     member_code: member.member_code || undefined,
     Name: member.name,
+    IdentityType: member.identity_type || '一般會員',
     Gender: member.gender || '',
     Birth: member.birthday ? (typeof member.birthday === 'string' ? member.birthday : member.birthday.toISOString().split('T')[0]) : '',
     Phone: member.phone || '',
@@ -84,7 +91,11 @@ const transformBackendToFrontend = (member: BackendMember): Member => {
     BloodType: member.blood_type || '',
     Referrer: member.inferrer_id ? String(member.inferrer_id) : '',
     Occupation: member.occupation || '',
-    Note: member.note || ''
+    Note: member.note || '',
+    StoreId: member.store_id !== undefined && member.store_id !== null && member.store_id !== ''
+      ? String(member.store_id)
+      : undefined,
+    StoreName: member.store_name || undefined
   };
 };
 
@@ -97,6 +108,7 @@ const transformFrontendToBackend = (member: Partial<Member>): Partial<BackendMem
   if (member.Member_ID) backendMember.member_id = member.Member_ID;
   if (member.member_code) backendMember.member_code = member.member_code;
   if (member.Name) backendMember.name = member.Name;
+  if (member.IdentityType !== undefined) backendMember.identity_type = member.IdentityType;
   if (member.Gender) backendMember.gender = member.Gender;
   if (member.Birth) backendMember.birthday = member.Birth;
   if (member.Phone) backendMember.phone = member.Phone;
@@ -227,6 +239,7 @@ export const deleteMember = async (memberId: string) => {
 export const createMember = async (memberData: {
   member_code: string; // <-- 1. 新增 member_code 參數定義
   name: string;
+  identity_type: string;
   birthday: string;
   address?: string;
   phone?: string;

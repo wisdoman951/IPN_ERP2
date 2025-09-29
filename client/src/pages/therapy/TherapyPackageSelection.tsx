@@ -10,6 +10,10 @@ import {
     fetchRemainingSessionsBulk
 } from '../../services/TherapySellService';
 import { fetchAllTherapyBundles, TherapyBundle } from '../../services/TherapyBundleService';
+import { getCategories, Category } from '../../services/CategoryService';
+import MemberSummaryCard from '../../components/MemberSummaryCard';
+import { getMemberByCode as fetchMemberByCode, getMemberById as fetchMemberById } from '../../services/MedicalService';
+import { MemberData } from '../../types/medicalTypes';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
 export interface PackageInSelection extends TherapyPackageBaseType {
@@ -25,8 +29,15 @@ const TherapyPackageSelection: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [pageError, setPageError] = useState<string | null>(null); // 用於此頁面特定的錯誤，如堂數無效
     const [memberId, setMemberId] = useState<string>('');
+    const [memberCode, setMemberCode] = useState<string>('');
+    const [memberName, setMemberName] = useState<string>('');
+    const [memberSummary, setMemberSummary] = useState<MemberData | null>(null);
     const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
     const [activeTab, setActiveTab] = useState<'therapy' | 'bundle'>('therapy');
+    const [activeTherapyTab, setActiveTherapyTab] = useState<string>('all');
+    const [categories, setCategories] = useState<Category[]>([]);
+    const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
+    const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
 
 
     useEffect(() => {
@@ -36,6 +47,12 @@ const TherapyPackageSelection: React.FC = () => {
                 const formState = JSON.parse(formStateData);
                 if (formState.memberId) {
                     setMemberId(formState.memberId);
+                }
+                if (formState.memberCode) {
+                    setMemberCode(formState.memberCode);
+                }
+                if (formState.memberName) {
+                    setMemberName(formState.memberName);
                 }
             } catch (e) {
                 console.error('解析 addTherapySellFormState 失敗', e);
@@ -77,12 +94,67 @@ const TherapyPackageSelection: React.FC = () => {
         }
     }, []); // 僅在 mount 時執行一次
 
+    useEffect(() => {
+        let cancelled = false;
+
+        const normalizeMember = (raw: any): MemberData => ({
+            member_id: Number(raw?.member_id) || 0,
+            member_code: raw?.member_code || undefined,
+            name: raw?.name || '',
+            identity_type: raw?.identity_type || '',
+            address: raw?.address || '',
+            birthday: raw?.birthday || '',
+            blood_type: raw?.blood_type || '',
+            gender: raw?.gender || '',
+            inferrer_id: Number(raw?.inferrer_id) || 0,
+            line_id: raw?.line_id || '',
+            note: raw?.note || '',
+            occupation: raw?.occupation || '',
+            phone: raw?.phone || '',
+        });
+
+        const fetchMember = async () => {
+            try {
+                if (memberCode) {
+                    const data = await fetchMemberByCode(memberCode);
+                    if (!cancelled) {
+                        setMemberSummary(data ? normalizeMember(data) : null);
+                    }
+                    return;
+                }
+                if (memberId) {
+                    const data = await fetchMemberById(memberId);
+                    if (!cancelled) {
+                        setMemberSummary(data ? normalizeMember(data) : null);
+                    }
+                    return;
+                }
+                if (!cancelled) {
+                    setMemberSummary(null);
+                }
+            } catch (err) {
+                console.error('載入會員資料失敗', err);
+                if (!cancelled) {
+                    setMemberSummary(null);
+                }
+            }
+        };
+
+        fetchMember();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [memberCode, memberId]);
+
     const fetchPackages = async () => {
         setLoading(true); setPageError(null);
         try {
-            const [therapyRes, bundleData] = await Promise.all([
+            const [therapyRes, bundleData, categoryData, bundleCatData] = await Promise.all([
                 fetchAllTherapyPackagesService(),
-                fetchAllTherapyBundles()
+                fetchAllTherapyBundles(),
+                getCategories('therapy'),
+                getCategories('therapy_bundle')
             ]);
 
             let packages: TherapyPackageBaseType[] = [];
@@ -91,6 +163,7 @@ const TherapyPackageSelection: React.FC = () => {
                     ...p,
                     type: 'therapy',
                     therapy_id: Number(p.therapy_id),
+                    categories: p.categories || []
                 }));
             }
 
@@ -100,12 +173,15 @@ const TherapyPackageSelection: React.FC = () => {
                 TherapyCode: b.bundle_code,
                 TherapyName: b.name,
                 TherapyContent: b.bundle_contents,
-                TherapyPrice: Number(b.selling_price)
+                TherapyPrice: Number(b.selling_price),
+                categories: b.categories || []
             }));
 
             const combined = [...packages, ...bundlePackages];
             setAllPackages(combined);
-            setDisplayedPackages(combined.filter(pkg => pkg.type === activeTab));
+            setCategories(categoryData);
+            setBundleCategories(bundleCatData);
+            setDisplayedPackages(combined.filter(pkg => pkg.type === 'therapy'));
         } catch (err: unknown) {
             setPageError((err as Error).message || "載入療程套餐時發生嚴重錯誤");
             setAllPackages([]); setDisplayedPackages([]);
@@ -138,7 +214,18 @@ const TherapyPackageSelection: React.FC = () => {
     }, [memberId, allPackages]);
 
     useEffect(() => {
-        let filtered = allPackages.filter(pkg => pkg.type === activeTab);
+        let filtered: TherapyPackageBaseType[] = [];
+        if (activeTab === 'bundle') {
+            filtered = allPackages.filter(pkg => pkg.type === 'bundle');
+            if (activeBundleTab !== 'all') {
+                filtered = filtered.filter(pkg => pkg.categories?.includes(activeBundleTab));
+            }
+        } else {
+            filtered = allPackages.filter(pkg => pkg.type === 'therapy');
+            if (activeTherapyTab !== 'all') {
+                filtered = filtered.filter(pkg => pkg.categories?.includes(activeTherapyTab));
+            }
+        }
         if (searchTerm.trim() !== "") {
             const lowerSearchTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(pkg =>
@@ -148,7 +235,7 @@ const TherapyPackageSelection: React.FC = () => {
             );
         }
         setDisplayedPackages(filtered);
-    }, [searchTerm, allPackages, activeTab]);
+    }, [searchTerm, allPackages, activeTab, activeTherapyTab, activeBundleTab]);
 
     const getPkgKey = (pkg: TherapyPackageBaseType) =>
         pkg.type === 'bundle' ? `b-${pkg.bundle_id}` : `t-${pkg.therapy_id}`;
@@ -203,12 +290,10 @@ const TherapyPackageSelection: React.FC = () => {
         return total;
     };
 
-    const content = (
-        <Container className="my-4">
-            {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
-            <Card>
-                <Card.Header as="h5">選擇療程並設定堂數</Card.Header>
-                <Card.Body>
+    const selectionCard = (
+        <Card>
+            <Card.Header as="h5">選擇療程並設定堂數</Card.Header>
+            <Card.Body>
                     <Row className="mb-3 gx-2">
                         <Col>
                             <Form.Control
@@ -221,15 +306,31 @@ const TherapyPackageSelection: React.FC = () => {
                     </Row>
 
                     <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'therapy' | 'bundle') || 'therapy')} className="mb-3">
-                        <Tab eventKey="therapy" title="療程" />
-                        <Tab eventKey="bundle" title="療程組合" />
+                        <Tab eventKey="therapy" title="療程">
+                            <Tabs activeKey={activeTherapyTab} onSelect={(k) => setActiveTherapyTab(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {categories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                                ))}
+                            </Tabs>
+                        </Tab>
+                        <Tab eventKey="bundle" title="療程組合">
+                            <Tabs activeKey={activeBundleTab} onSelect={(k) => setActiveBundleTab(k || 'all')} className="mt-3 mb-3">
+                                <Tab eventKey="all" title="全部" />
+                                {bundleCategories.map(cat => (
+                                    <Tab key={cat.category_id} eventKey={cat.name} title={cat.name} />
+                                ))}
+                            </Tabs>
+                        </Tab>
                     </Tabs>
 
                     {loading && (
                         <div className="text-center p-5"><Spinner animation="border" variant="info" /> <p className="mt-2">載入中...</p></div>
                     )}
                     {!loading && displayedPackages.length === 0 && (
-                        <Alert variant="secondary">目前沒有符合條件的療程套餐。</Alert>
+                        <Alert variant="secondary">
+                              目前沒有符合條件的{activeTab === 'therapy' ? '療程' : '療程組合'}。
+                        </Alert>
                     )}
                     {!loading && displayedPackages.length > 0 && (
                         <ListGroup variant="flush" style={{maxHeight: 'calc(100vh - 380px)', overflowY: 'auto'}}>
@@ -289,23 +390,41 @@ const TherapyPackageSelection: React.FC = () => {
                             })}
                         </ListGroup>
                     )}
-                </Card.Body>
-                { !loading && (
-                    <Card.Footer>
-                         <div className="d-flex justify-content-between align-items-center">
-                            <div>總計金額: <strong className="h5 mb-0" style={{color: '#00b1c8'}}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
-                            <div>
-                                <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
-                                    取消
-                                </Button>
-                                <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedPackagesMap.size === 0}>
-                                    確認選取 ({selectedPackagesMap.size} 項)
-                                </Button>
-                            </div>
+            </Card.Body>
+            { !loading && (
+                <Card.Footer>
+                     <div className="d-flex justify-content-between align-items-center">
+                        <div>總計金額: <strong className="h5 mb-0" style={{color: '#00b1c8'}}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
+                        <div>
+                            <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
+                                取消
+                            </Button>
+                            <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedPackagesMap.size === 0}>
+                                確認選取 ({selectedPackagesMap.size} 項)
+                            </Button>
                         </div>
-                    </Card.Footer>
-                )}
-            </Card>
+                    </div>
+                </Card.Footer>
+            )}
+        </Card>
+    );
+
+    const content = (
+        <Container className="my-4">
+            {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
+            <Row className="g-3">
+                <Col xs={12} lg={8}>
+                    {selectionCard}
+                </Col>
+                <Col xs={12} lg={4}>
+                    <MemberSummaryCard
+                        member={memberSummary}
+                        memberCode={memberCode}
+                        fallbackName={memberName}
+                        className="h-100"
+                    />
+                </Col>
+            </Row>
         </Container>
     );
 

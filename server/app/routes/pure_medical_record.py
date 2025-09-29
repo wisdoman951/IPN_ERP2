@@ -137,14 +137,15 @@ def export_records():
         df = df.rename(columns={
             'ipn_pure_id': '編號', 'Name': '姓名', 'staff_name': '服務人',
             'blood_preasure': '血壓', 'date': '日期', 'height': '身高',
-            'weight': '體重', 'visceral_fat': '內脂肪', 
+            'weight': '體重', 'visceral_fat': '內脂肪',
             'body_fat_percentage': '體脂肪(%)', # 新增體脂肪欄位
             'basal_metabolic_rate': '基礎代謝',
-            'body_age': '體年齡', 'bmi': 'BMI', 'pure_item': '淨化項目', 'note': '備註'
+            'body_age': '體年齡', 'bmi': 'BMI', 'pure_item': '淨化項目', 'note': '備註',
+            'store_name': '店別'
         })
         # 選擇需要的欄位
         df_export = df[[
-            '編號', '姓名', '服務人', '血壓', '日期', '身高', '體重', 
+            '編號', '店別', '姓名', '服務人', '血壓', '日期', '身高', '體重',
             '體脂肪(%)', '內脂肪', '基礎代謝', '體年齡', 'BMI', '淨化項目', '備註'
         ]]
 

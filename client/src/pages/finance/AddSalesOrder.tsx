@@ -53,6 +53,13 @@ const AddSalesOrder: React.FC = () => {
     const [totalDiscount, setTotalDiscount] = useState(0); // 總折價
     const [grandTotal, setGrandTotal] = useState(0);
 
+    const selectedMemberName = memberId
+        ? members.find(member => String(member.Member_ID) === String(memberId))?.Name || ''
+        : '';
+    const selectedStaffName = staffId
+        ? staffMembers.find(staff => String(staff.staff_id) === String(staffId))?.name || ''
+        : '';
+
     // 動態更新項目
     const handleItemChange = (index: number, field: keyof SalesOrderItemData, value: string | number) => {
         const newItems = [...items];
@@ -263,9 +270,117 @@ const AddSalesOrder: React.FC = () => {
     const handlePrint = () => {
         window.print();
     };
-    
-    // --- JSX 部分 ---
-    const content = (
+
+    const formatNumber = (value: number | string | undefined | null) => {
+        if (value === undefined || value === null || value === '') {
+            return '';
+        }
+        const numeric = typeof value === 'number' ? value : Number(value);
+        if (Number.isNaN(numeric)) {
+            return '';
+        }
+        return numeric.toLocaleString();
+    };
+
+    const printableItems = items.filter(item =>
+        item.item_description ||
+        item.item_code ||
+        item.unit ||
+        item.unit_price ||
+        item.quantity ||
+        item.subtotal ||
+        item.category ||
+        item.note
+    );
+
+    const renderPrintableCard = (copyLabel: string) => (
+        <Card className="mb-4 print-card">
+            <Card.Header className="text-center">
+                <h4>全崴國際無限充能館</h4>
+                <h3>銷售單</h3>
+                <div className="text-end copy-label">{copyLabel}</div>
+            </Card.Header>
+            <Card.Body>
+                <Row className="mb-3">
+                    <Col md={3} sm={6} className="mb-2">
+                        <div><strong>銷售單號：</strong>{orderNumber}</div>
+                    </Col>
+                    <Col md={3} sm={6} className="mb-2">
+                        <div><strong>銷售單位：</strong>{saleUnit}</div>
+                    </Col>
+                    <Col md={3} sm={6} className="mb-2">
+                        <div><strong>銷售類別：</strong>{saleCategory}</div>
+                    </Col>
+                    <Col md={3} sm={6} className="mb-2">
+                        <div><strong>銷售日期：</strong>{orderDate}</div>
+                    </Col>
+                </Row>
+
+                <div className="table-responsive">
+                    <table className="table table-bordered print-table">
+                        <thead>
+                            <tr>
+                                <th>序號</th>
+                                <th>編號</th>
+                                <th style={{ minWidth: '400px' }}>產品名稱/規格型號</th>
+                                <th>單位</th>
+                                <th>單價</th>
+                                <th>數量</th>
+                                <th>小計</th>
+                                <th>分類</th>
+                                <th>備註</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {printableItems.length > 0 ? (
+                                printableItems.map((item, index) => (
+                                    <tr key={`print-${index}`}>
+                                        <td>{index + 1}</td>
+                                        <td>{item.item_code || ''}</td>
+                                        <td style={{ minWidth: '300px' }}>{item.item_description || ''}</td>
+                                        <td>{item.unit || ''}</td>
+                                        <td>{formatNumber(item.unit_price)}</td>
+                                        <td>{formatNumber(item.quantity)}</td>
+                                        <td>{formatNumber(item.subtotal)}</td>
+                                        <td>{item.category || ''}</td>
+                                        <td>{item.note || ''}</td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={9} className="text-center">無品項資料</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+
+                <Row className="mt-3">
+                    <Col md={6} className="mb-2">
+                        <div className="mb-2"><strong>金額(大寫)：</strong></div>
+                        <div><strong>購買人：</strong>{selectedMemberName}</div>
+                    </Col>
+                    <Col md={6} className="mb-2">
+                        <div className="mb-2"><strong>金額(小寫)：</strong>{formatNumber(grandTotal)}</div>
+                        <div><strong>銷售人：</strong>{selectedStaffName}</div>
+                    </Col>
+                </Row>
+                {note && (
+                    <Row className="mt-2">
+                        <Col>
+                            <div><strong>備註：</strong>{note}</div>
+                        </Col>
+                    </Row>
+                )}
+            </Card.Body>
+            <Card.Footer className="d-flex justify-content-between print-footer">
+                <div>使用者簽名：____________________</div>
+                <div>門市簽收：____________________</div>
+            </Card.Footer>
+        </Card>
+    );
+
+    const interactiveContent = (
         <Container className="p-4">
             <Card>
                 <Card.Header className="text-center">
@@ -280,7 +395,7 @@ const AddSalesOrder: React.FC = () => {
                         <Col md={3}><Form.Group><Form.Label>銷售類別</Form.Label><Form.Control value={saleCategory} onChange={e => setSaleCategory(e.target.value)}/></Form.Group></Col>
                         <Col md={3}><Form.Group><Form.Label>銷售日期</Form.Label><Form.Control type="date" value={orderDate} onChange={e => setOrderDate(e.target.value)}/></Form.Group></Col>
                     </Row>
-                    
+
                     {/* 表格化項目輸入 */}
                     <div className="table-responsive">
                         <table className="table table-bordered print-table">
@@ -314,8 +429,8 @@ const AddSalesOrder: React.FC = () => {
                                         <td><Form.Control type="number" size="sm" value={item.unit_price || ""} onChange={e => handleItemChange(index, 'unit_price', Number(e.target.value))} /></td>
                                         <td><Form.Control type="number" size="sm" value={item.quantity || ""} onChange={e => handleItemChange(index, 'quantity', Number(e.target.value))} /></td>
                                         <td><Form.Control size="sm" value={item.subtotal || ""} readOnly disabled /></td>
-                                        <td><Form.Control size="sm" /></td>
-                                        <td><Form.Control size="sm" /></td>
+                                        <td><Form.Control size="sm" value={item.category || ""} onChange={e => handleItemChange(index, 'category', e.target.value)} /></td>
+                                        <td><Form.Control size="sm" value={item.note || ""} onChange={e => handleItemChange(index, 'note', e.target.value)} /></td>
                                         <td className="no-print"><Button variant="outline-danger" size="sm" onClick={() => removeItem(index)}>X</Button></td>
                                     </tr>
                                 ))}
@@ -347,6 +462,23 @@ const AddSalesOrder: React.FC = () => {
                 </Card.Footer>
             </Card>
         </Container>
+    );
+
+    const printableContent = (
+        <Container className="p-4">
+            <div className="print-duplicate">
+                {renderPrintableCard('顧客聯')}
+                {renderPrintableCard('門市聯')}
+            </div>
+        </Container>
+    );
+
+    // --- JSX 部分 ---
+    const content = (
+        <>
+            <div className="screen-only">{interactiveContent}</div>
+            <div className="print-only">{printableContent}</div>
+        </>
     );
 
     return (

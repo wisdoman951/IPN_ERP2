@@ -25,6 +25,7 @@ const MedicalRecord: React.FC = () => {
     const tableHeader = (
         <tr>
             <th>勾選</th>
+            <th>店別</th>
             <th style={{ minWidth: '8ch' }}>會員編號</th>
             <th>姓名</th>
             <th>身高</th>
@@ -59,7 +60,8 @@ const MedicalRecord: React.FC = () => {
                             onChange={(e) => handleCheckboxChange(r[HealthRecordIndex.ID], e.target.checked)}
                         />
                     </td>
-                    <td style={{ whiteSpace: 'nowrap' }}>{r[HealthRecordIndex.MEMBER_ID]}</td>
+                    <td>{r[HealthRecordIndex.STORE_NAME] ?? '-'}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{r[HealthRecordIndex.MEMBER_CODE]}</td>
                     <td>{r[HealthRecordIndex.NAME] || "-"}</td>
                     <td>{r[HealthRecordIndex.HEIGHT]}</td>
                     <td>{r[HealthRecordIndex.WEIGHT]}</td>
@@ -71,7 +73,7 @@ const MedicalRecord: React.FC = () => {
             ))
         ) : (
             <tr>
-                <td colSpan={9} className="text-muted">
+                <td colSpan={10} className="text-muted">
                     無資料
                 </td>
             </tr>

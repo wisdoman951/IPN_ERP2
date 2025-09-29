@@ -1,6 +1,7 @@
 import axios from "axios";
 import { base_url } from "./BASE_URL";
 import { getAuthHeaders as getTokenHeaders } from "./AuthUtils";
+import { ViewerRole } from "../types/viewerRole";
 
 const API_URL = `${base_url}/product-bundles`;
 const API_URL_PRODUCTS = `${base_url}/product-sell`;
@@ -27,6 +28,8 @@ export interface Bundle {
     bundle_contents: string;
     created_at: string;
     visible_store_ids?: number[];
+    categories?: string[];
+    visible_permissions?: ViewerRole[];
 }
 
 export interface BundleDetails extends Bundle {
@@ -35,6 +38,7 @@ export interface BundleDetails extends Bundle {
         item_type: 'Product' | 'Therapy';
         quantity: number;
     }[];
+    category_ids?: number[];
 }
 
 export interface Product {
@@ -42,7 +46,10 @@ export interface Product {
     product_name: string;
     product_price: number;
     product_code: string;
+    purchase_price?: number | string | null;
     visible_store_ids?: number[];
+    categories?: string[];
+    visible_permissions?: ViewerRole[];
 }
 
 export interface Therapy {
@@ -51,7 +58,9 @@ export interface Therapy {
     price: number;
     code: string;
     content?: string;
-     visible_store_ids?: number[];
+    visible_store_ids?: number[];
+    categories?: string[];
+    visible_permissions?: ViewerRole[];
 }
 
 

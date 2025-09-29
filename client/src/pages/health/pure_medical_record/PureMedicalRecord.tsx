@@ -68,6 +68,7 @@ const PureMedicalRecord: React.FC = () => {
           tableHeader={
             <tr>
               <th style={{ width: '50px' }}>勾選</th>
+              <th>店別</th>
               <th>姓名</th>
               <th>血壓</th>
               <th>日期</th>
@@ -86,14 +87,14 @@ const PureMedicalRecord: React.FC = () => {
           tableBody={
             loading ? (
               <tr>
-                {/* 更新 colSpan 以匹配新的欄位數量 (13欄 -> 13欄，因為刪除身高，增加體脂肪) */}
-                <td colSpan={13} className="text-center py-5">
+                {/* 更新 colSpan 以匹配新的欄位數量 (加入店別後共14欄) */}
+                <td colSpan={14} className="text-center py-5">
                   <Spinner animation="border" />
                 </td>
               </tr>
             ) : records.length === 0 ? (
               <tr>
-                <td colSpan={13} className="text-center text-muted py-5">尚無資料</td>
+                <td colSpan={14} className="text-center text-muted py-5">尚無資料</td>
               </tr>
             ) : (
               records.map(record => {
@@ -108,6 +109,7 @@ const PureMedicalRecord: React.FC = () => {
                         onChange={(e) => handleCheckboxChange(record.ipn_pure_id, e.target.checked)}
                       />
                     </td>
+                    <td className="align-middle">{record.store_name ?? '-'}</td>
                     <td className="align-middle fw-bold">{record.Name || "-"}</td>
                     <td className="align-middle">{record.blood_preasure || "-"}</td>
                     <td className="align-middle">{formatDate(record.date)}</td>

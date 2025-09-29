@@ -35,6 +35,89 @@ CREATE TABLE `emergency_contact` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `category`
+--
+
+DROP TABLE IF EXISTS `category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `category` (
+  `category_id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `target_type` enum('product','therapy','product_bundle','therapy_bundle') COLLATE utf8mb4_unicode_ci NOT NULL,
+  PRIMARY KEY (`category_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `product_category`
+--
+
+DROP TABLE IF EXISTS `product_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_category` (
+  `product_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  PRIMARY KEY (`product_id`,`category_id`),
+  KEY `category_id` (`category_id`),
+  CONSTRAINT `product_category_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `product` (`product_id`) ON DELETE CASCADE,
+  CONSTRAINT `product_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `therapy_category`
+--
+
+DROP TABLE IF EXISTS `therapy_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `therapy_category` (
+  `therapy_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  PRIMARY KEY (`therapy_id`,`category_id`),
+  KEY `category_id` (`category_id`),
+  CONSTRAINT `therapy_category_ibfk_1` FOREIGN KEY (`therapy_id`) REFERENCES `therapy` (`therapy_id`) ON DELETE CASCADE,
+  CONSTRAINT `therapy_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `product_bundle_category`
+--
+
+DROP TABLE IF EXISTS `product_bundle_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_bundle_category` (
+  `bundle_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  PRIMARY KEY (`bundle_id`,`category_id`),
+  KEY `category_id` (`category_id`),
+  CONSTRAINT `product_bundle_category_ibfk_1` FOREIGN KEY (`bundle_id`) REFERENCES `product_bundles` (`bundle_id`) ON DELETE CASCADE,
+  CONSTRAINT `product_bundle_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `therapy_bundle_category`
+--
+
+DROP TABLE IF EXISTS `therapy_bundle_category`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `therapy_bundle_category` (
+  `bundle_id` int NOT NULL,
+  `category_id` int NOT NULL,
+  PRIMARY KEY (`bundle_id`,`category_id`),
+  KEY `category_id` (`category_id`),
+  CONSTRAINT `therapy_bundle_category_ibfk_1` FOREIGN KEY (`bundle_id`) REFERENCES `therapy_bundles` (`bundle_id`) ON DELETE CASCADE,
+  CONSTRAINT `therapy_bundle_category_ibfk_2` FOREIGN KEY (`category_id`) REFERENCES `category` (`category_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `family_information`
 --
 
@@ -240,6 +323,7 @@ CREATE TABLE `member` (
   `member_id` int NOT NULL AUTO_INCREMENT,
   `member_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `identity_type` enum('直營店','加盟店','合夥商','推廣商(分店能量師)','B2B合作專案','心耀商','會員','一般會員') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '一般會員' COMMENT '會員身份別',
   `birthday` date DEFAULT NULL,
   `gender` enum('Male','Female','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `blood_type` enum('A','B','AB','O') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -285,7 +369,9 @@ CREATE TABLE `product` (
   `code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `price` decimal(10,2) NOT NULL,
+  `purchase_price` decimal(10,2) DEFAULT NULL COMMENT '最新進貨成本價',
   `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
+  `visible_permissions` json DEFAULT NULL COMMENT '限制可見的身分權限列表，NULL 表示所有權限可見',
   `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
   `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`product_id`),
@@ -326,6 +412,7 @@ CREATE TABLE `product_bundles` (
   `calculated_price` decimal(12,2) DEFAULT NULL COMMENT '根據組合內項目自動試算的原始總價',
   `selling_price` decimal(12,2) DEFAULT NULL COMMENT '管理者手動設定的最終銷售價格',
   `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
+  `visible_permissions` json DEFAULT NULL COMMENT '限制可見的身分權限列表，NULL 表示所有權限可見',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
   `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
   `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
@@ -367,6 +454,7 @@ CREATE TABLE `therapy_bundles` (
   `calculated_price` decimal(12,2) DEFAULT NULL COMMENT '根據組合內項目自動試算的原始總價',
   `selling_price` decimal(12,2) DEFAULT NULL COMMENT '管理者手動設定的最終銷售價格',
   `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
+  `visible_permissions` json DEFAULT NULL COMMENT '限制可見的身分權限列表，NULL 表示所有權限可見',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP COMMENT '建立時間',
   `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
   `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
@@ -564,6 +652,7 @@ CREATE TABLE `therapy` (
   `price` decimal(10,2) DEFAULT NULL,
   `content` text COLLATE utf8mb4_unicode_ci,
   `visible_store_ids` json DEFAULT NULL COMMENT '限制顯示的分店 store_id 列表，NULL 表示全店可見',
+  `visible_permissions` json DEFAULT NULL COMMENT '限制可見的身分權限列表，NULL 表示所有權限可見',
   `status` enum('PUBLISHED','UNPUBLISHED') NOT NULL DEFAULT 'PUBLISHED',
   `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`therapy_id`),

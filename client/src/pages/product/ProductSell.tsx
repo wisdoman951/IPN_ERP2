@@ -10,6 +10,7 @@ import { formatCurrency } from "../../utils/productSellUtils"; // formatDiscount
 import { useProductSell } from "../../hooks/useProductSell";
 import { ProductSell as ProductSellType } from "../../services/ProductSellService"; // 匯入更新後的型別
 import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
+import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
 
 const paymentMethodValueToDisplayMap: { [key: string]: string } = {
     Cash: "現金",
@@ -83,7 +84,7 @@ const ProductSell: React.FC = () => {
             const match = sale.note?.match(/\[bundle:(\d+)\]/);
             if (match) {
                 const bundleId = match[1];
-                const key = `${bundleId}-${sale.member_id}-${sale.date}-${sale.payment_method}-${sale.staff_id}`;
+                const key = `${bundleId}-${sale.member_id}-${sale.date}-${sale.payment_method}-${sale.staff_id}-${sale.store_id ?? ''}`;
                 const existing = bundles[key];
                 const price = Number(sale.final_price ?? sale.product_price ?? 0);
                 if (existing) {
@@ -107,9 +108,21 @@ const ProductSell: React.FC = () => {
         return [...Object.values(bundles), ...singles];
     }, [sales]);
 
+    const sortedGroupedSales = useMemo(
+        () =>
+            sortByStoreAndMemberCode(
+                groupedSales,
+                (sale) => sale.store_name ?? sale.store_id ?? "",
+                (sale) => sale.member_code ?? "",
+                (sale) => sale.product_sell_id
+            ),
+        [groupedSales]
+    );
+
     const tableHeader = (
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
+            <th>店別</th>
             <th>會員編號</th>
             <th>購買人</th>
             <th>購買日期</th>
@@ -125,13 +138,13 @@ const ProductSell: React.FC = () => {
 
     const tableBody = loading ? (
         <tr>
-            {/* 更新 colSpan 以匹配新的欄位數量 (11欄) */}
-            <td colSpan={11} className="text-center py-5">
+            {/* 更新 colSpan 以匹配新的欄位數量 (12欄) */}
+            <td colSpan={12} className="text-center py-5">
                 <Spinner animation="border" variant="info" /> {/* 使用 Spinner 並指定 variant */}
             </td>
         </tr>
-    ) : groupedSales.length > 0 ? (
-        groupedSales.map((sale: ProductSellType & { product_sell_ids?: number[] }) => (
+    ) : sortedGroupedSales.length > 0 ? (
+        sortedGroupedSales.map((sale: ProductSellType & { product_sell_ids?: number[] }) => (
             <tr key={sale.product_sell_id}>
                 <td className="text-center align-middle">
                     <Form.Check
@@ -140,6 +153,7 @@ const ProductSell: React.FC = () => {
                         onChange={(e) => handleCheckboxChange(sale.product_sell_id, e.target.checked)}
                     />
                 </td>
+                <td className="align-middle">{sale.store_name ?? '-'}</td>
                 <td className="align-middle">{sale.member_code || "-"}</td>
                 <td className="align-middle">{sale.member_name || "-"}</td>
                 <td className="align-middle">{formatDateToYYYYMMDD(sale.date) || "-"}</td>
@@ -167,7 +181,7 @@ const ProductSell: React.FC = () => {
         ))
     ) : (
         <tr>
-            <td colSpan={11} className="text-center text-muted py-5">
+            <td colSpan={12} className="text-center text-muted py-5">
                 尚無資料
             </td>
         </tr>
