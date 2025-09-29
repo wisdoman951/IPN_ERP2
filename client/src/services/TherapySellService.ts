@@ -301,6 +301,9 @@ export const deleteTherapySell = async (saleId: number): Promise<ApiResponse<any
         return { success: true, data: response.data };
     } catch (error: any) {
         console.error("刪除療程銷售失敗:", error.response?.data || error.message);
+        if (axios.isAxiosError(error) && error.response?.status === 403) {
+            return { success: false, error: '無操作權限' };
+        }
         return { success: false, error: error.response?.data?.error || error.message || "刪除療程銷售失敗" };
     }
 };

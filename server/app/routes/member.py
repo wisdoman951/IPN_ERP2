@@ -98,6 +98,8 @@ def create_member_route():
 def delete_member_route(member_id):
     """刪除會員，並進行權限檢查"""
     try:
+        if getattr(request, "permission", None) != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         # --- 權限檢查 ---
         user_store_level = request.store_level
         user_store_id = request.store_id
@@ -126,6 +128,8 @@ def update_member_route(member_id):
     """更新會員資料，並進行權限檢查"""
     data = request.json
     try:
+        if getattr(request, "permission", None) == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         # --- 權限檢查 ---
         user_store_level = request.store_level
         user_store_id = request.store_id

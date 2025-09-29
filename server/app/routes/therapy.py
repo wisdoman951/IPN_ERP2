@@ -110,14 +110,17 @@ def update_record(record_id):
         record = get_therapy_record_by_id(record_id)
         if not record:
             return jsonify({"error": "找不到該療程紀錄"}), 404
-            
+
         # 獲取用戶資訊
         user = get_user_from_token(request)
-        
+        permission = user.get('permission') if user else getattr(request, 'permission', None)
+        if permission == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
+
         # 限制只能操作自己商店的記錄
         if user and user.get('store_id') and record.get('store_id') != user.get('store_id'):
             return jsonify({"error": "無權限修改其他商店的記錄"}), 403
-            
+
         # 進行更新
         update_therapy_record(record_id, data)
         return jsonify({"message": "更新成功"}), 200
@@ -134,10 +137,13 @@ def delete_record(record_id):
         record = get_therapy_record_by_id(record_id)
         if not record:
             return jsonify({"error": "找不到該療程紀錄"}), 404
-            
+
         # 獲取用戶資訊
         user = get_user_from_token(request)
-        
+        permission = user.get('permission') if user else getattr(request, 'permission', None)
+        if permission != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
+
         # 限制只能操作自己商店的記錄
         if user and user.get('store_id') and record.get('store_id') != user.get('store_id'):
             return jsonify({"error": "無權限刪除其他商店的記錄"}), 403

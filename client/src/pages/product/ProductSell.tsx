@@ -23,6 +23,7 @@ const paymentMethodValueToDisplayMap: { [key: string]: string } = {
 const ProductSell: React.FC = () => {
     const navigate = useNavigate();
     const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
+    const isTherapist = useMemo(() => localStorage.getItem('permission') === 'therapist', []);
     const {
         sales,
         selectedSales,
@@ -250,7 +251,15 @@ const ProductSell: React.FC = () => {
                             variant="info" // "修改"按鈕使用更合適的 variant
                             className="text-white px-4" // warning 配 text-dark 可能較好
                             disabled={loading || selectedSales.length !== 1}
-                            onClick={() => selectedSales.length === 1 && navigate(`/add-product-sell/${selectedSales[0]}`)} // 使用新增頁面進行修改
+                            onClick={() => {
+                                if (isTherapist) {
+                                    alert('無操作權限');
+                                    return;
+                                }
+                                if (selectedSales.length === 1) {
+                                    navigate(`/add-product-sell/${selectedSales[0]}`);
+                                }
+                            }} // 使用新增頁面進行修改
                         >
                             修改
                         </Button>

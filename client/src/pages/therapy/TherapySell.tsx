@@ -67,9 +67,10 @@ const TherapySell: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
-    
-    
-    
+    const isTherapist = localStorage.getItem('permission') === 'therapist';
+
+
+
     const storeId = (() => { // IIFE to get storeId once
         try {
             const id = localStorage.getItem('store_id');
@@ -188,6 +189,11 @@ const TherapySell: React.FC = () => {
             alert("請先選擇要刪除的項目");
             return;
         }
+        if (isTherapist) {
+            setError('無操作權限');
+            alert('無操作權限');
+            return;
+        }
         if (window.confirm(`確定要刪除選定的 ${selectedItems.length} 筆紀錄嗎？`)) {
             setLoading(true);
             try {
@@ -202,7 +208,11 @@ const TherapySell: React.FC = () => {
                 setSelectedItems([]);
             } catch (error: any) {
                 console.error("刪除療程銷售失敗:", error);
-                setError(error.message || "刪除失敗，請重試");
+                const message = error.message || "刪除失敗，請重試";
+                setError(message);
+                if (message === '無操作權限') {
+                    alert('無操作權限');
+                }
             } finally {
                 setLoading(false);
             }
@@ -327,6 +337,11 @@ const TherapySell: React.FC = () => {
                             variant="info"
                             className="text-white px-4"
                             onClick={() => {
+                                if (isTherapist) {
+                                    setError('無操作權限');
+                                    alert('無操作權限');
+                                    return;
+                                }
                                 if (selectedItems.length === 1) {
                                     const sale = sales.find(s => s.Order_ID === selectedItems[0]);
                                     navigate('/therapy-sell/add', { state: { editSale: sale } });
