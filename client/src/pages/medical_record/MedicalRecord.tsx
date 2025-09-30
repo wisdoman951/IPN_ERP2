@@ -7,11 +7,12 @@ import ScrollableTable from "../../components/ScrollableTable";
 import { useMedicalRecordManagement, HealthRecordIndex } from "../../hooks/useMedicalRecord";
 import { formatMedicalHistory, formatMicroSurgery } from "../../utils/medicalUtils";
 import "./medicalRecord.css";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 const MedicalRecord: React.FC = () => {
     const navigate = useNavigate();
-    const { 
-        records, 
+    const {
+        records,
         searchValue, 
         setSearchValue, 
         selectedIds, 
@@ -36,11 +37,16 @@ const MedicalRecord: React.FC = () => {
             <th>備註</th>
         </tr>
     );
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
+
     // 新增處理修改按鈕點擊的函數
     const handleEdit = () => {
-        // 必須檢查是否只勾選了「一個」項目
-        if (selectedIds.length === 1) {
-            // 獲取勾選的第一個 ID (也是唯一一個)
+        if (!checkPermission()) {
+            return;
+        }
+      // 必須檢查是否只勾選了「一個」項目
+      if (selectedIds.length === 1) {
+          // 獲取勾選的第一個 ID (也是唯一一個)
             const idToEdit = selectedIds[0];
 
             // **最重要的部分**：
@@ -141,13 +147,16 @@ const MedicalRecord: React.FC = () => {
     );
 
     return (
-        <div className="d-flex flex-column min-vh-100 bg-white">
-            {/* 使用 Header 元件 */}
-            <Header />
-            
-            {/* 使用 DynamicContainer */}
-            <DynamicContainer content={content} className="p-4 align-items-start" />
-        </div>
+        <>
+            <div className="d-flex flex-column min-vh-100 bg-white">
+                {/* 使用 Header 元件 */}
+                <Header />
+
+                {/* 使用 DynamicContainer */}
+                <DynamicContainer content={content} className="p-4 align-items-start" />
+            </div>
+            {permissionModal}
+        </>
     );
 };
 

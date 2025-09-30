@@ -169,6 +169,8 @@ def add_stress_test_route():
 @auth_required
 def update_stress_test_route(stress_id):
     try:
+        if getattr(request, 'permission', None) == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         # 權限檢查
         record_to_update = get_stress_test_by_id_with_answers(stress_id)
         if not record_to_update:
@@ -198,6 +200,8 @@ def update_stress_test_route(stress_id):
 def delete_stress_test_route(test_id):
     """刪除壓力測試，並檢查權限"""
     try:
+        if getattr(request, 'permission', None) != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         # 權限檢查
         record_to_delete = get_stress_test_by_id(test_id)
         if not record_to_delete:
