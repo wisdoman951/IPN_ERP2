@@ -11,6 +11,9 @@ import {
 } from '../../services/TherapySellService';
 import { fetchAllTherapyBundles, TherapyBundle } from '../../services/TherapyBundleService';
 import { getCategories, Category } from '../../services/CategoryService';
+import MemberSummaryCard from '../../components/MemberSummaryCard';
+import { getMemberByCode as fetchMemberByCode, getMemberById as fetchMemberById } from '../../services/MedicalService';
+import { MemberData } from '../../types/medicalTypes';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
 export interface PackageInSelection extends TherapyPackageBaseType {
@@ -26,6 +29,9 @@ const TherapyPackageSelection: React.FC = () => {
     const [loading, setLoading] = useState(true);
     const [pageError, setPageError] = useState<string | null>(null); // 用於此頁面特定的錯誤，如堂數無效
     const [memberId, setMemberId] = useState<string>('');
+    const [memberCode, setMemberCode] = useState<string>('');
+    const [memberName, setMemberName] = useState<string>('');
+    const [memberSummary, setMemberSummary] = useState<MemberData | null>(null);
     const [remainingMap, setRemainingMap] = useState<Map<string, number>>(new Map());
     const [activeTab, setActiveTab] = useState<'therapy' | 'bundle'>('therapy');
     const [activeTherapyTab, setActiveTherapyTab] = useState<string>('all');
@@ -41,6 +47,12 @@ const TherapyPackageSelection: React.FC = () => {
                 const formState = JSON.parse(formStateData);
                 if (formState.memberId) {
                     setMemberId(formState.memberId);
+                }
+                if (formState.memberCode) {
+                    setMemberCode(formState.memberCode);
+                }
+                if (formState.memberName) {
+                    setMemberName(formState.memberName);
                 }
             } catch (e) {
                 console.error('解析 addTherapySellFormState 失敗', e);
@@ -81,6 +93,59 @@ const TherapyPackageSelection: React.FC = () => {
             }
         }
     }, []); // 僅在 mount 時執行一次
+
+    useEffect(() => {
+        let cancelled = false;
+
+        const normalizeMember = (raw: any): MemberData => ({
+            member_id: Number(raw?.member_id) || 0,
+            member_code: raw?.member_code || undefined,
+            name: raw?.name || '',
+            identity_type: raw?.identity_type || '',
+            address: raw?.address || '',
+            birthday: raw?.birthday || '',
+            blood_type: raw?.blood_type || '',
+            gender: raw?.gender || '',
+            inferrer_id: Number(raw?.inferrer_id) || 0,
+            line_id: raw?.line_id || '',
+            note: raw?.note || '',
+            occupation: raw?.occupation || '',
+            phone: raw?.phone || '',
+        });
+
+        const fetchMember = async () => {
+            try {
+                if (memberCode) {
+                    const data = await fetchMemberByCode(memberCode);
+                    if (!cancelled) {
+                        setMemberSummary(data ? normalizeMember(data) : null);
+                    }
+                    return;
+                }
+                if (memberId) {
+                    const data = await fetchMemberById(memberId);
+                    if (!cancelled) {
+                        setMemberSummary(data ? normalizeMember(data) : null);
+                    }
+                    return;
+                }
+                if (!cancelled) {
+                    setMemberSummary(null);
+                }
+            } catch (err) {
+                console.error('載入會員資料失敗', err);
+                if (!cancelled) {
+                    setMemberSummary(null);
+                }
+            }
+        };
+
+        fetchMember();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [memberCode, memberId]);
 
     const fetchPackages = async () => {
         setLoading(true); setPageError(null);
@@ -225,12 +290,10 @@ const TherapyPackageSelection: React.FC = () => {
         return total;
     };
 
-    const content = (
-        <Container className="my-4">
-            {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
-            <Card>
-                <Card.Header as="h5">選擇療程並設定堂數</Card.Header>
-                <Card.Body>
+    const selectionCard = (
+        <Card>
+            <Card.Header as="h5">選擇療程並設定堂數</Card.Header>
+            <Card.Body>
                     <Row className="mb-3 gx-2">
                         <Col>
                             <Form.Control
@@ -327,23 +390,41 @@ const TherapyPackageSelection: React.FC = () => {
                             })}
                         </ListGroup>
                     )}
-                </Card.Body>
-                { !loading && (
-                    <Card.Footer>
-                         <div className="d-flex justify-content-between align-items-center">
-                            <div>總計金額: <strong className="h5 mb-0" style={{color: '#00b1c8'}}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
-                            <div>
-                                <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
-                                    取消
-                                </Button>
-                                <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedPackagesMap.size === 0}>
-                                    確認選取 ({selectedPackagesMap.size} 項)
-                                </Button>
-                            </div>
+            </Card.Body>
+            { !loading && (
+                <Card.Footer>
+                     <div className="d-flex justify-content-between align-items-center">
+                        <div>總計金額: <strong className="h5 mb-0" style={{color: '#00b1c8'}}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
+                        <div>
+                            <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
+                                取消
+                            </Button>
+                            <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedPackagesMap.size === 0}>
+                                確認選取 ({selectedPackagesMap.size} 項)
+                            </Button>
                         </div>
-                    </Card.Footer>
-                )}
-            </Card>
+                    </div>
+                </Card.Footer>
+            )}
+        </Card>
+    );
+
+    const content = (
+        <Container className="my-4">
+            {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
+            <Row className="g-3">
+                <Col xs={12} lg={8}>
+                    {selectionCard}
+                </Col>
+                <Col xs={12} lg={4}>
+                    <MemberSummaryCard
+                        member={memberSummary}
+                        memberCode={memberCode}
+                        fallbackName={memberName}
+                        className="h-100"
+                    />
+                </Col>
+            </Row>
         </Container>
     );
 
