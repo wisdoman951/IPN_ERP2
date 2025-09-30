@@ -10,6 +10,7 @@ import { formatDate, truncateText, formatNumber } from "../../utils/therapyUtils
 import { getTherapyPackages, getStaffMembers, TherapyPackage, StaffMember } from "../../services/TherapyDropdownService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import { exportTherapyRecords } from "../../services/TherapyService";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 const TherapyRecord: React.FC = () => {
     const navigate = useNavigate();
@@ -35,6 +36,7 @@ const TherapyRecord: React.FC = () => {
         handleCheckboxChange,
         handleSearch,
     } = useTherapyRecord();
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
     const handleExport = async () => {
         try {
@@ -288,11 +290,14 @@ const TherapyRecord: React.FC = () => {
                         <Button
                             variant="info"
                             className="text-white px-4"
-                            onClick={() =>
+                            onClick={() => {
+                                if (!checkPermission()) {
+                                    return;
+                                }
                                 navigate('/therapy-record/add-therapy-record', {
                                     state: { recordId: selectedIds[0] },
-                                })
-                            }
+                                });
+                            }}
                             disabled={loading || selectedIds.length !== 1}
                         >
                             修改
@@ -307,6 +312,7 @@ const TherapyRecord: React.FC = () => {
         <>
             <Header />
             <DynamicContainer content={content} />
+            {permissionModal}
         </>
     );
 };
