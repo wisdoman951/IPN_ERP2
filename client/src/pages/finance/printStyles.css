@@ -1,4 +1,49 @@
+.screen-only {
+  display: block;
+}
+
+.print-only {
+  display: none;
+  width: 100%;
+}
+
+.copy-label {
+  font-weight: 600;
+}
+
+.print-footer {
+  font-size: 0.9rem;
+}
+
+.print-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.print-summary-row .summary-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.print-duplicate {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
+.print-landscape {
+  width: 100%;
+}
+
 @media print {
+  body {
+    margin: 0 !important;
+  }
+
   /* Ensure table uses full width and wraps text */
   .print-table {
     width: 100%;
@@ -14,5 +59,111 @@
   .print-table th:nth-child(3),
   .print-table td:nth-child(3) {
     width: 25%;
+  }
+
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  @page {
+    size: A4 landscape;
+    margin: 5mm;
+  }
+
+  .print-only .container,
+  .print-container .container {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 0 !important;
+  }
+
+  .print-landscape {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    min-height: 100%;
+    width: 100vw;
+    padding: 0 6mm;
+    gap: 6mm;
+  }
+
+  .print-duplicate {
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6mm;
+  }
+
+  .print-card {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 0;
+    max-width: none;
+    width: 100%;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin: 0 !important;
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+    font-size: 10px;
+  }
+
+  .print-card h3,
+  .print-card h4 {
+    margin-bottom: 2px;
+    font-size: 14px;
+  }
+
+  .print-card .card-header,
+  .print-card .card-body,
+  .print-card .card-footer {
+    padding: 6px 10px !important;
+  }
+
+  .print-card .card-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .print-card .table-responsive {
+    flex: 1 1 auto;
+  }
+
+  .print-card .table {
+    font-size: 9px;
+    margin-bottom: 6px;
+  }
+
+  .print-card .table th,
+  .print-card .table td {
+    padding: 2px !important;
+  }
+
+  .print-card + .print-card {
+    margin-top: 0 !important;
+  }
+
+  .print-footer {
+    border-top: 1px solid #000;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .print-card .print-summary-row {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .print-card .print-summary-row .summary-field {
+    flex: 0 1 auto;
+    white-space: nowrap;
   }
 }
