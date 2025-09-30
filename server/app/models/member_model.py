@@ -23,16 +23,19 @@ def create_member(data, store_id: int):
             if blood_type_value == '':
                 blood_type_value = None
 
+            identity_type_value = data.get("identity_type") or "一般會員"
+
             sql = """
                 INSERT INTO member (
-                    member_code, name, birthday, gender, blood_type,
+                    member_code, name, identity_type, birthday, gender, blood_type,
                     line_id, address, inferrer_id, phone, occupation, note,
-                    store_id 
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    store_id
+                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
             params = (
                 data.get("member_code"),
                 data.get("name"),
+                identity_type_value,
                 data.get("birthday"),
                 data.get("gender"),
                 blood_type_value,
@@ -64,7 +67,7 @@ def get_all_members(store_level: str, store_id: int):
     try:
         with conn.cursor() as cursor:
             base_sql = """
-                SELECT m.member_id, m.member_code, m.name, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
                        m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
                 FROM member AS m
                 LEFT JOIN store AS s ON m.store_id = s.store_id
@@ -97,7 +100,7 @@ def search_members(keyword: str, store_level: str, store_id: int):
             like_keyword = f"%{keyword}%"
 
             base_sql = """
-                SELECT m.member_id, m.member_code, m.name, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
                        m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
                 FROM member AS m
                 LEFT JOIN store AS s ON m.store_id = s.store_id
@@ -175,13 +178,15 @@ def update_member(member_id, data):
             if blood_type_value == '':
                 blood_type_value = None
 
+            identity_type_value = data.get("identity_type") or "一般會員"
+
             cursor.execute("""
                 UPDATE member SET
-                    name=%s, birthday=%s, address=%s, phone=%s, gender=%s,
+                    name=%s, identity_type=%s, birthday=%s, address=%s, phone=%s, gender=%s,
                     blood_type=%s, line_id=%s, inferrer_id=%s, occupation=%s, note=%s
                 WHERE member_id = %s
             """, (
-                data.get("name"), data.get("birthday"), data.get("address"),
+                data.get("name"), identity_type_value, data.get("birthday"), data.get("address"),
                 data.get("phone"), data.get("gender"), blood_type_value,
                 data.get("line_id"), data.get("inferrer_id"), data.get("occupation"),
                 data.get("note"), member_id
@@ -195,7 +200,7 @@ def get_member_by_id(member_id: int):
     try:
         with conn.cursor() as cursor:
             cursor.execute("""
-                SELECT m.member_id, m.member_code, m.name, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
                        m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
                 FROM member AS m
                 LEFT JOIN store AS s ON m.store_id = s.store_id
@@ -212,7 +217,7 @@ def get_member_by_code(member_code: str):
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT member_id, member_code, name, birthday, address, phone, gender, blood_type,
+                SELECT member_id, member_code, name, identity_type, birthday, address, phone, gender, blood_type,
                        line_id, inferrer_id, occupation, note, store_id
                 FROM member
                 WHERE member_code = %s

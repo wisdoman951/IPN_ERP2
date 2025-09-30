@@ -125,7 +125,14 @@ export const updateProductSell = async (saleId: number, data: ProductSellData) =
 
 // 刪除產品銷售記錄
 export const deleteProductSell = async (saleId: number) => {
-  return axios.delete(`${API_URL}/delete/${saleId}`, getAuthHeaders());
+  try {
+    return await axios.delete(`${API_URL}/delete/${saleId}`, getAuthHeaders());
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 403) {
+      throw new Error('無操作權限');
+    }
+    throw error;
+  }
 };
 
 // 匯出產品銷售記錄
