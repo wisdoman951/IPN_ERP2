@@ -3,6 +3,7 @@ export interface MemberData {
     member_id: number;
     member_code?: string;
     name: string;
+    identity_type?: string;
     address: string;
     birthday: string;
     blood_type: string;

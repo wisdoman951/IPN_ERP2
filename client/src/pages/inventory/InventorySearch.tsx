@@ -6,6 +6,7 @@ import DynamicContainer from "../../components/DynamicContainer";
 import ScrollableTable from "../../components/ScrollableTable";
 import { getAllInventory, searchInventory, deleteInventoryItem, exportInventory } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 // 庫存項目接口
 interface InventoryItem {
@@ -34,6 +35,7 @@ const InventorySearch: React.FC = () => {
     const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
     // 從 localStorage 中獲取用戶所屬店鋪ID
     const getUserStoreId = (): number | undefined => {
@@ -166,11 +168,15 @@ const InventorySearch: React.FC = () => {
 
     // 跳轉到更新頁面
     const handleEdit = () => {
+        if (!checkPermission()) {
+            setError("無操作權限");
+            return;
+        }
         if (selectedItems.length !== 1) {
             setError("請選擇一個項目進行修改");
             return;
         }
-        
+
         navigate(`/inventory/inventory-update?id=${selectedItems[0]}`);
     };
     
@@ -350,6 +356,7 @@ const InventorySearch: React.FC = () => {
         <>
             <Header />
             <DynamicContainer content={content} />
+            {permissionModal}
         </>
     );
 };

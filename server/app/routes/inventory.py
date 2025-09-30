@@ -63,6 +63,8 @@ def search_inventory_items():
 def get_low_stock_items():
     """獲取低於閾值的庫存記錄"""
     try:
+        if getattr(request, 'permission', None) == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         user_store_level = request.store_level
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
@@ -128,6 +130,8 @@ def update_inventory(inventory_id):
     """更新庫存記錄"""
     data = request.json
     try:
+        if getattr(request, 'permission', None) == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         if inventory_id >= 1000000:
             return jsonify({"error": "銷售資料無法做更動，銷售資料要做更動請至銷售產品/銷售療程做修改"}), 400
 
@@ -183,6 +187,8 @@ def add_inventory():
 def delete_inventory(inventory_id):
     """刪除庫存記錄"""
     try:
+        if getattr(request, 'permission', None) != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         existing = get_inventory_by_id(inventory_id)
         if not existing:
             return jsonify({"error": "找不到該庫存記錄"}), 404
