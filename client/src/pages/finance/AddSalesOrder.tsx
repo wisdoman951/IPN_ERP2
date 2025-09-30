@@ -294,7 +294,7 @@ const AddSalesOrder: React.FC = () => {
     );
 
     const renderPrintableCard = (copyLabel: string) => (
-        <Card className="mb-4 print-card">
+        <Card className="print-card">
             <Card.Header className="text-center">
                 <h4>全崴國際無限充能館</h4>
                 <h3>銷售單</h3>
