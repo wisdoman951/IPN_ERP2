@@ -355,16 +355,20 @@ const AddSalesOrder: React.FC = () => {
                     </table>
                 </div>
 
-                <Row className="mt-3">
-                    <Col md={6} className="mb-2">
-                        <div className="mb-2"><strong>金額(大寫)：</strong></div>
-                        <div><strong>購買人：</strong>{selectedMemberName}</div>
-                    </Col>
-                    <Col md={6} className="mb-2">
-                        <div className="mb-2"><strong>金額(小寫)：</strong>{formatNumber(grandTotal)}</div>
-                        <div><strong>銷售人：</strong>{selectedStaffName}</div>
-                    </Col>
-                </Row>
+                <div className="print-summary-row mt-3">
+                    <div className="summary-field">
+                        <strong>金額(大寫)：</strong>
+                    </div>
+                    <div className="summary-field">
+                        <strong>購買人：</strong>{selectedMemberName}
+                    </div>
+                    <div className="summary-field">
+                        <strong>金額(小寫)：</strong>{formatNumber(grandTotal)}
+                    </div>
+                    <div className="summary-field">
+                        <strong>銷售人：</strong>{selectedStaffName}
+                    </div>
+                </div>
                 {note && (
                     <Row className="mt-2">
                         <Col>

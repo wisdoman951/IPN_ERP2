@@ -15,6 +15,19 @@
   font-size: 0.9rem;
 }
 
+.print-summary-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+}
+
+.print-summary-row .summary-field {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .print-duplicate {
   display: flex;
   flex-direction: column;
@@ -141,5 +154,16 @@
     display: flex;
     justify-content: space-between;
     gap: 8px;
+  }
+
+  .print-card .print-summary-row {
+    flex-wrap: nowrap;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .print-card .print-summary-row .summary-field {
+    flex: 0 1 auto;
+    white-space: nowrap;
   }
 }
