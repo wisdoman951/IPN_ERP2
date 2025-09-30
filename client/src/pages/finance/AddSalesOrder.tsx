@@ -465,7 +465,7 @@ const AddSalesOrder: React.FC = () => {
     );
 
     const printableContent = (
-        <Container className="p-4">
+        <Container className="p-4 print-landscape">
             <div className="print-duplicate">
                 {renderPrintableCard('顧客聯')}
                 {renderPrintableCard('門市聯')}

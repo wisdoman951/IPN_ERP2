@@ -22,6 +22,10 @@
   width: 100%;
 }
 
+.print-landscape {
+  width: 100%;
+}
+
 @media print {
   /* Ensure table uses full width and wraps text */
   .print-table {
@@ -49,20 +53,25 @@
   }
 
   @page {
-    size: A4 portrait;
-    margin: 12mm;
+    size: A4 landscape;
+    margin: 10mm;
   }
 
+  .print-only .container,
   .print-container .container {
+    max-width: none !important;
+    width: 100% !important;
     padding: 0 !important;
   }
 
   .print-duplicate {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: nowrap;
     justify-content: space-between;
-    gap: 16px;
-    min-height: calc(100vh - 24mm);
+    align-items: stretch;
+    gap: 12px;
+    min-height: calc(100vh - 20mm);
     page-break-inside: avoid;
     break-inside: avoid;
   }
@@ -70,28 +79,45 @@
   .print-card {
     display: flex;
     flex-direction: column;
+    flex: 1 1 0;
+    max-width: calc(50% - 6px);
     page-break-inside: avoid;
     break-inside: avoid;
     margin: 0 !important;
     border: 1px solid #000 !important;
     box-shadow: none !important;
+    font-size: 11px;
+  }
+
+  .print-card h3,
+  .print-card h4 {
+    margin-bottom: 4px;
   }
 
   .print-card .card-body {
     flex: 1 1 auto;
     display: flex;
     flex-direction: column;
+    gap: 8px;
   }
 
   .print-card .table-responsive {
     flex: 1 1 auto;
   }
 
+  .print-card .table {
+    font-size: 10px;
+    margin-bottom: 8px;
+  }
+
   .print-card + .print-card {
-    margin-top: 12px !important;
+    margin-top: 0 !important;
   }
 
   .print-footer {
     border-top: 1px solid #000;
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
   }
 }
