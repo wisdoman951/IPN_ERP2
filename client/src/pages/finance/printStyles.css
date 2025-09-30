@@ -1,3 +1,27 @@
+.screen-only {
+  display: block;
+}
+
+.print-only {
+  display: none;
+  width: 100%;
+}
+
+.copy-label {
+  font-weight: 600;
+}
+
+.print-footer {
+  font-size: 0.9rem;
+}
+
+.print-duplicate {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  width: 100%;
+}
+
 @media print {
   /* Ensure table uses full width and wraps text */
   .print-table {
@@ -14,5 +38,60 @@
   .print-table th:nth-child(3),
   .print-table td:nth-child(3) {
     width: 25%;
+  }
+
+  .screen-only {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 12mm;
+  }
+
+  .print-container .container {
+    padding: 0 !important;
+  }
+
+  .print-duplicate {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 16px;
+    min-height: calc(100vh - 24mm);
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .print-card {
+    display: flex;
+    flex-direction: column;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin: 0 !important;
+    border: 1px solid #000 !important;
+    box-shadow: none !important;
+  }
+
+  .print-card .card-body {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .print-card .table-responsive {
+    flex: 1 1 auto;
+  }
+
+  .print-card + .print-card {
+    margin-top: 12px !important;
+  }
+
+  .print-footer {
+    border-top: 1px solid #000;
   }
 }
