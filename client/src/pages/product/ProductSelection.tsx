@@ -7,6 +7,9 @@ import { getAllProducts, Product } from '../../services/ProductSellService';
 import { fetchAllBundles, Bundle } from '../../services/ProductBundleService';
 import { getStoreId } from '../../services/AuthUtils';
 import { getCategories, Category } from '../../services/CategoryService';
+import MemberSummaryCard from '../../components/MemberSummaryCard';
+import { getMemberByCode as fetchMemberByCode } from '../../services/MedicalService';
+import { MemberData } from '../../types/medicalTypes';
 
 interface ItemBase {
   type: 'product' | 'bundle';
@@ -38,6 +41,9 @@ const ProductSelection: React.FC = () => {
   const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState<string | null>(null);
+  const [memberCode, setMemberCode] = useState<string>('');
+  const [memberName, setMemberName] = useState<string>('');
+  const [memberSummary, setMemberSummary] = useState<MemberData | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -94,6 +100,21 @@ const ProductSelection: React.FC = () => {
 
     fetchData();
 
+    const formState = localStorage.getItem('productSellFormState');
+    if (formState) {
+      try {
+        const parsed = JSON.parse(formState);
+        if (parsed.memberCode) {
+          setMemberCode(parsed.memberCode);
+        }
+        if (parsed.memberName) {
+          setMemberName(parsed.memberName);
+        }
+      } catch (e) {
+        console.error('解析 productSellFormState 失敗', e);
+      }
+    }
+
     // Restore selections from localStorage
     const stored = localStorage.getItem('selectedProducts');
     if (stored) {
@@ -110,6 +131,50 @@ const ProductSelection: React.FC = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const normalizeMember = (raw: any): MemberData => ({
+      member_id: Number(raw?.member_id) || 0,
+      member_code: raw?.member_code || undefined,
+      name: raw?.name || '',
+      identity_type: raw?.identity_type || '',
+      address: raw?.address || '',
+      birthday: raw?.birthday || '',
+      blood_type: raw?.blood_type || '',
+      gender: raw?.gender || '',
+      inferrer_id: Number(raw?.inferrer_id) || 0,
+      line_id: raw?.line_id || '',
+      note: raw?.note || '',
+      occupation: raw?.occupation || '',
+      phone: raw?.phone || '',
+    });
+
+    const fetchMember = async () => {
+      if (!memberCode) {
+        setMemberSummary(null);
+        return;
+      }
+      try {
+        const data = await fetchMemberByCode(memberCode);
+        if (!cancelled) {
+          setMemberSummary(data ? normalizeMember(data) : null);
+        }
+      } catch (err) {
+        console.error('載入會員資料失敗', err);
+        if (!cancelled) {
+          setMemberSummary(null);
+        }
+      }
+    };
+
+    fetchMember();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [memberCode]);
 
   useEffect(() => { // 前端篩選
     let filtered: ItemBase[] = [];
@@ -286,12 +351,10 @@ const ProductSelection: React.FC = () => {
     return null;
   };
 
-  const content = (
-    <Container className="my-4">
-      {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
-      <Card>
-        <Card.Header as="h5">選擇產品並設定數量</Card.Header>
-        <Card.Body>
+  const selectionCard = (
+    <Card>
+      <Card.Header as="h5">選擇產品並設定數量</Card.Header>
+      <Card.Body>
           <Row className="mb-3 gx-2">
             <Col>
               <Form.Control
@@ -330,23 +393,41 @@ const ProductSelection: React.FC = () => {
           </Tabs>
 
           {renderItemList()}
-        </Card.Body>
-        {!loading && (
-          <Card.Footer>
-            <div className="d-flex justify-content-between align-items-center">
-              <div>總計金額: <strong className="h5 mb-0" style={{ color: '#00b1c8' }}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
-              <div>
-                <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
-                  取消
-                </Button>
-                <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedItemsMap.size === 0}>
-                  確認選取 ({selectedItemsMap.size} 項)
-                </Button>
-              </div>
+      </Card.Body>
+      {!loading && (
+        <Card.Footer>
+          <div className="d-flex justify-content-between align-items-center">
+            <div>總計金額: <strong className="h5 mb-0" style={{ color: '#00b1c8' }}>NT$ {calculatePageTotal().toLocaleString()}</strong></div>
+            <div>
+              <Button variant="outline-secondary" type="button" onClick={() => navigate(-1)} className="me-2">
+                取消
+              </Button>
+              <Button variant="info" className="text-white" type="button" onClick={handleConfirmSelection} disabled={selectedItemsMap.size === 0}>
+                確認選取 ({selectedItemsMap.size} 項)
+              </Button>
             </div>
-          </Card.Footer>
-        )}
-      </Card>
+          </div>
+        </Card.Footer>
+      )}
+    </Card>
+  );
+
+  const content = (
+    <Container className="my-4">
+      {pageError && <Alert variant="danger" dismissible onClose={() => setPageError(null)}>{pageError}</Alert>}
+      <Row className="g-3">
+        <Col xs={12} lg={8}>
+          {selectionCard}
+        </Col>
+        <Col xs={12} lg={4}>
+          <MemberSummaryCard
+            member={memberSummary}
+            memberCode={memberCode}
+            fallbackName={memberName}
+            className="h-100"
+          />
+        </Col>
+      </Row>
     </Container>
   );
 

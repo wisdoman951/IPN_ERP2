@@ -323,6 +323,7 @@ CREATE TABLE `member` (
   `member_id` int NOT NULL AUTO_INCREMENT,
   `member_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `identity_type` enum('直營店','加盟店','合夥商','推廣商(分店能量師)','B2B合作專案','心耀商','會員','一般會員') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '一般會員' COMMENT '會員身份別',
   `birthday` date DEFAULT NULL,
   `gender` enum('Male','Female','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `blood_type` enum('A','B','AB','O') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
