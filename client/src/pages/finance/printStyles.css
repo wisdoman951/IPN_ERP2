@@ -71,7 +71,7 @@
 
   @page {
     size: A4 landscape;
-    margin: 5mm;
+    margin: 0;
   }
 
   .print-only .container,
