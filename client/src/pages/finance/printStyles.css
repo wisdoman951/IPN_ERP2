@@ -53,7 +53,7 @@
   }
 
   @page {
-    size: A4 landscape;
+    size: landscape;
     margin: 10mm;
   }
 
@@ -64,23 +64,26 @@
     padding: 0 !important;
   }
 
-  .print-duplicate {
+  .print-landscape {
     display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
+    flex-direction: column;
     justify-content: space-between;
-    align-items: stretch;
-    gap: 12px;
     min-height: calc(100vh - 20mm);
-    page-break-inside: avoid;
-    break-inside: avoid;
+    gap: 12px;
+  }
+
+  .print-duplicate {
+    flex: 1 1 auto;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 12px;
   }
 
   .print-card {
     display: flex;
     flex-direction: column;
     flex: 1 1 0;
-    max-width: calc(50% - 6px);
+    max-width: none;
     page-break-inside: avoid;
     break-inside: avoid;
     margin: 0 !important;
