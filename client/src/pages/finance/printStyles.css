@@ -27,6 +27,10 @@
 }
 
 @media print {
+  body {
+    margin: 0 !important;
+  }
+
   /* Ensure table uses full width and wraps text */
   .print-table {
     width: 100%;
@@ -53,8 +57,8 @@
   }
 
   @page {
-    size: landscape;
-    margin: 10mm;
+    size: A4 landscape;
+    margin: 5mm;
   }
 
   .print-only .container,
@@ -68,7 +72,9 @@
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    min-height: calc(100vh - 20mm);
+    min-height: calc(100vh - 10mm);
+    width: 100vw;
+    padding: 0 8mm;
     gap: 12px;
   }
 
@@ -84,6 +90,7 @@
     flex-direction: column;
     flex: 1 1 0;
     max-width: none;
+    width: 100%;
     page-break-inside: avoid;
     break-inside: avoid;
     margin: 0 !important;
