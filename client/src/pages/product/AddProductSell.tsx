@@ -493,6 +493,7 @@ const AddProductSell: React.FC = () => {
               memberCode={memberCode}
               fallbackName={memberName}
               className="mb-3 shadow-sm"
+              hideHeader
             />
             <Form.Group className="mb-3">
               <Form.Label>購買日期</Form.Label>

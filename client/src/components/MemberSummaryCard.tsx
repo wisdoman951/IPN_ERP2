@@ -7,6 +7,7 @@ interface MemberSummaryCardProps {
   memberCode?: string;
   fallbackName?: string;
   className?: string;
+  hideHeader?: boolean;
 }
 
 const displayOrDash = (value?: string | null) => {
@@ -22,6 +23,7 @@ const MemberSummaryCard: React.FC<MemberSummaryCardProps> = ({
   memberCode,
   fallbackName,
   className,
+  hideHeader = false,
 }) => {
   const name = displayOrDash(member?.name ?? fallbackName);
   const identity = displayOrDash(member?.identity_type ?? undefined);
@@ -30,7 +32,9 @@ const MemberSummaryCard: React.FC<MemberSummaryCardProps> = ({
 
   return (
     <Card className={className}>
-      <Card.Header className="bg-light fw-semibold">會員基本資料</Card.Header>
+      {!hideHeader && (
+        <Card.Header className="bg-light fw-semibold">會員基本資料</Card.Header>
+      )}
       <Card.Body>
         <div className="mb-3">
           <div className="text-muted small">姓名</div>
