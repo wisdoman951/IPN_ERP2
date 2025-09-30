@@ -22,12 +22,21 @@ from app.models.staff_model import (
 from app.middleware import auth_required, login_required, admin_required
 staff_bp = Blueprint("staff", __name__)
 
+
+def _forbid_therapist():
+    if getattr(request, 'permission', None) == 'therapist':
+        return jsonify({"error": "無操作權限"}), 403
+    return None
+
 # --- 這個是您原有的，用於獲取完整員工列表 ---
 @staff_bp.route("/list", methods=["GET"])
 @auth_required
 def get_staff_list():
     """根據權限獲取員工列表"""
     try:
+        denial = _forbid_therapist()
+        if denial:
+            return denial
         user_store_level = request.store_level
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
@@ -59,6 +68,9 @@ def search_staff_route():
     """搜尋員工"""
     keyword = request.args.get("keyword", "")
     try:
+        denial = _forbid_therapist()
+        if denial:
+            return denial
         user_store_level = request.store_level
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
@@ -78,6 +90,9 @@ def search_staff_route():
 def get_staff_route(staff_id):
     """獲取單個員工信息"""
     try:
+        denial = _forbid_therapist()
+        if denial:
+            return denial
         staff = get_staff_by_id(staff_id)
         if not staff:
             return jsonify({"error": "找不到該員工"}), 404
@@ -91,6 +106,9 @@ def get_staff_route(staff_id):
 def get_staff_details_route(staff_id):
     """獲取員工詳細資料"""
     try:
+        denial = _forbid_therapist()
+        if denial:
+            return denial
         details = get_staff_details(staff_id)
         if not details:
             return jsonify({"error": "找不到該員工的詳細資料"}), 404
@@ -104,6 +122,9 @@ def get_staff_details_route(staff_id):
 def export_staff_route():
     """匯出員工資料為 Excel 檔案"""
     try:
+        denial = _forbid_therapist()
+        if denial:
+            return denial
         user_store_level = request.store_level
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
@@ -186,6 +207,9 @@ def export_staff_route():
 def export_selected_staff_route():
     """匯出勾選的員工資料為 Excel 檔案"""
     try:
+        denial = _forbid_therapist()
+        if denial:
+            return denial
         data = request.json or {}
         ids = data.get('ids')
         if not ids or not isinstance(ids, list):
@@ -262,6 +286,9 @@ def add_staff():
     """新增員工"""
     data = request.json
     try:
+        denial = _forbid_therapist()
+        if denial:
+            return denial
         basic_info = data.get("basic_info", {}) if data else {}
         if basic_info.get("store_id") is None:
             return jsonify({"error": "所屬分店為必填"}), 400
@@ -280,6 +307,9 @@ def update_staff_route(staff_id):
     """更新員工信息"""
     data = request.json
     try:
+        denial = _forbid_therapist()
+        if denial:
+            return denial
         success = update_staff(staff_id, data)
         if success:
             return jsonify({"message": "員工信息更新成功"}), 200
@@ -294,6 +324,8 @@ def update_staff_route(staff_id):
 def delete_staff_route(staff_id):
     """刪除員工"""
     try:
+        if getattr(request, 'permission', None) != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         success = delete_staff(staff_id)
         if success:
             return jsonify({"message": "員工刪除成功"}), 200

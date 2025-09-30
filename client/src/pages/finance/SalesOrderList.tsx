@@ -9,6 +9,7 @@ import { SalesOrderListRow, getSalesOrders, deleteSalesOrders, exportSalesOrders
 import { formatCurrency } from '../../utils/productSellUtils'; // 借用金額格式化工具
 import { downloadBlob } from '../../utils/downloadBlob';
 import { formatDateToYYYYMMDD } from '../../utils/dateUtils';
+import usePermissionGuard from '../../hooks/usePermissionGuard';
 
 const SalesOrderList: React.FC = () => {
     const navigate = useNavigate();
@@ -17,6 +18,7 @@ const SalesOrderList: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [keyword, setKeyword] = useState("");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
     const fetchData = useCallback(async (searchKeyword?: string) => {
         setLoading(true);
@@ -134,17 +136,25 @@ const SalesOrderList: React.FC = () => {
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExport} disabled={loading}>報表匯出</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExportSelected} disabled={loading || selectedIds.length === 0}>勾選匯出</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleDelete} disabled={loading || selectedIds.length === 0}>刪除</Button></Col>
-                    <Col xs="auto"><Button variant="info" className="text-white" onClick={() => navigate(`/finance/sales/add?order_id=${selectedIds[0]}`)} disabled={loading || selectedIds.length !== 1}>修改</Button></Col>
+                    <Col xs="auto"><Button variant="info" className="text-white" onClick={() => {
+                        if (!checkPermission()) {
+                            return;
+                        }
+                        navigate(`/finance/sales/add?order_id=${selectedIds[0]}`);
+                    }} disabled={loading || selectedIds.length !== 1}>修改</Button></Col>
                 </Row>
             </Container>
         </>
     );
 
     return (
-        <div className="d-flex flex-column min-vh-100 bg-light">
-            <Header />
-            <DynamicContainer content={content} />
-        </div>
+        <>
+            <div className="d-flex flex-column min-vh-100 bg-light">
+                <Header />
+                <DynamicContainer content={content} />
+            </div>
+            {permissionModal}
+        </>
     );
 };
 
