@@ -11,6 +11,7 @@ import { calculateAge } from '../../utils/memberUtils';
 // MemberFormData interface (保持不變)
 interface MemberFormData {
     member_code: string;
+    identity_type: string;
     name: string;
     birthday: string;
     age: string;
@@ -49,6 +50,7 @@ const EditMember: React.FC = () => {
                     // 將從服務獲取的資料填充到表單 state
                     setForm({
                         member_code: data.member_code || "",
+                        identity_type: data.IdentityType || "一般會員",
                         name: data.Name || "",
                         birthday: data.Birth ? new Date(data.Birth).toISOString().split('T')[0] : "",
                         gender: data.Gender || "Male",
@@ -108,6 +110,7 @@ const EditMember: React.FC = () => {
             // 將 form state 轉換為 Member service 期望的格式 (大寫鍵)
             const payload: Partial<Member> = {
                 Name: form.name,
+                IdentityType: form.identity_type,
                 Birth: form.birthday,
                 Gender: form.gender,
                 BloodType: form.bloodType,
@@ -139,7 +142,26 @@ const EditMember: React.FC = () => {
                 <Form onSubmit={handleSubmit}>
                     <Row className="g-3">
                         <Col md={6}><Form.Group><Form.Label>編號</Form.Label><Form.Control type="text" value={form.member_code || ''} readOnly disabled /></Form.Group></Col>
-                        <Col md={6}></Col> {/* 空白佔位 */}
+                        <Col md={6}>
+                            <Form.Group>
+                                <Form.Label>身份別</Form.Label>
+                                <Form.Select
+                                    name="identity_type"
+                                    value={form.identity_type || ''}
+                                    onChange={handleChange}
+                                    required
+                                >
+                                    <option value="直營店">直營店</option>
+                                    <option value="加盟店">加盟店</option>
+                                    <option value="合夥商">合夥商</option>
+                                    <option value="推廣商(分店能量師)">推廣商(分店能量師)</option>
+                                    <option value="B2B合作專案">B2B合作專案</option>
+                                    <option value="心耀商">心耀商</option>
+                                    <option value="會員">會員</option>
+                                    <option value="一般會員">一般會員</option>
+                                </Form.Select>
+                            </Form.Group>
+                        </Col>
                         
                         <Col md={6}><Form.Group><Form.Label>姓名</Form.Label><Form.Control name="name" value={form.name || ''} onChange={handleChange} required /></Form.Group></Col>
                         <Col md={3}><Form.Group><Form.Label>生日</Form.Label><Form.Control type="date" name="birthday" value={form.birthday || ''} onChange={handleChange} required /></Form.Group></Col>

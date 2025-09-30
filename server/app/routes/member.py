@@ -83,6 +83,9 @@ def create_member_route():
         
         if not data.get('name') or not data.get('birthday'):
             return jsonify({"error": "姓名和生日為必填欄位。"}), 400
+
+        if not data.get('identity_type'):
+            return jsonify({"error": "會員身份別為必填欄位。"}), 400
         
         # 呼叫 model 函式新增會員，並傳入當前使用者的 store_id
         create_member(data, user_store_id)
@@ -98,6 +101,8 @@ def create_member_route():
 def delete_member_route(member_id):
     """刪除會員，並進行權限檢查"""
     try:
+        if getattr(request, "permission", None) != 'admin':
+            return jsonify({"error": "無操作權限"}), 403
         # --- 權限檢查 ---
         user_store_level = request.store_level
         user_store_id = request.store_id
@@ -126,6 +131,8 @@ def update_member_route(member_id):
     """更新會員資料，並進行權限檢查"""
     data = request.json
     try:
+        if getattr(request, "permission", None) == 'therapist':
+            return jsonify({"error": "無操作權限"}), 403
         # --- 權限檢查 ---
         user_store_level = request.store_level
         user_store_id = request.store_id
@@ -139,8 +146,10 @@ def update_member_route(member_id):
         # --- 權限檢查結束 ---
 
         member_data = {
-            "name": data.get("name"), "birthday": data.get("birthday"), "address": data.get("address"),
-            "phone": data.get("phone"), "gender": data.get("gender"), 
+            "name": data.get("name"),
+            "identity_type": data.get("identityType") or data.get("identity_type"),
+            "birthday": data.get("birthday"), "address": data.get("address"),
+            "phone": data.get("phone"), "gender": data.get("gender"),
             "blood_type": data.get("bloodType") or data.get("blood_type"),
             "line_id": data.get("lineId") or data.get("line_id"),
             "inferrer_id": data.get("inferrerId") or data.get("inferrer_id"),
@@ -177,7 +186,7 @@ def export_members():
         df = pd.DataFrame(members)
 
         column_mapping = {
-            'member_id': '會員ID', 'member_code': '會員編號', 'name': '姓名',
+            'member_id': '會員ID', 'member_code': '會員編號', 'name': '姓名', 'identity_type': '身份別',
             'birthday': '生日', 'address': '地址', 'phone': '電話', 'gender': '性別',
             'blood_type': '血型', 'line_id': 'Line ID', 'inferrer_id': '推薦人編號',
             'occupation': '職業', 'note': '備註', 'store_name': '所屬分店'
