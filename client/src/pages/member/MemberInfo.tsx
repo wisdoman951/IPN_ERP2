@@ -37,7 +37,10 @@ const MemberInfo: React.FC = () => {
             ),
         [members]
     );
-    const { checkPermission, modal: permissionModal } = usePermissionGuard();
+    const { checkPermission: checkEditPermission, modal: editPermissionModal } = usePermissionGuard();
+    const { checkPermission: checkDeletePermission, modal: deletePermissionModal } = usePermissionGuard({
+        disallowedRoles: ["basic", "therapist"],
+    });
     // 定義表格標頭
     const tableHeader = (
         <tr>
@@ -96,7 +99,7 @@ const MemberInfo: React.FC = () => {
     
     // 新增：處理修改按鈕的點擊事件
     const handleEdit = () => {
-        if (!checkPermission()) {
+        if (!checkEditPermission()) {
             return;
         }
         // 再次確認是否剛好只選取了一項
@@ -109,6 +112,13 @@ const MemberInfo: React.FC = () => {
         }
     };
     
+    const handleDeleteWithPermission = async () => {
+        if (!checkDeletePermission()) {
+            return;
+        }
+        await handleDelete();
+    };
+
     // 定義頁面內容
     const content = (
         <div className="w-100">
@@ -168,7 +178,12 @@ const MemberInfo: React.FC = () => {
                         </Button>
                     </Col>
                     <Col xs="auto">
-                        <Button variant="info" className="text-white" onClick={handleDelete} disabled={loading || selectedMemberIds.length === 0}>
+                        <Button
+                            variant="info"
+                            className="text-white"
+                            onClick={handleDeleteWithPermission}
+                            disabled={loading || selectedMemberIds.length === 0}
+                        >
                             刪除
                         </Button>
                     </Col>
@@ -195,7 +210,8 @@ const MemberInfo: React.FC = () => {
                 <Header />
                 <DynamicContainer content={content} />
             </div>
-            {permissionModal}
+            {editPermissionModal}
+            {deletePermissionModal}
         </>
     );
 };

@@ -37,11 +37,14 @@ const MedicalRecord: React.FC = () => {
             <th>備註</th>
         </tr>
     );
-    const { checkPermission, modal: permissionModal } = usePermissionGuard();
+    const { checkPermission: checkEditPermission, modal: editPermissionModal } = usePermissionGuard();
+    const { checkPermission: checkDeletePermission, modal: deletePermissionModal } = usePermissionGuard({
+        disallowedRoles: ["basic", "therapist"],
+    });
 
     // 新增處理修改按鈕點擊的函數
     const handleEdit = () => {
-        if (!checkPermission()) {
+        if (!checkEditPermission()) {
             return;
         }
       // 必須檢查是否只勾選了「一個」項目
@@ -86,6 +89,13 @@ const MedicalRecord: React.FC = () => {
         )
     );
 
+    const handleDeleteWithPermission = async () => {
+        if (!checkDeletePermission()) {
+            return;
+        }
+        await handleDelete();
+    };
+
     // 定義頁面內容
     const content = (
         <div className="w-100">
@@ -128,7 +138,7 @@ const MedicalRecord: React.FC = () => {
                         <Button variant="info" className="text-white" onClick={handleExport}>報表匯出</Button>
                     </Col>
                     <Col xs="auto">
-                        <Button variant="info" className="text-white" onClick={handleDelete}>刪除</Button>
+                        <Button variant="info" className="text-white" onClick={handleDeleteWithPermission}>刪除</Button>
                     </Col>
                     <Col xs="auto">
                         {/* 修改此按鈕 */}
@@ -155,7 +165,8 @@ const MedicalRecord: React.FC = () => {
                 {/* 使用 DynamicContainer */}
                 <DynamicContainer content={content} className="p-4 align-items-start" />
             </div>
-            {permissionModal}
+            {editPermissionModal}
+            {deletePermissionModal}
         </>
     );
 };

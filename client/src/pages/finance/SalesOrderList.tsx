@@ -64,6 +64,20 @@ const SalesOrderList: React.FC = () => {
             setLoading(false);
         }
     };
+
+    const handleExportWithPermission = async () => {
+        if (!checkPermission()) {
+            return;
+        }
+        await handleExport();
+    };
+
+    const handleExportSelectedWithPermission = async () => {
+        if (!checkPermission()) {
+            return;
+        }
+        await handleExportSelected();
+    };
     const handleDelete = async () => {
         if (selectedIds.length === 0) return;
         if (window.confirm(`確定要刪除選中的 ${selectedIds.length} 筆銷售單嗎？`)) {
@@ -133,8 +147,8 @@ const SalesOrderList: React.FC = () => {
 
             <Container className="my-4">
                 <Row className="justify-content-end g-2">
-                    <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExport} disabled={loading}>報表匯出</Button></Col>
-                    <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExportSelected} disabled={loading || selectedIds.length === 0}>勾選匯出</Button></Col>
+                    <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExportWithPermission} disabled={loading}>報表匯出</Button></Col>
+                    <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExportSelectedWithPermission} disabled={loading || selectedIds.length === 0}>勾選匯出</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleDelete} disabled={loading || selectedIds.length === 0}>刪除</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={() => {
                         if (!checkPermission()) {

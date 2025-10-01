@@ -42,7 +42,10 @@ const InventoryDetail: React.FC = () => {
   const [endDate, setEndDate] = useState("");
   const [saleStaff, setSaleStaff] = useState("");
   const [buyer, setBuyer] = useState("");
-  const { checkPermission, modal: permissionModal } = usePermissionGuard();
+  const { checkPermission: checkEditPermission, modal: editPermissionModal } = usePermissionGuard();
+  const { checkPermission: checkDeletePermission, modal: deletePermissionModal } = usePermissionGuard({
+    disallowedRoles: ["basic", "therapist"],
+  });
 
   const handleSearch = () => {
     getInventoryRecords({
@@ -75,6 +78,13 @@ const InventoryDetail: React.FC = () => {
       console.error('刪除庫存記錄失敗', err);
       alert('刪除失敗');
     }
+  };
+
+  const handleDeleteWithPermission = async () => {
+    if (!checkDeletePermission()) {
+      return;
+    }
+    await handleDelete();
   };
 
   const handleExport = async () => {
@@ -210,14 +220,14 @@ const InventoryDetail: React.FC = () => {
           <Button variant="info" className="text-white px-4" onClick={handleExport}>報表匯出</Button>
         </Col>
         <Col xs="auto">
-          <Button variant="info" className="text-white px-4" onClick={handleDelete}>刪除</Button>
+          <Button variant="info" className="text-white px-4" onClick={handleDeleteWithPermission}>刪除</Button>
         </Col>
         <Col xs="auto">
           <Button
             variant="info"
             className="text-white px-4 me-2"
             onClick={() => {
-              if (!checkPermission()) {
+              if (!checkEditPermission()) {
                 return;
               }
               if (!selectedId) {
@@ -242,7 +252,8 @@ const InventoryDetail: React.FC = () => {
     <>
       <Header />
       <DynamicContainer content={content} />
-      {permissionModal}
+      {editPermissionModal}
+      {deletePermissionModal}
     </>
   );
 };

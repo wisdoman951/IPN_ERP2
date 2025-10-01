@@ -10,6 +10,7 @@ import { useStressTest } from "../../../hooks/useStressTest";
 import { getStressLevel } from "../../../utils/stressTestUtils";
 import { clearStressTestStorage } from "../../../utils/stressTestStorage";
 import "./stressTest.css";
+import usePermissionGuard from "../../../hooks/usePermissionGuard";
 
 // 只要有這型別就行，實作只用一個 smartSearch 欄位
 export interface SearchFilters {
@@ -34,6 +35,24 @@ const StressTest: React.FC = () => {
     handleDelete,
     handleExport
   } = useStressTest();
+  const { checkPermission: checkEditPermission, modal: editPermissionModal } = usePermissionGuard();
+  const { checkPermission: checkDeletePermission, modal: deletePermissionModal } = usePermissionGuard({
+    disallowedRoles: ["basic", "therapist"],
+  });
+
+  const handleDeleteWithPermission = async () => {
+    if (!checkDeletePermission()) {
+      return;
+    }
+    await handleDelete();
+  };
+
+  const handleEdit = (id: number) => {
+    if (!checkEditPermission()) {
+      return;
+    }
+    navigate(`/health-data-analysis/stress-test/edit/${id}`);
+  };
 
   // 智慧搜尋邏輯
   const handleSmartSearch = () => {
@@ -121,7 +140,7 @@ const StressTest: React.FC = () => {
               size="sm"
               variant="outline-info"
               className="ms-2"
-              onClick={() => navigate(`/health-data-analysis/stress-test/edit/${test.ipn_stress_id}`)}
+              onClick={() => handleEdit(test.ipn_stress_id)}
             >修改</Button>
           </div>
         </td>
@@ -189,7 +208,12 @@ const StressTest: React.FC = () => {
             </Button>
           </Col>
           <Col xs="auto">
-            <Button variant="info" className="text-white px-4" onClick={handleDelete} disabled={loading || selectedTests.length === 0}>
+            <Button
+              variant="info"
+              className="text-white px-4"
+              onClick={handleDeleteWithPermission}
+              disabled={loading || selectedTests.length === 0}
+            >
               刪除
             </Button>
           </Col>
@@ -199,13 +223,17 @@ const StressTest: React.FC = () => {
   );
 
   return (
-    <div className="d-flex flex-column min-vh-100 bg-white">
-      <Header />
-      <DynamicContainer
-        content={content}
-        className="p-0 align-items-start"
-      />
-    </div>
+    <>
+      <div className="d-flex flex-column min-vh-100 bg-white">
+        <Header />
+        <DynamicContainer
+          content={content}
+          className="p-0 align-items-start"
+        />
+      </div>
+      {editPermissionModal}
+      {deletePermissionModal}
+    </>
   );
 };
 

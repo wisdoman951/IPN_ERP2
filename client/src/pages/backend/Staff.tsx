@@ -7,6 +7,7 @@ import { getAllStaff, searchStaff, exportStaffToExcel, exportSelectedStaffToExce
 import Header from "../../components/Header"; // 1. 引入標準 Header
 import DynamicContainer from "../../components/DynamicContainer"; // 2. 引入標準容器
 import { downloadBlob } from "../../utils/downloadBlob";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 interface StaffData {
     staff_id: number;
@@ -25,6 +26,9 @@ const Staff: React.FC = () => {
     const [keyword, setKeyword] = useState("");
     const [selectedStaffIds, setSelectedStaffIds] = useState<number[]>([]);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const { checkPermission: checkDeletePermission, modal: deletePermissionModal } = usePermissionGuard({
+        disallowedRoles: ["basic"],
+    });
 
     const getUserStoreId = (): number | undefined => {
         const id = localStorage.getItem('store_id');
@@ -103,6 +107,9 @@ const Staff: React.FC = () => {
     
     const handleDelete = async () => {
         if (selectedStaffIds.length === 0) return;
+        if (!checkDeletePermission()) {
+            return;
+        }
         setShowDeleteModal(true);
     };
 
@@ -247,10 +254,13 @@ const Staff: React.FC = () => {
     );
     
     return (
-        <div className="d-flex flex-column" style={{ minHeight: '100vh' }}>
-            <Header />
-            <DynamicContainer content={content} />
-        </div>
+        <>
+            <div className="d-flex flex-column" style={{ minHeight: '100vh' }}>
+                <Header />
+                <DynamicContainer content={content} />
+            </div>
+            {deletePermissionModal}
+        </>
     );
 };
 

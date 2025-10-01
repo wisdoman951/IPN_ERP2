@@ -39,6 +39,7 @@ const paymentMethodValueMap: { [key: string]: string } = Object.fromEntries(
 
 const AddProductSell: React.FC = () => {
   const userRole = getUserRole();
+  const isTherapist = userRole === 'therapist';
   const navigate = useNavigate();
   const { sellId } = useParams<{ sellId?: string }>();
   const isEditMode = Boolean(sellId);
@@ -519,10 +520,18 @@ const AddProductSell: React.FC = () => {
               <Form.Label>折價</Form.Label>
               <InputGroup>
                 <InputGroup.Text>NT$</InputGroup.Text>
-                <Form.Control type="number" min="0" step="any" value={orderDiscountAmount} onChange={(e) => {
+                <Form.Control
+                  type="number"
+                  min="0"
+                  step="any"
+                  value={orderDiscountAmount}
+                  onChange={(e) => {
                     const val = parseFloat(e.target.value);
                     setOrderDiscountAmount(isNaN(val) || val < 0 ? 0 : val);
-                }} placeholder="輸入整筆訂單折價金額" />
+                  }}
+                  placeholder="輸入整筆訂單折價金額"
+                  disabled={isTherapist}
+                />
               </InputGroup>
             </Form.Group>
           </Col>
