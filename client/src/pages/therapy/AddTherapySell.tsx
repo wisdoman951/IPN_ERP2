@@ -17,7 +17,7 @@ import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import { getStaffMembers, addTherapySell, SelectedTherapyPackageUIData, TherapySellRow, updateTherapySell } from "../../services/TherapySellService";
 import { SalesOrderItemData } from "../../services/SalesOrderService";
-import { getStoreName } from "../../utils/authUtils";
+import { getStoreName, getUserRole } from "../../utils/authUtils";
 import { fetchTherapyBundlesForSale, TherapyBundle } from "../../services/TherapyBundleService";
 import { getMemberByCode } from "../../services/MedicalService";
 import { MemberData } from "../../types/medicalTypes";
@@ -30,6 +30,8 @@ interface DropdownItem {
 
 const AddTherapySell: React.FC = () => {
   const navigate = useNavigate();
+  const userRole = getUserRole();
+  const isTherapist = userRole === 'therapist';
   const location = useLocation();
   const editSale = (location.state as { editSale?: TherapySellRow } | undefined)?.editSale;
   const isEditMode = Boolean(editSale);
@@ -491,7 +493,16 @@ const AddTherapySell: React.FC = () => {
                         <Form.Label>折價</Form.Label>
                         <InputGroup>
                           <InputGroup.Text>NT$</InputGroup.Text>
-                          <Form.Control type="number" name="discountAmount" min="0" step="any" value={formData.discountAmount} onChange={handleChange} placeholder="輸入折價金額" />
+                          <Form.Control
+                            type="number"
+                            name="discountAmount"
+                            min="0"
+                            step="any"
+                            value={formData.discountAmount}
+                            onChange={handleChange}
+                            placeholder="輸入折價金額"
+                            disabled={isTherapist}
+                          />
                         </InputGroup>
                       </Form.Group>
                     </Row>

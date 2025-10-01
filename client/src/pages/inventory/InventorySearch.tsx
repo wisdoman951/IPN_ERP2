@@ -170,7 +170,7 @@ const InventorySearch: React.FC = () => {
             setError("請選擇一個項目進行修改");
             return;
         }
-        
+
         navigate(`/inventory/inventory-update?id=${selectedItems[0]}`);
     };
     

@@ -11,6 +11,7 @@ import { useProductSell } from "../../hooks/useProductSell";
 import { ProductSell as ProductSellType } from "../../services/ProductSellService"; // 匯入更新後的型別
 import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
 import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 const paymentMethodValueToDisplayMap: { [key: string]: string } = {
     Cash: "現金",
@@ -24,7 +25,7 @@ const paymentMethodValueToDisplayMap: { [key: string]: string } = {
 const ProductSell: React.FC = () => {
     const navigate = useNavigate();
     const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
-    const isTherapist = useMemo(() => localStorage.getItem('permission') === 'therapist', []);
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
     const {
         sales,
         selectedSales,
@@ -266,8 +267,7 @@ const ProductSell: React.FC = () => {
                             className="text-white px-4" // warning 配 text-dark 可能較好
                             disabled={loading || selectedSales.length !== 1}
                             onClick={() => {
-                                if (isTherapist) {
-                                    alert('無操作權限');
+                                if (!checkPermission()) {
                                     return;
                                 }
                                 if (selectedSales.length === 1) {
@@ -288,6 +288,7 @@ const ProductSell: React.FC = () => {
             {/* 修改頁面標題 */}
             <Header />
             <DynamicContainer content={content} />
+            {permissionModal}
         </>
     );
 };

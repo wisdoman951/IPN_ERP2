@@ -7,11 +7,12 @@ import ScrollableTable from "../../components/ScrollableTable";
 import { useMedicalRecordManagement, HealthRecordIndex } from "../../hooks/useMedicalRecord";
 import { formatMedicalHistory, formatMicroSurgery } from "../../utils/medicalUtils";
 import "./medicalRecord.css";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 const MedicalRecord: React.FC = () => {
     const navigate = useNavigate();
-    const { 
-        records, 
+    const {
+        records,
         searchValue, 
         setSearchValue, 
         selectedIds, 
@@ -36,11 +37,19 @@ const MedicalRecord: React.FC = () => {
             <th>備註</th>
         </tr>
     );
+    const { checkPermission: checkEditPermission, modal: editPermissionModal } = usePermissionGuard();
+    const { checkPermission: checkDeletePermission, modal: deletePermissionModal } = usePermissionGuard({
+        disallowedRoles: ["basic", "therapist"],
+    });
+
     // 新增處理修改按鈕點擊的函數
     const handleEdit = () => {
-        // 必須檢查是否只勾選了「一個」項目
-        if (selectedIds.length === 1) {
-            // 獲取勾選的第一個 ID (也是唯一一個)
+        if (!checkEditPermission()) {
+            return;
+        }
+      // 必須檢查是否只勾選了「一個」項目
+      if (selectedIds.length === 1) {
+          // 獲取勾選的第一個 ID (也是唯一一個)
             const idToEdit = selectedIds[0];
 
             // **最重要的部分**：
@@ -79,6 +88,13 @@ const MedicalRecord: React.FC = () => {
             </tr>
         )
     );
+
+    const handleDeleteWithPermission = async () => {
+        if (!checkDeletePermission()) {
+            return;
+        }
+        await handleDelete();
+    };
 
     // 定義頁面內容
     const content = (
@@ -122,7 +138,7 @@ const MedicalRecord: React.FC = () => {
                         <Button variant="info" className="text-white" onClick={handleExport}>報表匯出</Button>
                     </Col>
                     <Col xs="auto">
-                        <Button variant="info" className="text-white" onClick={handleDelete}>刪除</Button>
+                        <Button variant="info" className="text-white" onClick={handleDeleteWithPermission}>刪除</Button>
                     </Col>
                     <Col xs="auto">
                         {/* 修改此按鈕 */}
@@ -141,13 +157,17 @@ const MedicalRecord: React.FC = () => {
     );
 
     return (
-        <div className="d-flex flex-column min-vh-100 bg-white">
-            {/* 使用 Header 元件 */}
-            <Header />
-            
-            {/* 使用 DynamicContainer */}
-            <DynamicContainer content={content} className="p-4 align-items-start" />
-        </div>
+        <>
+            <div className="d-flex flex-column min-vh-100 bg-white">
+                {/* 使用 Header 元件 */}
+                <Header />
+
+                {/* 使用 DynamicContainer */}
+                <DynamicContainer content={content} className="p-4 align-items-start" />
+            </div>
+            {editPermissionModal}
+            {deletePermissionModal}
+        </>
     );
 };
 

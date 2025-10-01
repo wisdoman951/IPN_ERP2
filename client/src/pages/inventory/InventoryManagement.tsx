@@ -3,9 +3,18 @@ import { Button, Container, Row, Col } from "react-bootstrap";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
+import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 const InventoryManagement: React.FC = () => {
     const navigate = useNavigate();
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
+
+    const handleGoToAnalysis = () => {
+        if (!checkPermission()) {
+            return;
+        }
+        navigate("/inventory/inventory-analysis");
+    };
 
     const content = (
         <Container className="my-4">
@@ -16,7 +25,7 @@ const InventoryManagement: React.FC = () => {
                     </Col>
 
                     <Col xs={12} sm={6} md={4} className="d-grid">
-                        <Button onClick={() => navigate("/inventory/inventory-analysis")} variant="info" size="lg" className="text-white px-4 py-2">庫存分析</Button>
+                        <Button onClick={handleGoToAnalysis} variant="info" size="lg" className="text-white px-4 py-2">庫存分析</Button>
                     </Col>
                     <Col xs={12} sm={6} md={4} className="d-grid">
                         <Button onClick={() => navigate("/inventory/inventory-update")} variant="info" size="lg" className="text-white px-4 py-2">更新庫存數據</Button>
@@ -35,6 +44,7 @@ const InventoryManagement: React.FC = () => {
         <>
             <Header />
             <DynamicContainer content={content} />
+            {permissionModal}
         </>
     );
 };
