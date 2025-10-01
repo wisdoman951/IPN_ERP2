@@ -34,9 +34,6 @@ def _forbid_therapist():
 def get_staff_list():
     """根據權限獲取員工列表"""
     try:
-        denial = _forbid_therapist()
-        if denial:
-            return denial
         user_store_level = request.store_level
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
