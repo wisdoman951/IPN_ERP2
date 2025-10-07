@@ -68,7 +68,7 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                 LEFT JOIN
                     category c ON pbc.category_id = c.category_id
                 LEFT JOIN
-                    product_bundle_price_tier pbpt ON pb.bundle_id = pbpt.bundle_id
+                    product_bundle_price_tier pbpt ON pb.bundle_id = pbpt.bundle_id AND pbpt.identity_type IS NOT NULL
             """
             params = []
             if status:

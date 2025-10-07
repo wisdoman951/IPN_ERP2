@@ -55,7 +55,7 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                 LEFT JOIN
                     category c ON tbc.category_id = c.category_id
                 LEFT JOIN
-                    therapy_bundle_price_tier tbpt ON tb.bundle_id = tbpt.bundle_id
+                    therapy_bundle_price_tier tbpt ON tb.bundle_id = tbpt.bundle_id AND tbpt.identity_type IS NOT NULL
             """
             params = []
             if status:

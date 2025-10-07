@@ -22,7 +22,7 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
                 FROM therapy t
                 LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id
                 LEFT JOIN category c ON tc.category_id = c.category_id
-                LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id
+                LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id AND tpt.identity_type IS NOT NULL
             """
             params = []
             if status:
@@ -76,7 +76,7 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id:
                 FROM therapy t
                 LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id
                 LEFT JOIN category c ON tc.category_id = c.category_id
-                LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id
+                LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id AND tpt.identity_type IS NOT NULL
                 WHERE (t.code LIKE %s OR t.name LIKE %s OR t.content LIKE %s)
             """
             params = []
