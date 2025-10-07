@@ -60,7 +60,10 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                                 NULLIF(pbpt.identity_type, ''),
                                 CASE
                                     WHEN pbpt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', pbpt.price_tier_id)
-                                    ELSE CONCAT('UNKNOWN_BUNDLE_', pbpt.bundle_id)
+                                    ELSE CONCAT(
+                                        'UNKNOWN_BUNDLE_',
+                                        COALESCE(CAST(pbpt.bundle_id AS CHAR), CAST(pb.bundle_id AS CHAR), '0')
+                                    )
                                 END
                             ),
                             pbpt.price

@@ -22,7 +22,10 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
                            JSON_OBJECTAGG(
                                COALESCE(
                                    NULLIF(tpt.identity_type, ''),
-                                   CONCAT('UNKNOWN_', tpt.price_tier_id)
+                                   CASE
+                                       WHEN tpt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', tpt.price_tier_id)
+                                       ELSE CONCAT('UNKNOWN_TIER_', CAST(t.therapy_id AS CHAR))
+                                   END
                                ),
                                tpt.price
                            ),
@@ -85,7 +88,10 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id:
                            JSON_OBJECTAGG(
                                COALESCE(
                                    NULLIF(tpt.identity_type, ''),
-                                   CONCAT('UNKNOWN_', tpt.price_tier_id)
+                                   CASE
+                                       WHEN tpt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', tpt.price_tier_id)
+                                       ELSE CONCAT('UNKNOWN_TIER_', CAST(t.therapy_id AS CHAR))
+                                   END
                                ),
                                tpt.price
                            ),
