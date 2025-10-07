@@ -43,7 +43,7 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                         ''
                     ) AS bundle_contents,
                     GROUP_CONCAT(DISTINCT c.name) AS categories,
-                    COALESCE(JSON_OBJECTAGG(tbpt.identity_type, tbpt.price), '{}') AS price_tiers
+                    COALESCE(tbpt.price_tiers, '{}') AS price_tiers
                 FROM
                     therapy_bundles tb
                 LEFT JOIN
@@ -54,12 +54,18 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                     therapy_bundle_category tbc ON tb.bundle_id = tbc.bundle_id
                 LEFT JOIN
                     category c ON tbc.category_id = c.category_id
-                LEFT JOIN
-                    therapy_bundle_price_tier tbpt ON (
-                        tb.bundle_id = tbpt.bundle_id
-                        AND tbpt.identity_type IS NOT NULL
-                        AND tbpt.identity_type != ''
-                    )
+                LEFT JOIN (
+                    SELECT
+                        bundle_id,
+                        JSON_OBJECTAGG(identity_type, price) AS price_tiers
+                    FROM
+                        therapy_bundle_price_tier
+                    WHERE
+                        identity_type IS NOT NULL
+                        AND identity_type != ''
+                    GROUP BY
+                        bundle_id
+                ) AS tbpt ON tb.bundle_id = tbpt.bundle_id
             """
             params = []
             if status:
