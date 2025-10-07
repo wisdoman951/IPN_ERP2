@@ -54,7 +54,7 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                         ''
                     ) AS bundle_contents,
                     GROUP_CONCAT(DISTINCT c.name) AS categories,
-                    COALESCE(JSON_OBJECTAGG(pbpt.identity_type, pbpt.price), '{}') AS price_tiers
+                    COALESCE(pbpt.price_tiers, '{}') AS price_tiers
                 FROM
                     product_bundles pb
                 LEFT JOIN
@@ -67,12 +67,18 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                     product_bundle_category pbc ON pb.bundle_id = pbc.bundle_id
                 LEFT JOIN
                     category c ON pbc.category_id = c.category_id
-                LEFT JOIN
-                    product_bundle_price_tier pbpt ON (
-                        pb.bundle_id = pbpt.bundle_id
-                        AND pbpt.identity_type IS NOT NULL
-                        AND pbpt.identity_type != ''
-                    )
+                LEFT JOIN (
+                    SELECT
+                        bundle_id,
+                        JSON_OBJECTAGG(identity_type, price) AS price_tiers
+                    FROM
+                        product_bundle_price_tier
+                    WHERE
+                        identity_type IS NOT NULL
+                        AND identity_type != ''
+                    GROUP BY
+                        bundle_id
+                ) pbpt ON pb.bundle_id = pbpt.bundle_id
             """
             params = []
             if status:
