@@ -2,6 +2,17 @@ SET NAMES 'utf8mb4';
 SET CHARACTER SET utf8mb4;
 
 
+INSERT INTO `member_identity_type` (`identity_type_code`, `display_name`, `description`, `priority`, `is_default`, `is_system`) VALUES
+('DIRECT_STORE', '直營店', '直營店自有通路的專用價目', 10, 0, 1),
+('FRANCHISE', '加盟店', '加盟門市的採購與銷售價', 20, 0, 1),
+('PARTNER', '合夥商', '合夥商的專屬價目與促銷', 30, 0, 1),
+('PROMOTER', '推廣商(分店能量師)', '推廣商或分店能量師使用', 40, 0, 1),
+('B2B_PROJECT', 'B2B合作專案', '企業與大型合作專案的價格', 50, 0, 1),
+('XIN_YAO_MERCHANT', '心耀商', '心耀商渠道的報價', 60, 0, 1),
+('MEMBER', '會員', '正式註冊會員的優惠價', 70, 0, 1),
+('GENERAL_MEMBER', '一般會員', '預設的一般會員身份', 80, 1, 1),
+('GENERAL_RETAIL', '一般售價', '對外一般零售價', 90, 0, 0);
+
 INSERT INTO `store` (`account`, `store_name`, `store_location`, `password`, `permission`) VALUES
 ('taipei', '總店', '台北市信義區松高路11號', 'taipei2025', 'admin'),
 ('taichung', '台中門市', '台中市西區公益路68號', 'taichung2025', 'basic'),
@@ -55,6 +66,22 @@ INSERT INTO `product` (`code`, `name`, `price`, `purchase_price`, `status`) VALU
 ('HRB001', '舒壓茶包', 380.00, 210.00, 'PUBLISHED'),
 ('HRB002', '薰衣草精油', 550.00, 330.00, 'PUBLISHED');
 
+INSERT INTO `member_price_book` (`name`, `identity_type`, `scope_type`, `status`, `priority`, `valid_from`, `note`) VALUES
+('直營店商品價目表', 'DIRECT_STORE', 'PRODUCT', 'ACTIVE', 10, '2024-01-01', '依客戶提供的直營店價目建立'),
+('會員商品價目表', 'MEMBER', 'PRODUCT', 'ACTIVE', 70, '2024-01-01', '註冊會員購買時使用'),
+('直營店療程價目表', 'DIRECT_STORE', 'THERAPY', 'ACTIVE', 10, '2024-01-01', '直營店適用療程售價'),
+('會員療程價目表', 'MEMBER', 'THERAPY', 'ACTIVE', 70, '2024-01-01', '會員適用療程售價');
+
+INSERT INTO `member_price_book_store` (`price_book_id`, `store_id`)
+SELECT price_book_id, 1 FROM `member_price_book` WHERE `name` IN ('直營店商品價目表', '直營店療程價目表');
+
+INSERT INTO `member_price_book_item` (`price_book_id`, `item_type`, `item_id`, `price`, `custom_code`, `custom_name`, `metadata`)
+VALUES
+((SELECT price_book_id FROM member_price_book WHERE name='直營店商品價目表'), 'PRODUCT', (SELECT product_id FROM product WHERE code='SKN001'), 520.00, 'PSA1000', '保濕面膜-直營通路', '{"package":"單入"}'),
+((SELECT price_book_id FROM member_price_book WHERE name='直營店商品價目表'), 'PRODUCT', (SELECT product_id FROM product WHERE code='SUP001'), 1350.00, 'PSA2000', '膠原蛋白粉-直營通路', '{"package":"大罐"}'),
+((SELECT price_book_id FROM member_price_book WHERE name='會員商品價目表'), 'PRODUCT', (SELECT product_id FROM product WHERE code='SKN001'), 560.00, 'PSA1008', '保濕面膜-會員價', '{"package":"單入"}'),
+((SELECT price_book_id FROM member_price_book WHERE name='會員商品價目表'), 'PRODUCT', (SELECT product_id FROM product WHERE code='SUP001'), 1450.00, 'PSA2008', '膠原蛋白粉-會員價', '{"package":"大罐"}');
+
 INSERT INTO `therapy` (`code`, `name`, `price`, `content`, `status`) VALUES
 ('TH001', '全身放鬆按摩', 2800.00, '60分鐘全身按摩，幫助放鬆肌肉，改善血液循環', 'PUBLISHED'),
 ('TH002', '足部反射按摩', 1800.00, '40分鐘足部按摩，刺激穴位，促進身體機能', 'PUBLISHED'),
@@ -66,6 +93,13 @@ INSERT INTO `therapy` (`code`, `name`, `price`, `content`, `status`) VALUES
 ('TH008', '腿部舒緩療程', 1600.00, '35分鐘腿部按摩，改善水腫及疲勞', 'PUBLISHED'),
 ('TH009', '背部深層療程', 2200.00, '45分鐘背部深層按摩，緩解背部緊繃及疼痛', 'PUBLISHED'),
 ('TH010', '身體去角質護理', 2000.00, '40分鐘身體去角質，滋潤肌膚', 'PUBLISHED');
+
+INSERT INTO `member_price_book_item` (`price_book_id`, `item_type`, `item_id`, `price`, `custom_code`, `custom_name`, `metadata`)
+VALUES
+((SELECT price_book_id FROM member_price_book WHERE name='直營店療程價目表'), 'THERAPY', (SELECT therapy_id FROM therapy WHERE code='TH001'), 2600.00, 'TH001-D', '全身放鬆按摩-直營店', '{"duration":"60分鐘"}'),
+((SELECT price_book_id FROM member_price_book WHERE name='直營店療程價目表'), 'THERAPY', (SELECT therapy_id FROM therapy WHERE code='TH004'), 2400.00, 'TH004-D', '臉部護理療程-直營店', '{"duration":"50分鐘"}'),
+((SELECT price_book_id FROM member_price_book WHERE name='會員療程價目表'), 'THERAPY', (SELECT therapy_id FROM therapy WHERE code='TH001'), 2700.00, 'TH001-M', '全身放鬆按摩-會員價', '{"duration":"60分鐘"}'),
+((SELECT price_book_id FROM member_price_book WHERE name='會員療程價目表'), 'THERAPY', (SELECT therapy_id FROM therapy WHERE code='TH004'), 2550.00, 'TH004-M', '臉部護理療程-會員價', '{"duration":"50分鐘"}');
 
 INSERT INTO `family_information` (`name`, `relationship`, `age`, `company`, `occupation`, `phone`) VALUES
 ('王大明', '父親', 58, '台北科技公司', '工程師', '0933123456'),
