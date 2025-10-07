@@ -2,9 +2,10 @@
 
 from flask import Blueprint, request, jsonify
 from app.models.product_bundle_model import (
-    get_all_product_bundles, create_product_bundle, 
+    get_all_product_bundles, create_product_bundle,
     get_bundle_details_by_id, update_product_bundle, delete_product_bundle
 )
+from app.models.member_model import get_member_identity_type
 from app.middleware import admin_required, auth_required, get_user_from_token
 
 # Blueprint 的建立方式不變
@@ -43,7 +44,34 @@ def get_bundles():
             f"[DEBUG] get_product_bundles status={status}, token_user={user}, header_store_level={header_store_level}, header_store_id={header_store_id}, resolved_store_level={store_level}, resolved_store_id={store_id}"
         )
         user_permission = user.get('permission') if user else None
-        bundles = get_all_product_bundles(status, store_id, user_permission)
+
+        identity_param = request.args.get("identity_type")
+        member_id_param = request.args.get("member_id")
+        pricing_store_param = request.args.get("pricing_store_id")
+
+        pricing_store_id = None
+        if pricing_store_param:
+            try:
+                pricing_store_id = int(pricing_store_param)
+            except (TypeError, ValueError):
+                pricing_store_id = None
+        if pricing_store_id is None:
+            pricing_store_id = store_id
+
+        member_identity = identity_param
+        if not member_identity and member_id_param:
+            try:
+                member_identity = get_member_identity_type(int(member_id_param))
+            except (TypeError, ValueError):
+                member_identity = None
+
+        bundles = get_all_product_bundles(
+            status,
+            store_id,
+            user_permission,
+            member_identity_type=member_identity,
+            price_store_id=pricing_store_id,
+        )
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching product bundles: {e}")
@@ -69,7 +97,34 @@ def get_available_bundles():
                 store_id = None
         print(f"[DEBUG] get_available_product_bundles user={user}, store_id={store_id}, store_level={store_level}")
         user_permission = user.get('permission') if user else None
-        bundles = get_all_product_bundles(status="PUBLISHED", store_id=store_id, user_permission=user_permission)
+
+        identity_param = request.args.get("identity_type")
+        member_id_param = request.args.get("member_id")
+        pricing_store_param = request.args.get("pricing_store_id")
+
+        pricing_store_id = None
+        if pricing_store_param:
+            try:
+                pricing_store_id = int(pricing_store_param)
+            except (TypeError, ValueError):
+                pricing_store_id = None
+        if pricing_store_id is None:
+            pricing_store_id = store_id
+
+        member_identity = identity_param
+        if not member_identity and member_id_param:
+            try:
+                member_identity = get_member_identity_type(int(member_id_param))
+            except (TypeError, ValueError):
+                member_identity = None
+
+        bundles = get_all_product_bundles(
+            status="PUBLISHED",
+            store_id=store_id,
+            user_permission=user_permission,
+            member_identity_type=member_identity,
+            price_store_id=pricing_store_id,
+        )
         return jsonify(bundles)
     except Exception as e:
         print(f"Error fetching available product bundles: {e}")

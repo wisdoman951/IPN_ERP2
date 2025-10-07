@@ -1,6 +1,7 @@
 //client\src\services\MemberService.ts
-import axios from "axios";
+import axios, { AxiosRequestHeaders } from "axios";
 import { base_url } from "./BASE_URL";
+import { getAuthHeaders } from "./AuthUtils";
 
 const API_URL = `${base_url}/member`;
 
@@ -17,18 +18,20 @@ interface ApiResponse<T> {
     error?: string;
 }
 
-// 添加請求攔截器，自動為所有請求添加 token
+// 添加請求攔截器，自動為所有請求添加 token 與門市資訊
 authAxios.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    const headers = getAuthHeaders();
+    const mergedHeaders = (config.headers ?? {}) as AxiosRequestHeaders;
+    Object.entries(headers).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        mergedHeaders[key] = value;
+      }
+    });
+    config.headers = mergedHeaders;
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
 /**
@@ -40,6 +43,8 @@ export interface Member {
   member_code?: string;
   Name: string;
   IdentityType?: string;
+  IdentityTypeCode?: string;
+  IdentityTypeDisplayName?: string;
   Gender: string;
   Birth: string;
   Phone: string;
@@ -61,6 +66,8 @@ interface BackendMember {
   member_code?: string;
   name: string;
   identity_type?: string;
+  identity_type_display_name?: string;
+  identity_type_code?: string;
   birthday: Date | string;
   gender: 'Male' | 'Female' | 'Other' | string;
   blood_type: 'A' | 'B' | 'AB' | 'O' | string;
@@ -82,7 +89,9 @@ const transformBackendToFrontend = (member: BackendMember): Member => {
     Member_ID: String(member.member_id),
     member_code: member.member_code || undefined,
     Name: member.name,
-    IdentityType: member.identity_type || '一般會員',
+    IdentityType: member.identity_type_display_name || member.identity_type || "一般會員",
+    IdentityTypeCode: member.identity_type || undefined,
+    IdentityTypeDisplayName: member.identity_type_display_name || member.identity_type || undefined,
     Gender: member.gender || '',
     Birth: member.birthday ? (typeof member.birthday === 'string' ? member.birthday : member.birthday.toISOString().split('T')[0]) : '',
     Phone: member.phone || '',
@@ -104,11 +113,16 @@ const transformBackendToFrontend = (member: BackendMember): Member => {
  */
 const transformFrontendToBackend = (member: Partial<Member>): Partial<BackendMember> => {
   const backendMember: Partial<BackendMember> = {};
-  
+
   if (member.Member_ID) backendMember.member_id = member.Member_ID;
   if (member.member_code) backendMember.member_code = member.member_code;
   if (member.Name) backendMember.name = member.Name;
-  if (member.IdentityType !== undefined) backendMember.identity_type = member.IdentityType;
+  if (member.IdentityTypeCode !== undefined) {
+    backendMember.identity_type = member.IdentityTypeCode;
+    backendMember.identity_type_code = member.IdentityTypeCode;
+  } else if (member.IdentityType !== undefined) {
+    backendMember.identity_type = member.IdentityType;
+  }
   if (member.Gender) backendMember.gender = member.Gender;
   if (member.Birth) backendMember.birthday = member.Birth;
   if (member.Phone) backendMember.phone = member.Phone;
@@ -118,9 +132,37 @@ const transformFrontendToBackend = (member: Partial<Member>): Partial<BackendMem
   if (member.Referrer) backendMember.inferrer_id = member.Referrer;
   if (member.Occupation) backendMember.occupation = member.Occupation;
   if (member.Note) backendMember.note = member.Note;
-  
+
+  if (backendMember.inferrer_id === "") {
+    backendMember.inferrer_id = null;
+  }
+
   return backendMember;
 };
+
+export interface IdentityTypeOption {
+  identity_type_code: string;
+  display_name: string;
+  description?: string | null;
+  priority: number;
+  is_default: boolean;
+  is_system: boolean;
+}
+
+export interface CreateMemberRequest {
+  member_code: string;
+  name: string;
+  identity_type_code: string;
+  birthday: string;
+  address?: string;
+  phone?: string;
+  gender?: string;
+  blood_type?: string;
+  line_id?: string;
+  inferrer_id?: string | null;
+  occupation?: string;
+  note?: string;
+}
 
 /**
  * Get all members
@@ -192,12 +234,34 @@ export const getMemberByCode = async (memberCode: string): Promise<Member | null
   }
 };
 
+export const fetchIdentityTypes = async (): Promise<IdentityTypeOption[]> => {
+  try {
+    const response = await authAxios.get('/identity-types');
+    const data = Array.isArray(response.data) ? response.data : [];
+    return data.map((item: any) => ({
+      identity_type_code: item.identity_type_code,
+      display_name: item.display_name,
+      description: item.description ?? null,
+      priority: Number(item.priority ?? 0),
+      is_default: Boolean(item.is_default),
+      is_system: Boolean(item.is_system),
+    }));
+  } catch (error) {
+    console.error('Failed to fetch identity types:', error);
+    throw error;
+  }
+};
+
 /**
  * Add a new member
  */
 export const addMember = async (memberData: Omit<Member, 'Member_ID'>) => {
   try {
     const backendData = transformFrontendToBackend(memberData);
+    if (backendData.identity_type) {
+      backendData.identity_type_code = backendData.identity_type;
+      delete backendData.identity_type;
+    }
     const response = await authAxios.post('/create', backendData);
     return response.data;
   } catch (error) {
@@ -236,24 +300,14 @@ export const deleteMember = async (memberId: string) => {
 /**
  * Add a new member with simplified parameters
  */
-export const createMember = async (memberData: {
-  member_code: string; // <-- 1. 新增 member_code 參數定義
-  name: string;
-  identity_type: string;
-  birthday: string;
-  address?: string;
-  phone?: string;
-  gender?: string;
-  blood_type?: string; // 修正：與前端 state 和後端 model 對齊
-  line_id?: string;    // 修正：與前端 state 和後端 model 對齊
-  inferrer_id?: string | null; // 修正：與前端 state 和後端 model 對齊
-  occupation?: string;
-  note?: string;
-}) => {
+export const createMember = async (memberData: CreateMemberRequest) => {
   try {
-    // 直接使用傳入的 memberData，因為它的欄位名已經和後端匹配
-    // 這樣可以避免手動對應欄位出錯
-    const response = await authAxios.post('/create', memberData);
+    const payload: CreateMemberRequest = {
+      ...memberData,
+      identity_type_code: memberData.identity_type_code,
+      inferrer_id: memberData.inferrer_id ? memberData.inferrer_id : null,
+    };
+    const response = await authAxios.post('/create', payload);
     return response.data;
   } catch (error) {
     console.error("Failed to create member:", error);

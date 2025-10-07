@@ -465,6 +465,7 @@ CREATE TABLE `member_price_book` (
   PRIMARY KEY (`price_book_id`),
   KEY `idx_member_price_book_identity` (`identity_type`),
   KEY `idx_member_price_book_status` (`status`),
+  UNIQUE KEY `uniq_member_price_book_identity_scope_name` (`identity_type`,`scope_type`,`name`),
   CONSTRAINT `fk_member_price_book_identity` FOREIGN KEY (`identity_type`) REFERENCES `member_identity_type` (`identity_type_code`) ON DELETE CASCADE ON UPDATE CASCADE,
   CONSTRAINT `chk_member_price_book_validity` CHECK (`valid_to` IS NULL OR `valid_from` IS NULL OR `valid_to` >= `valid_from`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

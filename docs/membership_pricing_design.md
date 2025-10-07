@@ -30,7 +30,12 @@
 ## 3. 資料載入與遷移建議
 1. **建置身份別主檔**：於 `mysql-init-scripts/02_data.sql` 中加入所有身份別初始資料，可再視需求調整 `priority` 與 `is_default`。
 2. **建置價目表**：先為每一身份別及品項類型建立至少一個 `member_price_book`。若 Excel 提供多個時段或區域價目，可拆分為多個價目表並設定 `valid_from` / `valid_to` 及 `member_price_book_store`。
-3. **匯入價目條目**：撰寫匯入腳本（建議使用 Python + Pandas）將 `會員別售價.xlsx` 逐一轉換為 `member_price_book_item`。重點對映如下：
+3. **匯入價目條目**：使用 `scripts/import_member_pricebooks.py` 將 `會員別售價.xlsx` 轉換為 SQL 腳本並匯入資料庫。腳本會：
+   - 依「直營店 → 加盟店 → 合夥商 → 推廣商 → B2B合作專案 → 心耀商 → 會員 → 一般售價」順序掃描各工作表，自動建立產品主檔並保留一般售價作為基礎售價。
+   - 為每個身份別建立或更新 `member_price_book`，並清空原有條目後重新寫入 `member_price_book_item`。
+   - 透過 `--valid-from` 參數設定價目表生效日期，並可加上 `--dump-json` 輸出檢查用的中介資料。
+   - 使用方式範例：`python scripts/import_member_pricebooks.py custom_data/會員別售價.xlsx --output tmp/member_prices.sql --valid-from 2025-01-01`，再以 `mysql` 或 CI 流程執行產出的 SQL。
+   - 若 Excel 內區分「單盒價 / 三盒 / 六盒」，將會以 `custom_code`、`custom_name` 原樣寫入，必要時可另外在 `metadata` JSON 欄位補充包裝資訊。
    - Excel 身份別 → `member_price_book.identity_type`
    - 產品 / 療程 / 組合代碼 → 先以既有 `product`、`therapy`、`product_bundles`、`therapy_bundles` 主檔查找 `id`
    - 身份別專屬品號 / 名稱 → 對應至 `custom_code`、`custom_name`
@@ -77,9 +82,9 @@ LIMIT 1;
 - **與庫存 / 採購整合**：`custom_code` 可作為門市對外發票或採購單上的品號，確保報表與帳務一致。
 
 ## 7. 範例資料
-`mysql-init-scripts/02_data.sql` 已新增示範：
-- 身份別主檔資料。
-- 「直營店 / 會員」產品與療程的價目表、門市限制及部分品項售價。
+`mysql-init-scripts/02_data.sql` 包含：
+- 身份別主檔資料與示範價目表。
+- `scripts/import_member_pricebooks.py` 可產生完整 SQL 用於量產資料，示範用資料可在測試或開發環境中先行驗證。
 - 可透過 `vw_member_product_prices`、`vw_member_therapy_prices` 立即檢視結果，作為串接 API 或撰寫查詢的範例。
 
 此設計可在不破壞既有產品 / 療程資料結構的情況下，支援客戶提出的身份別售價需求，並保留擴充空間以因應後續的促銷與版本管理需求。

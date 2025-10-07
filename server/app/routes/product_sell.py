@@ -2,16 +2,17 @@ from flask import Blueprint, request, jsonify, send_file
 import pandas as pd
 import io
 from app.models.product_sell_model import (
-    get_all_product_sells, 
-    search_product_sells, 
+    get_all_product_sells,
+    search_product_sells,
     get_product_sell_by_id,
-    insert_product_sell, 
-    update_product_sell, 
+    insert_product_sell,
+    update_product_sell,
     delete_product_sell,
     get_all_products_with_inventory,
     search_products_with_inventory,
     export_product_sells
 )
+from app.models.member_model import get_member_identity_type
 from app.middleware import auth_required, admin_required, get_user_from_token
 
 product_sell_bp = Blueprint("product_sell", __name__, url_prefix='/api/product-sell')
@@ -173,10 +174,33 @@ def get_products():
 
         status = request.args.get("status", 'PUBLISHED')
         user_permission = user.get('permission') if user else None
+
+        identity_param = request.args.get("identity_type")
+        member_id_param = request.args.get("member_id")
+        pricing_store_param = request.args.get("pricing_store_id")
+
+        pricing_store_id = None
+        if pricing_store_param:
+            try:
+                pricing_store_id = int(pricing_store_param)
+            except (TypeError, ValueError):
+                pricing_store_id = None
+        if pricing_store_id is None:
+            pricing_store_id = target_store_id
+
+        member_identity = identity_param
+        if not member_identity and member_id_param:
+            try:
+                member_identity = get_member_identity_type(int(member_id_param))
+            except (TypeError, ValueError):
+                member_identity = None
+
         products = get_all_products_with_inventory(
             store_id=target_store_id,
             status=status,
             user_permission=user_permission,
+            member_identity_type=member_identity,
+            price_store_id=pricing_store_id,
         )
         return jsonify(products)
     except Exception as e:
@@ -201,11 +225,34 @@ def search_product():
 
         status = request.args.get("status", 'PUBLISHED')
         user_permission = user.get('permission') if user else None
+
+        identity_param = request.args.get("identity_type")
+        member_id_param = request.args.get("member_id")
+        pricing_store_param = request.args.get("pricing_store_id")
+
+        pricing_store_id = None
+        if pricing_store_param:
+            try:
+                pricing_store_id = int(pricing_store_param)
+            except (TypeError, ValueError):
+                pricing_store_id = None
+        if pricing_store_id is None:
+            pricing_store_id = target_store_id
+
+        member_identity = identity_param
+        if not member_identity and member_id_param:
+            try:
+                member_identity = get_member_identity_type(int(member_id_param))
+            except (TypeError, ValueError):
+                member_identity = None
+
         products = search_products_with_inventory(
             keyword,
             store_id=target_store_id,
             status=status,
             user_permission=user_permission,
+            member_identity_type=member_identity,
+            price_store_id=pricing_store_id,
         )
         return jsonify(products)
     except Exception as e:

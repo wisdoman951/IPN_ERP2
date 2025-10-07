@@ -5,9 +5,44 @@ from app.config import DB_CONFIG
 import re
 import traceback
 
+
 def connect_to_db():
     """確保返回的資料是字典格式，方便操作"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
+
+
+def list_identity_types():
+    """Return all available identity types sorted by priority."""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT identity_type_code, display_name, description, priority,
+                       is_default, is_system
+                FROM member_identity_type
+                ORDER BY priority ASC, identity_type_code
+                """
+            )
+            return cursor.fetchall()
+    finally:
+        conn.close()
+
+
+def get_member_identity_type(member_id: int) -> str | None:
+    """Fetch the identity type code for the given member."""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT identity_type FROM member WHERE member_id = %s",
+                (member_id,),
+            )
+            row = cursor.fetchone()
+            return row["identity_type"] if row else None
+    finally:
+        conn.close()
+
 
 # --- 修改後的核心函式 ---
 def create_member(data, store_id: int):
@@ -23,7 +58,11 @@ def create_member(data, store_id: int):
             if blood_type_value == '':
                 blood_type_value = None
 
-            identity_type_value = data.get("identity_type") or "一般會員"
+            identity_type_value = (
+                data.get("identity_type")
+                or data.get("identity_type_code")
+                or "GENERAL_MEMBER"
+            )
 
             sql = """
                 INSERT INTO member (
@@ -67,10 +106,25 @@ def get_all_members(store_level: str, store_id: int):
     try:
         with conn.cursor() as cursor:
             base_sql = """
-                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
-                       m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
+                SELECT m.member_id,
+                       m.member_code,
+                       m.name,
+                       m.identity_type,
+                       mit.display_name AS identity_type_display_name,
+                       m.birthday,
+                       m.address,
+                       m.phone,
+                       m.gender,
+                       m.blood_type,
+                       m.line_id,
+                       m.inferrer_id,
+                       m.occupation,
+                       m.note,
+                       m.store_id,
+                       s.store_name
                 FROM member AS m
                 LEFT JOIN store AS s ON m.store_id = s.store_id
+                LEFT JOIN member_identity_type mit ON m.identity_type = mit.identity_type_code
             """
             params = []
 
@@ -100,10 +154,25 @@ def search_members(keyword: str, store_level: str, store_id: int):
             like_keyword = f"%{keyword}%"
 
             base_sql = """
-                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
-                       m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
+                SELECT m.member_id,
+                       m.member_code,
+                       m.name,
+                       m.identity_type,
+                       mit.display_name AS identity_type_display_name,
+                       m.birthday,
+                       m.address,
+                       m.phone,
+                       m.gender,
+                       m.blood_type,
+                       m.line_id,
+                       m.inferrer_id,
+                       m.occupation,
+                       m.note,
+                       m.store_id,
+                       s.store_name
                 FROM member AS m
                 LEFT JOIN store AS s ON m.store_id = s.store_id
+                LEFT JOIN member_identity_type mit ON m.identity_type = mit.identity_type_code
                 WHERE (m.name LIKE %s OR m.phone LIKE %s OR m.member_code LIKE %s)
             """
             params = [like_keyword, like_keyword, like_keyword]
@@ -178,7 +247,11 @@ def update_member(member_id, data):
             if blood_type_value == '':
                 blood_type_value = None
 
-            identity_type_value = data.get("identity_type") or "一般會員"
+            identity_type_value = (
+                data.get("identity_type")
+                or data.get("identity_type_code")
+                or "GENERAL_MEMBER"
+            )
 
             cursor.execute("""
                 UPDATE member SET
@@ -199,13 +272,31 @@ def get_member_by_id(member_id: int):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
-                       m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
+            cursor.execute(
+                """
+                SELECT m.member_id,
+                       m.member_code,
+                       m.name,
+                       m.identity_type,
+                       mit.display_name AS identity_type_display_name,
+                       m.birthday,
+                       m.address,
+                       m.phone,
+                       m.gender,
+                       m.blood_type,
+                       m.line_id,
+                       m.inferrer_id,
+                       m.occupation,
+                       m.note,
+                       m.store_id,
+                       s.store_name
                 FROM member AS m
                 LEFT JOIN store AS s ON m.store_id = s.store_id
+                LEFT JOIN member_identity_type mit ON m.identity_type = mit.identity_type_code
                 WHERE m.member_id = %s
-            """, (member_id,))
+                """,
+                (member_id,),
+            )
             result = cursor.fetchone()
         return result
     finally:
@@ -217,10 +308,24 @@ def get_member_by_code(member_code: str):
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT member_id, member_code, name, identity_type, birthday, address, phone, gender, blood_type,
-                       line_id, inferrer_id, occupation, note, store_id
-                FROM member
-                WHERE member_code = %s
+                SELECT m.member_id,
+                       m.member_code,
+                       m.name,
+                       m.identity_type,
+                       mit.display_name AS identity_type_display_name,
+                       m.birthday,
+                       m.address,
+                       m.phone,
+                       m.gender,
+                       m.blood_type,
+                       m.line_id,
+                       m.inferrer_id,
+                       m.occupation,
+                       m.note,
+                       m.store_id
+                FROM member m
+                LEFT JOIN member_identity_type mit ON m.identity_type = mit.identity_type_code
+                WHERE m.member_code = %s
                 """,
                 (member_code,),
             )
