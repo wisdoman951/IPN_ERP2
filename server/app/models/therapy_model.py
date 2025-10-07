@@ -541,15 +541,10 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
             sql = (
                 "SELECT t.therapy_id, t.code, t.name, t.price, t.visible_store_ids, t.visible_permissions, "
                 "GROUP_CONCAT(c.name) AS categories, "
-                "COALESCE(tpt.price_tiers, '{}') AS price_tiers FROM therapy t "
+                "COALESCE(JSON_OBJECTAGG(tpt.identity_type, tpt.price), '{}') AS price_tiers FROM therapy t "
                 "LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id "
                 "LEFT JOIN category c ON tc.category_id = c.category_id "
-                "LEFT JOIN ("
-                "    SELECT therapy_id, JSON_OBJECTAGG(identity_type, price) AS price_tiers "
-                "    FROM therapy_price_tier "
-                "    WHERE identity_type IS NOT NULL AND identity_type != '' "
-                "    GROUP BY therapy_id"
-                ") AS tpt ON tpt.therapy_id = t.therapy_id "
+                "LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id"
             )
             params = []
             if status:

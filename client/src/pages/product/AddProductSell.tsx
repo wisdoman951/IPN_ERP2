@@ -5,6 +5,8 @@ import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
 import MemberColumn from "../../components/MemberColumn";
 import { MemberData } from "../../types/medicalTypes";
+import type { MemberIdentity } from "../../types/memberIdentity";
+import { normalizeMemberIdentity } from "../../utils/memberIdentity";
 import { addProductSell, ProductSellData, getProductSellById, updateProductSell, ProductSell } from "../../services/ProductSellService";
 import { getStoreId } from "../../services/LoginService";
 import { fetchAllStores, Store } from "../../services/StoreService";
@@ -22,6 +24,8 @@ interface SelectedProduct {
   price: number;
   quantity: number;
   inventory_id?: number;
+  basePrice?: number;
+  price_tiers?: Partial<Record<MemberIdentity, number>>;
 }
 
 const paymentMethodDisplayMap: { [key: string]: string } = {
@@ -70,6 +74,7 @@ const AddProductSell: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
   const [selectedMember, setSelectedMember] = useState<MemberData | null>(null);
+  const [memberIdentity, setMemberIdentity] = useState<MemberIdentity | null>(null);
 
   useEffect(() => {
     const init = async () => {
@@ -158,6 +163,10 @@ const AddProductSell: React.FC = () => {
       if (selectedProductsData) {
         try {
           initialProducts = JSON.parse(selectedProductsData);
+          initialProducts = initialProducts.map(p => ({
+            ...p,
+            basePrice: p.basePrice ?? p.price,
+          }));
           setSelectedProducts(initialProducts);
         }
         catch (e) { console.error("解析 selectedProducts 失敗", e); }
@@ -175,6 +184,9 @@ const AddProductSell: React.FC = () => {
           if (formState.memberCode) setMemberCode(formState.memberCode);
           if (formState.memberId) setMemberId(formState.memberId);
           if (formState.memberName) setMemberName(formState.memberName);
+          if (formState.memberIdentity) {
+            setMemberIdentity(normalizeMemberIdentity(formState.memberIdentity));
+          }
           if (formState.purchaseDate) setPurchaseDate(formState.purchaseDate);
           if (formState.paymentMethod && paymentMethodOptions.includes(formState.paymentMethod)) {
             setPaymentMethod(formState.paymentMethod);
@@ -218,6 +230,7 @@ const AddProductSell: React.FC = () => {
     setMemberId(data?.member_id?.toString() || "");
     setError(null);
     setSelectedMember(data);
+    setMemberIdentity(normalizeMemberIdentity(data?.identity_type));
   };
   const handleError = (errorMsg: string) => {
     setError(errorMsg);
@@ -225,13 +238,23 @@ const AddProductSell: React.FC = () => {
   const handleMemberError = (errorMsg: string) => {
     setError(errorMsg);
     setSelectedMember(null);
+    setMemberIdentity(null);
   };
   const openProductSelection = () => {
+    if (!memberCode || !memberId) {
+      setError("請先輸入會員編號並確認會員資料。");
+      return;
+    }
+    const normalizedIdentity =
+      memberIdentity ||
+      normalizeMemberIdentity(selectedMember?.identity_type) ||
+      ('一般售價' as MemberIdentity);
     const formState = {
       selectedStore,
       memberCode,
       memberId,
       memberName,
+      memberIdentity: normalizedIdentity,
       purchaseDate,
       paymentMethod,
       transferCode,
@@ -242,7 +265,12 @@ const AddProductSell: React.FC = () => {
       discountAmount: orderDiscountAmount,
     };
     localStorage.setItem('productSellFormState', JSON.stringify(formState));
-    localStorage.setItem('selectedProducts', JSON.stringify(selectedProducts));
+    const enrichedProducts = selectedProducts.map(product => ({
+      ...product,
+      basePrice: product.basePrice ?? product.price,
+      price_tiers: product.price_tiers,
+    }));
+    localStorage.setItem('selectedProducts', JSON.stringify(enrichedProducts));
     navigate('/product-selection', { state: { fromSellPage: true } });
   };
   const processSale = async (): Promise<boolean> => {

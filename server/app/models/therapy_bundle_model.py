@@ -43,7 +43,7 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                         ''
                     ) AS bundle_contents,
                     GROUP_CONCAT(DISTINCT c.name) AS categories,
-                    COALESCE(tbpt.price_tiers, '{}') AS price_tiers
+                    COALESCE(JSON_OBJECTAGG(tbpt.identity_type, tbpt.price), '{}') AS price_tiers
                 FROM
                     therapy_bundles tb
                 LEFT JOIN
@@ -54,18 +54,8 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                     therapy_bundle_category tbc ON tb.bundle_id = tbc.bundle_id
                 LEFT JOIN
                     category c ON tbc.category_id = c.category_id
-                LEFT JOIN (
-                    SELECT
-                        bundle_id,
-                        JSON_OBJECTAGG(identity_type, price) AS price_tiers
-                    FROM
-                        therapy_bundle_price_tier
-                    WHERE
-                        identity_type IS NOT NULL
-                        AND identity_type != ''
-                    GROUP BY
-                        bundle_id
-                ) AS tbpt ON tb.bundle_id = tbpt.bundle_id
+                LEFT JOIN
+                    therapy_bundle_price_tier tbpt ON tb.bundle_id = tbpt.bundle_id
             """
             params = []
             if status:
@@ -229,11 +219,7 @@ def get_bundle_details_by_id(bundle_id: int):
             bundle_details['items'] = items
             bundle_details['category_ids'] = [c['category_id'] for c in cats]
             bundle_details['categories'] = [c['name'] for c in cats]
-            bundle_details['price_tiers'] = {
-                row['identity_type']: float(row['price'])
-                for row in tier_rows
-                if row.get('identity_type')
-            }
+            bundle_details['price_tiers'] = {row['identity_type']: float(row['price']) for row in tier_rows}
             return bundle_details
     finally:
         conn.close()
