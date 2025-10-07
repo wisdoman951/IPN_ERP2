@@ -1,5 +1,6 @@
 //client\src\services\MemberService.ts
 import axios from "axios";
+import { resolveMemberIdentityLabel } from "../utils/memberIdentity";
 import { base_url } from "./BASE_URL";
 
 const API_URL = `${base_url}/member`;
@@ -82,7 +83,7 @@ const transformBackendToFrontend = (member: BackendMember): Member => {
     Member_ID: String(member.member_id),
     member_code: member.member_code || undefined,
     Name: member.name,
-    IdentityType: member.identity_type || '一般會員',
+    IdentityType: resolveMemberIdentityLabel(member.identity_type) || '一般會員',
     Gender: member.gender || '',
     Birth: member.birthday ? (typeof member.birthday === 'string' ? member.birthday : member.birthday.toISOString().split('T')[0]) : '',
     Phone: member.phone || '',

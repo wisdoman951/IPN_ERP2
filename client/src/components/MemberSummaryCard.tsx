@@ -1,6 +1,7 @@
 import React from "react";
 import { Card } from "react-bootstrap";
 import { MemberData } from "../types/medicalTypes";
+import { resolveMemberIdentityLabel } from "../utils/memberIdentity";
 
 interface MemberSummaryCardProps {
   member: MemberData | null;
@@ -26,7 +27,9 @@ const MemberSummaryCard: React.FC<MemberSummaryCardProps> = ({
   hideHeader = false,
 }) => {
   const name = displayOrDash(member?.name ?? fallbackName);
-  const identity = displayOrDash(member?.identity_type ?? undefined);
+  const identity = displayOrDash(
+    resolveMemberIdentityLabel(member?.identity_type ?? undefined),
+  );
   const code = displayOrDash(member?.member_code ?? memberCode);
   const note = displayOrDash(member?.note ?? undefined);
 
