@@ -2,8 +2,10 @@
 
 import pymysql
 import json
+from decimal import Decimal
 from app.config import DB_CONFIG
 from pymysql.cursors import DictCursor
+from app.utils.pricing import resolve_member_prices
 
 
 def connect_to_db():
@@ -19,7 +21,13 @@ def _permission_is_allowed(allowed_permissions, user_permission):
     return user_permission == allowed_permissions
 
 
-def get_all_product_bundles(status: str | None = None, store_id: int | None = None, user_permission: str | None = None):
+def get_all_product_bundles(
+    status: str | None = None,
+    store_id: int | None = None,
+    user_permission: str | None = None,
+    member_identity_type: str | None = None,
+    price_store_id: int | None = None,
+):
     """
     獲取所有產品組合列表。
     使用 GROUP_CONCAT 將每個組合的內容物（產品和療程名稱）合併成一個字串，
@@ -139,6 +147,43 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                 print(f"[DEBUG] Filtered bundle_ids for store_id={store_id}: {[row.get('bundle_id') for row in result]}")
             else:
                 print(f"[DEBUG] Returning all bundles without store filter; count={len(result)}")
+
+            bundle_ids = [row['bundle_id'] for row in result]
+            pricing_store = price_store_id if price_store_id is not None else store_id
+            price_map = resolve_member_prices('PRODUCT_BUNDLE', bundle_ids, member_identity_type, pricing_store)
+
+            for row in result:
+                price_info = price_map.get(row['bundle_id']) if price_map else None
+                if price_info:
+                    member_price = price_info.get('price')
+                    if isinstance(member_price, Decimal):
+                        member_price = float(member_price)
+                    elif member_price is not None:
+                        member_price = float(member_price)
+                    row['member_price'] = member_price
+                    row['member_custom_code'] = price_info.get('custom_code')
+                    custom_name = price_info.get('custom_name')
+                    if custom_name:
+                        row['member_custom_name'] = custom_name
+                    row['member_price_book_id'] = price_info.get('price_book_id')
+                    row['member_price_book_name'] = price_info.get('price_book_name')
+                    metadata = price_info.get('metadata')
+                    if metadata:
+                        row['member_price_metadata'] = metadata
+                else:
+                    row['member_price'] = None
+                    row['member_custom_code'] = None
+                    row['member_price_book_id'] = None
+                    row['member_price_book_name'] = None
+
+                base_price = row.get('selling_price')
+                if isinstance(base_price, Decimal):
+                    base_price = float(base_price)
+                    row['selling_price'] = base_price
+                row['effective_price'] = row['member_price'] if row['member_price'] is not None else base_price
+                if 'member_custom_name' not in row or not row.get('member_custom_name'):
+                    row['member_custom_name'] = row.get('name')
+
             return result
     finally:
         conn.close()

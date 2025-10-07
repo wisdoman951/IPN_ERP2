@@ -5,11 +5,18 @@ from datetime import datetime
 import traceback
 import logging
 import json
+from decimal import Decimal
+from app.utils.pricing import resolve_member_prices
 def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
-def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | None = None):
+def get_all_therapy_packages(
+    status: str | None = 'PUBLISHED',
+    store_id: int | None = None,
+    member_identity_type: str | None = None,
+    price_store_id: int | None = None,
+):
     """獲取所有療程套餐"""
     conn = connect_to_db()
     try:
@@ -44,6 +51,42 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
                     if row.get('categories'):
                         row['categories'] = row['categories'].split(',')
                     filtered.append(row)
+            therapy_ids = [row['therapy_id'] for row in filtered]
+            pricing_store = price_store_id if price_store_id is not None else store_id
+            price_map = resolve_member_prices('THERAPY', therapy_ids, member_identity_type, pricing_store)
+
+            for row in filtered:
+                price_info = price_map.get(row['therapy_id']) if price_map else None
+                if price_info:
+                    member_price = price_info.get('price')
+                    if isinstance(member_price, Decimal):
+                        member_price = float(member_price)
+                    elif member_price is not None:
+                        member_price = float(member_price)
+                    row['member_price'] = member_price
+                    row['member_custom_code'] = price_info.get('custom_code')
+                    custom_name = price_info.get('custom_name')
+                    if custom_name:
+                        row['member_custom_name'] = custom_name
+                    row['member_price_book_id'] = price_info.get('price_book_id')
+                    row['member_price_book_name'] = price_info.get('price_book_name')
+                    metadata = price_info.get('metadata')
+                    if metadata:
+                        row['member_price_metadata'] = metadata
+                else:
+                    row['member_price'] = None
+                    row['member_custom_code'] = None
+                    row['member_price_book_id'] = None
+                    row['member_price_book_name'] = None
+
+                base_price = row.get('TherapyPrice')
+                if isinstance(base_price, Decimal):
+                    base_price = float(base_price)
+                    row['TherapyPrice'] = base_price
+                row['effective_price'] = row['member_price'] if row['member_price'] is not None else base_price
+                if 'member_custom_name' not in row or not row.get('member_custom_name'):
+                    row['member_custom_name'] = row.get('TherapyName')
+
             return filtered
     except Exception as e:
         print(f"獲取療程套餐錯誤: {e}")
@@ -51,7 +94,13 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
     finally:
         conn.close()
 
-def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id: int | None = None):
+def search_therapy_packages(
+    keyword,
+    status: str | None = 'PUBLISHED',
+    store_id: int | None = None,
+    member_identity_type: str | None = None,
+    price_store_id: int | None = None,
+):
     """搜尋療程套餐"""
     conn = connect_to_db()
     try:
@@ -89,6 +138,42 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id:
                     if row.get('categories'):
                         row['categories'] = row['categories'].split(',')
                     filtered.append(row)
+            therapy_ids = [row['therapy_id'] for row in filtered]
+            pricing_store = price_store_id if price_store_id is not None else store_id
+            price_map = resolve_member_prices('THERAPY', therapy_ids, member_identity_type, pricing_store)
+
+            for row in filtered:
+                price_info = price_map.get(row['therapy_id']) if price_map else None
+                if price_info:
+                    member_price = price_info.get('price')
+                    if isinstance(member_price, Decimal):
+                        member_price = float(member_price)
+                    elif member_price is not None:
+                        member_price = float(member_price)
+                    row['member_price'] = member_price
+                    row['member_custom_code'] = price_info.get('custom_code')
+                    custom_name = price_info.get('custom_name')
+                    if custom_name:
+                        row['member_custom_name'] = custom_name
+                    row['member_price_book_id'] = price_info.get('price_book_id')
+                    row['member_price_book_name'] = price_info.get('price_book_name')
+                    metadata = price_info.get('metadata')
+                    if metadata:
+                        row['member_price_metadata'] = metadata
+                else:
+                    row['member_price'] = None
+                    row['member_custom_code'] = None
+                    row['member_price_book_id'] = None
+                    row['member_price_book_name'] = None
+
+                base_price = row.get('TherapyPrice')
+                if isinstance(base_price, Decimal):
+                    base_price = float(base_price)
+                    row['TherapyPrice'] = base_price
+                row['effective_price'] = row['member_price'] if row['member_price'] is not None else base_price
+                if 'member_custom_name' not in row or not row.get('member_custom_name'):
+                    row['member_custom_name'] = row.get('TherapyName')
+
             return filtered
     except Exception as e:
         print(f"搜尋療程套餐錯誤: {e}")

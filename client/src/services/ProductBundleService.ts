@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import { base_url } from "./BASE_URL";
 import { getAuthHeaders as getTokenHeaders } from "./AuthUtils";
 import { ViewerRole } from "../types/viewerRole";
@@ -7,14 +7,13 @@ const API_URL = `${base_url}/product-bundles`;
 const API_URL_PRODUCTS = `${base_url}/product-sell`;
 const API_URL_THERAPIES = `${base_url}/therapy`;
 
-// 管理端使用的授權標頭
-const getAdminHeaders = () => {
-    const token = localStorage.getItem("token");
+const buildRequestConfig = (overrides: AxiosRequestConfig = {}): AxiosRequestConfig => {
+    const overrideHeaders = (overrides.headers ?? {}) as Record<string, string>;
     return {
+        ...overrides,
         headers: {
-            Authorization: `Bearer ${token}`,
-            "X-Store-ID": "1",
-            "X-Store-Level": "admin"
+            ...getTokenHeaders(),
+            ...overrideHeaders,
         }
     };
 };
@@ -30,6 +29,13 @@ export interface Bundle {
     visible_store_ids?: number[];
     categories?: string[];
     visible_permissions?: ViewerRole[];
+    member_price?: number | null;
+    member_custom_code?: string | null;
+    member_custom_name?: string | null;
+    effective_price?: number;
+    member_price_book_id?: number | null;
+    member_price_book_name?: string | null;
+    member_price_metadata?: Record<string, unknown> | null;
 }
 
 export interface BundleDetails extends Bundle {
@@ -64,17 +70,30 @@ export interface Therapy {
 }
 
 
+export interface BundleFetchOptions {
+    memberId?: number;
+    identityType?: string;
+    pricingStoreId?: number;
+}
+
+
 // -------------------- API 呼叫函式 --------------------
 
 /**
  * 獲取所有產品組合列表
  */
-export const fetchAllBundles = async (status: string = 'PUBLISHED'): Promise<Bundle[]> => {
+export const fetchAllBundles = async (status: string = 'PUBLISHED', options: BundleFetchOptions = {}): Promise<Bundle[]> => {
     try {
-        const response = await axios.get(`${API_URL}/`, {
-            ...getAdminHeaders(),
-            params: { status }
-        });
+        const params: Record<string, unknown> = {};
+        if (status !== undefined) params.status = status;
+        if (options.memberId !== undefined) params.member_id = options.memberId;
+        if (options.identityType) params.identity_type = options.identityType;
+        if (options.pricingStoreId !== undefined) params.pricing_store_id = options.pricingStoreId;
+
+        const response = await axios.get(
+            `${API_URL}/`,
+            buildRequestConfig({ params })
+        );
         return response.data;
     } catch (error) {
         console.error("獲取產品組合列表失敗:", error);
@@ -87,7 +106,7 @@ export const fetchAllBundles = async (status: string = 'PUBLISHED'): Promise<Bun
  */
 export const createBundle = async (payload: unknown) => {
     try {
-        const response = await axios.post(`${API_URL}/`, payload, getAdminHeaders());
+        const response = await axios.post(`${API_URL}/`, payload, buildRequestConfig());
         return response.data;
     } catch (error) {
         console.error("新增組合失敗:", error);
@@ -100,7 +119,7 @@ export const createBundle = async (payload: unknown) => {
  */
 export const getBundleDetails = async (bundleId: number): Promise<BundleDetails> => {
     try {
-        const response = await axios.get(`${API_URL}/${bundleId}`, getAdminHeaders());
+        const response = await axios.get(`${API_URL}/${bundleId}`, buildRequestConfig());
         return response.data;
     } catch (error) {
         console.error("獲取組合詳情失敗:", error);
@@ -113,7 +132,7 @@ export const getBundleDetails = async (bundleId: number): Promise<BundleDetails>
  */
 export const updateBundle = async (bundleId: number, payload: unknown) => {
     try {
-        const response = await axios.put(`${API_URL}/${bundleId}`, payload, getAdminHeaders());
+        const response = await axios.put(`${API_URL}/${bundleId}`, payload, buildRequestConfig());
         return response.data;
     } catch (error) {
         console.error("更新組合失敗:", error);
@@ -126,10 +145,10 @@ export const updateBundle = async (bundleId: number, payload: unknown) => {
  */
 export const deleteBundle = async (bundleId: number, account: string) => {
     try {
-        const response = await axios.delete(`${API_URL}/${bundleId}`, {
-            ...getAdminHeaders(),
-            params: { deleted_by: account }
-        });
+        const response = await axios.delete(
+            `${API_URL}/${bundleId}`,
+            buildRequestConfig({ params: { deleted_by: account } })
+        );
         return response.data;
     } catch (error) {
         console.error("刪除組合失敗:", error);
@@ -142,10 +161,10 @@ export const deleteBundle = async (bundleId: number, account: string) => {
  */
 export const fetchProductsForDropdown = async (status: string = 'PUBLISHED'): Promise<Product[]> => {
     try {
-        const response = await axios.get(`${API_URL_PRODUCTS}/products`, {
-            ...getAdminHeaders(),
-            params: { status }
-        });
+        const response = await axios.get(
+            `${API_URL_PRODUCTS}/products`,
+            buildRequestConfig({ params: { status } })
+        );
         return response.data;
     } catch(error) {
         console.error("Service: 獲取產品下拉選單失敗:", error);
@@ -158,10 +177,10 @@ export const fetchProductsForDropdown = async (status: string = 'PUBLISHED'): Pr
  */
 export const fetchTherapiesForDropdown = async (status: string = 'PUBLISHED'): Promise<Therapy[]> => {
     try {
-        const response = await axios.get(`${API_URL_THERAPIES}/for-dropdown`, {
-            ...getAdminHeaders(),
-            params: { status }
-        });
+        const response = await axios.get(
+            `${API_URL_THERAPIES}/for-dropdown`,
+            buildRequestConfig({ params: { status } })
+        );
         return response.data;
     } catch(error) {
         console.error("Service: 獲取療程下拉選單失敗:", error);
@@ -177,7 +196,7 @@ export const publishBundle = async (bundleId: number) => {
         const response = await axios.patch(
             `${base_url}/items/product_bundle/${bundleId}/publish`,
             {},
-            getAdminHeaders()
+            buildRequestConfig()
         );
         return response.data;
     } catch (error) {
@@ -194,7 +213,7 @@ export const unpublishBundle = async (bundleId: number) => {
         const response = await axios.patch(
             `${base_url}/items/product_bundle/${bundleId}/unpublish`,
             {},
-            getAdminHeaders()
+            buildRequestConfig()
         );
         return response.data;
     } catch (error) {

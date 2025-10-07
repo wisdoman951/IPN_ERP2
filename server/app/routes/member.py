@@ -15,11 +15,25 @@ from app.models.member_model import (
     check_member_exists,
     check_member_code_exists,
     get_next_member_code,
-    delete_member_and_related_data as delete_member_model
+    delete_member_and_related_data as delete_member_model,
+    list_identity_types,
+    get_member_identity_type,
 )
 from app.models.store_model import get_all_stores
 
 member_bp = Blueprint("member", __name__)
+
+
+@member_bp.route("/identity-types", methods=["GET"])
+@auth_required
+def get_identity_types_route():
+    """列出所有會員身份別。"""
+    try:
+        types = list_identity_types()
+        return jsonify(types)
+    except Exception as exc:  # pragma: no cover - defensive
+        traceback.print_exc()
+        return jsonify({"error": str(exc)}), 500
 
 # 統一處理根路徑和 /list 路徑
 @member_bp.route("/", methods=["GET"])
@@ -84,8 +98,10 @@ def create_member_route():
         if not data.get('name') or not data.get('birthday'):
             return jsonify({"error": "姓名和生日為必填欄位。"}), 400
 
-        if not data.get('identity_type'):
+        identity_type_value = data.get('identity_type_code') or data.get('identity_type')
+        if not identity_type_value:
             return jsonify({"error": "會員身份別為必填欄位。"}), 400
+        data['identity_type_code'] = identity_type_value
         
         # 呼叫 model 函式新增會員，並傳入當前使用者的 store_id
         create_member(data, user_store_id)
@@ -145,9 +161,16 @@ def update_member_route(member_id):
             return jsonify({"error": "權限不足，無法修改非本店會員資料"}), 403
         # --- 權限檢查結束 ---
 
+        identity_code = (
+            data.get("identityTypeCode")
+            or data.get("identity_type_code")
+            or data.get("identityType")
+            or data.get("identity_type")
+        )
+
         member_data = {
             "name": data.get("name"),
-            "identity_type": data.get("identityType") or data.get("identity_type"),
+            "identity_type_code": identity_code,
             "birthday": data.get("birthday"), "address": data.get("address"),
             "phone": data.get("phone"), "gender": data.get("gender"),
             "blood_type": data.get("bloodType") or data.get("blood_type"),
@@ -181,12 +204,13 @@ def export_members():
 
         for member in members:
             member['store_name'] = store_map.get(member.get('store_id'), member.get('store_id'))
+            member['identity_type_name'] = member.get('identity_type_display_name') or member.get('identity_type')
             member.pop('store_id', None)
 
         df = pd.DataFrame(members)
 
         column_mapping = {
-            'member_id': '會員ID', 'member_code': '會員編號', 'name': '姓名', 'identity_type': '身份別',
+            'member_id': '會員ID', 'member_code': '會員編號', 'name': '姓名', 'identity_type_name': '身份別',
             'birthday': '生日', 'address': '地址', 'phone': '電話', 'gender': '性別',
             'blood_type': '血型', 'line_id': 'Line ID', 'inferrer_id': '推薦人編號',
             'occupation': '職業', 'note': '備註', 'store_name': '所屬分店'

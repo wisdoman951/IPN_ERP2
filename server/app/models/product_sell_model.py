@@ -3,6 +3,7 @@ import pymysql
 import json
 from decimal import Decimal
 from app.config import DB_CONFIG
+from app.utils.pricing import resolve_member_prices
 
 def connect_to_db():
     """連接到數據庫"""
@@ -475,7 +476,13 @@ def _permission_is_allowed(allowed_permissions, user_permission):
     return user_permission == allowed_permissions
 
 
-def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISHED', user_permission: str | None = None):
+def get_all_products_with_inventory(
+    store_id=None,
+    status: str | None = 'PUBLISHED',
+    user_permission: str | None = None,
+    member_identity_type: str | None = None,
+    price_store_id: int | None = None,
+):
     """
     獲取所有產品及其匯總後的庫存數量。
     - 使用 SUM() 和 GROUP BY 確保每個產品只返回一筆紀錄，包含其總庫存。
@@ -544,9 +551,52 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
             if row.get('categories'):
                 row['categories'] = row['categories'].split(',')
             filtered.append(row)
+    product_ids = [row['product_id'] for row in filtered]
+    pricing_store = price_store_id if price_store_id is not None else store_id
+    price_map = resolve_member_prices('PRODUCT', product_ids, member_identity_type, pricing_store)
+
+    for row in filtered:
+        price_info = price_map.get(row['product_id']) if price_map else None
+        if price_info:
+            member_price = price_info.get('price')
+            if isinstance(member_price, Decimal):
+                member_price = float(member_price)
+            elif member_price is not None:
+                member_price = float(member_price)
+            row['member_price'] = member_price
+            row['member_custom_code'] = price_info.get('custom_code')
+            custom_name = price_info.get('custom_name')
+            if custom_name:
+                row['member_custom_name'] = custom_name
+            row['member_price_book_id'] = price_info.get('price_book_id')
+            row['member_price_book_name'] = price_info.get('price_book_name')
+            metadata = price_info.get('metadata')
+            if metadata:
+                row['member_price_metadata'] = metadata
+        else:
+            row['member_price'] = None
+            row['member_custom_code'] = None
+            row['member_price_book_id'] = None
+            row['member_price_book_name'] = None
+
+        base_price = row.get('product_price')
+        if isinstance(base_price, Decimal):
+            base_price = float(base_price)
+            row['product_price'] = base_price
+        row['effective_price'] = row['member_price'] if row['member_price'] is not None else base_price
+        if 'member_custom_name' not in row or not row.get('member_custom_name'):
+            row['member_custom_name'] = row.get('product_name')
+
     return filtered
 
-def search_products_with_inventory(keyword, store_id=None, status: str | None = 'PUBLISHED', user_permission: str | None = None):
+def search_products_with_inventory(
+    keyword,
+    store_id=None,
+    status: str | None = 'PUBLISHED',
+    user_permission: str | None = None,
+    member_identity_type: str | None = None,
+    price_store_id: int | None = None,
+):
     """
     根據關鍵字搜尋產品及其匯總後的庫存信息。
     邏輯同上，但增加了關鍵字和 store_id 的過濾。
@@ -624,6 +674,42 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
             if row.get('categories'):
                 row['categories'] = row['categories'].split(',')
             filtered.append(row)
+    product_ids = [row['product_id'] for row in filtered]
+    pricing_store = price_store_id if price_store_id is not None else store_id
+    price_map = resolve_member_prices('PRODUCT', product_ids, member_identity_type, pricing_store)
+
+    for row in filtered:
+        price_info = price_map.get(row['product_id']) if price_map else None
+        if price_info:
+            member_price = price_info.get('price')
+            if isinstance(member_price, Decimal):
+                member_price = float(member_price)
+            elif member_price is not None:
+                member_price = float(member_price)
+            row['member_price'] = member_price
+            row['member_custom_code'] = price_info.get('custom_code')
+            custom_name = price_info.get('custom_name')
+            if custom_name:
+                row['member_custom_name'] = custom_name
+            row['member_price_book_id'] = price_info.get('price_book_id')
+            row['member_price_book_name'] = price_info.get('price_book_name')
+            metadata = price_info.get('metadata')
+            if metadata:
+                row['member_price_metadata'] = metadata
+        else:
+            row['member_price'] = None
+            row['member_custom_code'] = None
+            row['member_price_book_id'] = None
+            row['member_price_book_name'] = None
+
+        base_price = row.get('product_price')
+        if isinstance(base_price, Decimal):
+            base_price = float(base_price)
+            row['product_price'] = base_price
+        row['effective_price'] = row['member_price'] if row['member_price'] is not None else base_price
+        if 'member_custom_name' not in row or not row.get('member_custom_name'):
+            row['member_custom_name'] = row.get('product_name')
+
     return filtered
 
 def export_product_sells(store_id=None):

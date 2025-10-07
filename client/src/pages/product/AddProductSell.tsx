@@ -229,6 +229,7 @@ const AddProductSell: React.FC = () => {
   const openProductSelection = () => {
     const formState = {
       selectedStore,
+      storeId,
       memberCode,
       memberId,
       memberName,

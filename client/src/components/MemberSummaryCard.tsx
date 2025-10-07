@@ -26,7 +26,9 @@ const MemberSummaryCard: React.FC<MemberSummaryCardProps> = ({
   hideHeader = false,
 }) => {
   const name = displayOrDash(member?.name ?? fallbackName);
-  const identity = displayOrDash(member?.identity_type ?? undefined);
+  const identity = displayOrDash(
+    member?.identity_type_display_name ?? member?.identity_type ?? undefined
+  );
   const code = displayOrDash(member?.member_code ?? memberCode);
   const note = displayOrDash(member?.note ?? undefined);
 

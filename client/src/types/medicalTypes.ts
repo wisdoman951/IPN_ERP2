@@ -4,6 +4,8 @@ export interface MemberData {
     member_code?: string;
     name: string;
     identity_type?: string;
+    identity_type_code?: string;
+    identity_type_display_name?: string;
     address: string;
     birthday: string;
     blood_type: string;
@@ -18,6 +20,7 @@ export interface MemberData {
 export interface HealthStatusOption {
     name: string; // 選項名稱，例如 "良好", "孕婦"
     details?: string; // 額外說明，例如 "(腦瘀血、腸胃出血)"
+    isCritical?: boolean; // 是否為高風險提示
 }
 
 // 新增：定義已選擇的健康狀態資料結構
