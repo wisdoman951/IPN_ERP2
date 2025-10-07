@@ -1,5 +1,5 @@
 // src/pages/therapy/TherapyPackageSelection.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Container, Form, Button, ListGroup, Spinner, Alert, Row, Col, Card, InputGroup, Tabs, Tab } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
@@ -14,10 +14,19 @@ import { getCategories, Category } from '../../services/CategoryService';
 import MemberSummaryCard from '../../components/MemberSummaryCard';
 import { getMemberByCode as fetchMemberByCode, getMemberById as fetchMemberById } from '../../services/MedicalService';
 import { MemberData } from '../../types/medicalTypes';
+import {
+    MEMBER_IDENTITY_OPTIONS,
+    MemberIdentity,
+    THERAPIST_RESTRICTED_IDENTITIES,
+} from '../../types/memberIdentity';
+import { getUserRole } from '../../utils/authUtils';
+import { normalizeMemberIdentity } from '../../utils/memberIdentity';
 
 // 與 AddTherapySell.tsx 中 SelectedTherapyPackageUIData 結構對應，但此頁面只關心基礎資訊和 userSessions
 export interface PackageInSelection extends TherapyPackageBaseType {
   userSessions: string; // 堂數或組合數量
+  basePrice?: number;
+  price_tiers?: Partial<Record<MemberIdentity, number>>;
 }
 
 const TherapyPackageSelection: React.FC = () => {
@@ -38,6 +47,140 @@ const TherapyPackageSelection: React.FC = () => {
     const [categories, setCategories] = useState<Category[]>([]);
     const [bundleCategories, setBundleCategories] = useState<Category[]>([]);
     const [activeBundleTab, setActiveBundleTab] = useState<string>('all');
+    const [activeIdentity, setActiveIdentity] = useState<MemberIdentity | 'all'>('all');
+    const [identityLocked, setIdentityLocked] = useState(false);
+    const [prefillIdentity, setPrefillIdentity] = useState<MemberIdentity | null>(null);
+
+    const userRole = getUserRole();
+    const restrictedIdentities = useMemo(
+        () =>
+            new Set<MemberIdentity>(
+                userRole === 'therapist' ? THERAPIST_RESTRICTED_IDENTITIES : [],
+            ),
+        [userRole],
+    );
+    const availableIdentityOptions = useMemo(
+        () => MEMBER_IDENTITY_OPTIONS.filter(({ value }) => !restrictedIdentities.has(value)),
+        [restrictedIdentities],
+    );
+
+    const resolvedIdentityForMember = useMemo(
+        () => normalizeMemberIdentity(memberSummary?.identity_type) ?? prefillIdentity,
+        [memberSummary?.identity_type, prefillIdentity],
+    );
+    const pricingIdentity = useMemo<MemberIdentity>(
+        () => {
+            const candidate = activeIdentity === 'all' ? resolvedIdentityForMember : activeIdentity;
+            if (!candidate || restrictedIdentities.has(candidate)) {
+                return '一般售價';
+            }
+            return candidate;
+        },
+        [activeIdentity, resolvedIdentityForMember, restrictedIdentities],
+    );
+
+    const deriveIdentitySet = useCallback(
+        (
+            tiers: Partial<Record<MemberIdentity, number>> | undefined,
+            fallbackPrice: number | string | undefined,
+        ): Set<MemberIdentity> => {
+            const set = new Set<MemberIdentity>();
+            if (tiers) {
+                Object.entries(tiers).forEach(([key, value]) => {
+                    if (value !== undefined && value !== null && value !== '') {
+                        set.add(key as MemberIdentity);
+                    }
+                });
+            }
+            const hasFallback = fallbackPrice !== undefined && fallbackPrice !== null && fallbackPrice !== '';
+            if (!set.has('一般售價') && hasFallback) {
+                set.add('一般售價');
+            }
+            if (set.size === 0) {
+                set.add('一般售價');
+            }
+            return set;
+        },
+        [],
+    );
+
+    const resolvePriceForIdentity = useCallback(
+        (
+            tiers: Partial<Record<MemberIdentity, number>> | undefined,
+            fallbackPrice: number | string | undefined,
+            identity: MemberIdentity,
+        ): number | undefined => {
+            const toNumber = (value: number | string | undefined | null) => {
+                if (value === undefined || value === null || value === '') {
+                    return undefined;
+                }
+                const parsed = Number(value);
+                return Number.isNaN(parsed) ? undefined : parsed;
+            };
+
+            if (identity === '一般售價') {
+                const general = toNumber(tiers?.['一般售價']);
+                if (general !== undefined) {
+                    return general;
+                }
+                return toNumber(fallbackPrice);
+            }
+
+            const specific = toNumber(tiers?.[identity]);
+            if (specific !== undefined) {
+                return specific;
+            }
+
+            const general = toNumber(tiers?.['一般售價']);
+            if (general !== undefined) {
+                return general;
+            }
+            return toNumber(fallbackPrice);
+        },
+        [],
+    );
+
+    const matchesIdentityFilter = useCallback(
+        (pkg: TherapyPackageBaseType, identity: MemberIdentity | 'all') => {
+            const fallback = (pkg as PackageInSelection).basePrice ?? pkg.TherapyPrice ?? 0;
+            const identities = deriveIdentitySet(pkg.price_tiers, fallback);
+            const hasVisible = Array.from(identities).some(id => !restrictedIdentities.has(id));
+            if (!hasVisible) {
+                return false;
+            }
+            if (identity === 'all') {
+                return true;
+            }
+            return identities.has(identity);
+        },
+        [deriveIdentitySet, restrictedIdentities],
+    );
+
+    const formatPriceForDisplay = useCallback(
+        (pkg: TherapyPackageBaseType, identity: MemberIdentity) => {
+            const fallback = (pkg as PackageInSelection).basePrice ?? pkg.TherapyPrice ?? 0;
+            const price = resolvePriceForIdentity(pkg.price_tiers, fallback, identity);
+            if (price === undefined) {
+                return `${identity}：未設定售價`;
+            }
+            return `${identity}：NT$ ${Number(price).toLocaleString()}`;
+        },
+        [resolvePriceForIdentity],
+    );
+
+    useEffect(() => {
+        if (identityLocked) {
+            return;
+        }
+        if (!resolvedIdentityForMember) {
+            return;
+        }
+        if (restrictedIdentities.has(resolvedIdentityForMember)) {
+            setActiveIdentity('all');
+            return;
+        }
+        setActiveIdentity(resolvedIdentityForMember);
+    }, [identityLocked, resolvedIdentityForMember, restrictedIdentities]);
 
 
     useEffect(() => {
@@ -54,6 +197,9 @@ const TherapyPackageSelection: React.FC = () => {
                 if (formState.memberName) {
                     setMemberName(formState.memberName);
                 }
+                if (formState.memberIdentity) {
+                    setPrefillIdentity(normalizeMemberIdentity(formState.memberIdentity));
+                }
             } catch (e) {
                 console.error('解析 addTherapySellFormState 失敗', e);
             }
@@ -66,7 +212,12 @@ const TherapyPackageSelection: React.FC = () => {
                 const map = new Map<string, PackageInSelection>();
                 pkgs.forEach(p => {
                     const key = p.type === 'bundle' ? `b-${p.bundle_id}` : `t-${p.therapy_id}`;
-                    map.set(key, p);
+                    const basePrice = p.basePrice ?? p.TherapyPrice ?? 0;
+                    map.set(key, {
+                        ...p,
+                        basePrice,
+                        TherapyPrice: p.TherapyPrice ?? basePrice,
+                    });
                 });
                 setSelectedPackagesMap(map);
             } catch (e) {
@@ -81,8 +232,11 @@ const TherapyPackageSelection: React.FC = () => {
                         const key = pkgFromState.type === 'bundle'
                             ? `b-${pkgFromState.bundle_id}`
                             : `t-${pkgFromState.therapy_id}`;
+                        const basePrice = pkgFromState.basePrice ?? pkgFromState.TherapyPrice ?? 0;
                         initialMap.set(key, {
                             ...pkgFromState,
+                            basePrice,
+                            TherapyPrice: pkgFromState.TherapyPrice ?? basePrice,
                             userSessions: String(pkgFromState.userSessions || '1')
                         });
                     });
@@ -147,6 +301,25 @@ const TherapyPackageSelection: React.FC = () => {
         };
     }, [memberCode, memberId]);
 
+    useEffect(() => {
+        setSelectedPackagesMap(prev => {
+            let changed = false;
+            const next = new Map<string, PackageInSelection>();
+            prev.forEach((pkg, key) => {
+                const basePrice = pkg.basePrice ?? pkg.TherapyPrice ?? 0;
+                const unitPrice =
+                    resolvePriceForIdentity(pkg.price_tiers, basePrice, pricingIdentity) ?? basePrice ?? 0;
+                if (unitPrice !== (pkg.TherapyPrice ?? basePrice) || basePrice !== pkg.basePrice) {
+                    changed = true;
+                    next.set(key, { ...pkg, basePrice, TherapyPrice: unitPrice });
+                } else {
+                    next.set(key, pkg);
+                }
+            });
+            return changed ? next : prev;
+        });
+    }, [pricingIdentity, resolvePriceForIdentity]);
+
     const fetchPackages = async () => {
         setLoading(true); setPageError(null);
         try {
@@ -163,7 +336,10 @@ const TherapyPackageSelection: React.FC = () => {
                     ...p,
                     type: 'therapy',
                     therapy_id: Number(p.therapy_id),
-                    categories: p.categories || []
+                    categories: p.categories || [],
+                    basePrice: Number(p.TherapyPrice ?? p.price ?? 0),
+                    TherapyPrice: Number(p.TherapyPrice ?? p.price ?? 0),
+                    price_tiers: p.price_tiers || {},
                 }));
             }
 
@@ -174,7 +350,9 @@ const TherapyPackageSelection: React.FC = () => {
                 TherapyName: b.name,
                 TherapyContent: b.bundle_contents,
                 TherapyPrice: Number(b.selling_price),
-                categories: b.categories || []
+                categories: b.categories || [],
+                basePrice: Number(b.selling_price),
+                price_tiers: b.price_tiers || {},
             }));
 
             const combined = [...packages, ...bundlePackages];
@@ -188,6 +366,47 @@ const TherapyPackageSelection: React.FC = () => {
         } finally { setLoading(false); }
     };
     useEffect(() => { fetchPackages(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+    useEffect(() => {
+        if (allPackages.length === 0) {
+            return;
+        }
+        setSelectedPackagesMap(prev => {
+            let changed = false;
+            const next = new Map<string, PackageInSelection>();
+            prev.forEach((pkg, key) => {
+                const source = allPackages.find(candidate =>
+                    candidate.type === pkg.type &&
+                    (candidate.type === 'bundle'
+                        ? candidate.bundle_id === pkg.bundle_id
+                        : candidate.therapy_id === pkg.therapy_id),
+                );
+                if (source) {
+                    const basePrice =
+                        source.basePrice ?? source.TherapyPrice ?? source.price ?? pkg.basePrice ?? pkg.TherapyPrice ?? 0;
+                    const priceTiers = source.price_tiers || pkg.price_tiers;
+                    const recalculated =
+                        resolvePriceForIdentity(priceTiers, basePrice, pricingIdentity) ?? basePrice ?? 0;
+                    if (
+                        priceTiers !== pkg.price_tiers ||
+                        basePrice !== (pkg.basePrice ?? pkg.TherapyPrice ?? 0) ||
+                        recalculated !== (pkg.TherapyPrice ?? basePrice)
+                    ) {
+                        changed = true;
+                        next.set(key, {
+                            ...pkg,
+                            basePrice,
+                            price_tiers: priceTiers,
+                            TherapyPrice: recalculated,
+                        });
+                        return;
+                    }
+                }
+                next.set(key, pkg);
+            });
+            return changed ? next : prev;
+        });
+    }, [allPackages, pricingIdentity, resolvePriceForIdentity]);
 
     useEffect(() => {
         const fetchRemaining = async () => {
@@ -226,6 +445,7 @@ const TherapyPackageSelection: React.FC = () => {
                 filtered = filtered.filter(pkg => pkg.categories?.includes(activeTherapyTab));
             }
         }
+        filtered = filtered.filter(pkg => matchesIdentityFilter(pkg, activeIdentity));
         if (searchTerm.trim() !== "") {
             const lowerSearchTerm = searchTerm.toLowerCase();
             filtered = filtered.filter(pkg =>
@@ -235,7 +455,7 @@ const TherapyPackageSelection: React.FC = () => {
             );
         }
         setDisplayedPackages(filtered);
-    }, [searchTerm, allPackages, activeTab, activeTherapyTab, activeBundleTab]);
+    }, [searchTerm, allPackages, activeTab, activeTherapyTab, activeBundleTab, activeIdentity, matchesIdentityFilter]);
 
     const getPkgKey = (pkg: TherapyPackageBaseType) =>
         pkg.type === 'bundle' ? `b-${pkg.bundle_id}` : `t-${pkg.therapy_id}`;
@@ -248,7 +468,15 @@ const TherapyPackageSelection: React.FC = () => {
             if (newMap.has(key)) {
                 newMap.delete(key);
             } else {
-                newMap.set(key, { ...pkg, userSessions: "1" });
+                const basePrice = (pkg as PackageInSelection).basePrice ?? pkg.TherapyPrice ?? 0;
+                const priceForIdentity =
+                    resolvePriceForIdentity(pkg.price_tiers, basePrice, pricingIdentity) ?? basePrice ?? 0;
+                newMap.set(key, {
+                    ...pkg,
+                    basePrice,
+                    TherapyPrice: priceForIdentity,
+                    userSessions: "1",
+                });
             }
             return newMap;
         });
@@ -305,6 +533,21 @@ const TherapyPackageSelection: React.FC = () => {
                         </Col>
                     </Row>
 
+                    <Tabs
+                        activeKey={activeIdentity}
+                        onSelect={(key) => {
+                            const next = (key as MemberIdentity | 'all') || 'all';
+                            setIdentityLocked(true);
+                            setActiveIdentity(next);
+                        }}
+                        className="mb-3"
+                    >
+                        <Tab eventKey="all" title="全部身份" />
+                        {availableIdentityOptions.map(option => (
+                            <Tab key={option.value} eventKey={option.value} title={option.label} />
+                        ))}
+                    </Tabs>
+
                     <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab((k as 'therapy' | 'bundle') || 'therapy')} className="mb-3">
                         <Tab eventKey="therapy" title="療程">
                             <Tabs activeKey={activeTherapyTab} onSelect={(k) => setActiveTherapyTab(k || 'all')} className="mt-3 mb-3">
@@ -351,7 +594,12 @@ const TherapyPackageSelection: React.FC = () => {
                                                             <strong>{pkg.TherapyName || pkg.TherapyContent}</strong>
                                                             <div>
                                                                 <small className="text-muted">
-                                                                    產品編號: {pkg.TherapyCode} / 單價: NT$ {Number(pkg.TherapyPrice ?? 0).toLocaleString()}
+                                                                    產品編號: {pkg.TherapyCode}
+                                                                </small>
+                                                            </div>
+                                                            <div>
+                                                                <small className="text-primary">
+                                                                    {formatPriceForDisplay(pkg, pricingIdentity)}
                                                                 </small>
                                                             </div>
                                                             {pkg.TherapyContent && pkg.TherapyContent !== pkg.TherapyName && (
