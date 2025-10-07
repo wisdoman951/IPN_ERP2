@@ -47,7 +47,10 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                         JSON_OBJECTAGG(
                             COALESCE(
                                 NULLIF(tbpt.identity_type, ''),
-                                CONCAT('UNKNOWN_', tbpt.price_tier_id)
+                                CASE
+                                    WHEN tbpt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', tbpt.price_tier_id)
+                                    ELSE CONCAT('UNKNOWN_BUNDLE_', CAST(tb.bundle_id AS CHAR))
+                                END
                             ),
                             tbpt.price
                         ),
