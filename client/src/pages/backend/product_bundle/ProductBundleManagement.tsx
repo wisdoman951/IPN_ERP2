@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Table, Button, Container, Alert, Spinner, Row, Col, Tabs, Tab, Form } from 'react-bootstrap';
 import Header from '../../../components/Header';
 import DynamicContainer from '../../../components/DynamicContainer';
@@ -15,6 +15,8 @@ import { deleteProduct, publishProduct, unpublishProduct } from '../../../servic
 import { deleteTherapy, publishTherapy, unpublishTherapy } from '../../../services/TherapyService';
 import { getCategories, Category } from '../../../services/CategoryService';
 import { VIEWER_ROLE_LABELS, ViewerRole } from '../../../types/viewerRole';
+import { MEMBER_IDENTITY_OPTIONS, MemberIdentity } from '../../../types/memberIdentity';
+import { getUserRole } from '../../../utils/authUtils';
 
 const ProductBundleManagement: React.FC = () => {
     const [bundles, setBundles] = useState<Bundle[]>([]);
@@ -59,6 +61,116 @@ const ProductBundleManagement: React.FC = () => {
     const [activeBundleCategory, setActiveBundleCategory] = useState<string>('all');
     const [activeTherapyBundleCategory, setActiveTherapyBundleCategory] = useState<string>('all');
     const [showDeleteCategoryModal, setShowDeleteCategoryModal] = useState(false);
+    const [activeBundleIdentity, setActiveBundleIdentity] = useState<MemberIdentity | 'all'>('all');
+    const [activeTherapyBundleIdentity, setActiveTherapyBundleIdentity] = useState<MemberIdentity | 'all'>('all');
+    const [activeProductIdentity, setActiveProductIdentity] = useState<MemberIdentity | 'all'>('all');
+    const [activeTherapyIdentity, setActiveTherapyIdentity] = useState<MemberIdentity | 'all'>('all');
+
+    const userRole = getUserRole();
+    const restrictedIdentities = useMemo(
+        () => new Set<MemberIdentity>(userRole === 'therapist' ? ['直營店', '加盟店'] : []),
+        [userRole],
+    );
+    const availableIdentityOptions = useMemo(
+        () => MEMBER_IDENTITY_OPTIONS.filter(({ value }) => !restrictedIdentities.has(value)),
+        [restrictedIdentities],
+    );
+
+    const deriveIdentitySet = (
+        tiers: Partial<Record<MemberIdentity, number>> | undefined,
+        fallbackPrice: number | string | undefined,
+    ): Set<MemberIdentity> => {
+        const set = new Set<MemberIdentity>();
+        if (tiers) {
+            Object.keys(tiers).forEach(key => set.add(key as MemberIdentity));
+        }
+        const hasGeneral = set.has('一般售價');
+        const hasFallback = fallbackPrice !== undefined && fallbackPrice !== null && fallbackPrice !== '';
+        if (!hasGeneral && hasFallback) {
+            set.add('一般售價');
+        }
+        if (set.size === 0) {
+            set.add('一般售價');
+        }
+        return set;
+    };
+
+    const matchesIdentityFilter = (
+        tiers: Partial<Record<MemberIdentity, number>> | undefined,
+        fallbackPrice: number | string | undefined,
+        activeIdentity: MemberIdentity | 'all',
+    ) => {
+        const identities = deriveIdentitySet(tiers, fallbackPrice);
+        let hasAllowed = false;
+        identities.forEach(identity => {
+            if (!restrictedIdentities.has(identity)) {
+                hasAllowed = true;
+            }
+        });
+        if (!hasAllowed) {
+            return false;
+        }
+        if (activeIdentity === 'all') {
+            return true;
+        }
+        return identities.has(activeIdentity);
+    };
+
+    const mapActiveIdentity = (identity: MemberIdentity | 'all'): MemberIdentity =>
+        identity === 'all' ? '一般售價' : identity;
+
+    const resolvePriceForIdentity = (
+        tiers: Partial<Record<MemberIdentity, number>> | undefined,
+        fallbackPrice: number | string | undefined,
+        identity: MemberIdentity,
+    ): number | undefined => {
+        const toNumber = (value: number | string | undefined | null) => {
+            if (value === undefined || value === null || value === '') {
+                return undefined;
+            }
+            const parsed = Number(value);
+            return Number.isNaN(parsed) ? undefined : parsed;
+        };
+
+        if (identity === '一般售價') {
+            const general = tiers?.['一般售價'];
+            if (general != null) {
+                const parsed = Number(general);
+                return Number.isNaN(parsed) ? undefined : parsed;
+            }
+            return toNumber(fallbackPrice);
+        }
+
+        const specific = tiers?.[identity];
+        if (specific != null) {
+            const parsed = Number(specific);
+            if (!Number.isNaN(parsed)) {
+                return parsed;
+            }
+        }
+
+        const general = tiers?.['一般售價'];
+        if (general != null) {
+            const parsed = Number(general);
+            if (!Number.isNaN(parsed)) {
+                return parsed;
+            }
+        }
+        return toNumber(fallbackPrice);
+    };
+
+    const formatPriceDisplay = (
+        tiers: Partial<Record<MemberIdentity, number>> | undefined,
+        fallbackPrice: number | string | undefined,
+        activeIdentity: MemberIdentity | 'all',
+    ) => {
+        const identity = mapActiveIdentity(activeIdentity);
+        const price = resolvePriceForIdentity(tiers, fallbackPrice, identity);
+        if (price === undefined) {
+            return '---';
+        }
+        return `${identity}：$${Number(price).toLocaleString()}`;
+    };
 
     const formatViewerRoles = (roles?: ViewerRole[]) => {
         if (!roles || roles.length === 0) {
@@ -403,6 +515,9 @@ const ProductBundleManagement: React.FC = () => {
         )
         .filter(bundle =>
             activeBundleCategory === 'all' || (bundle.categories && bundle.categories.includes(activeBundleCategory))
+        )
+        .filter(bundle =>
+            matchesIdentityFilter(bundle.price_tiers, bundle.selling_price, activeBundleIdentity)
         );
 
     const filteredTherapyBundles = therapyBundles
@@ -416,6 +531,9 @@ const ProductBundleManagement: React.FC = () => {
         )
         .filter(bundle =>
             activeTherapyBundleCategory === 'all' || (bundle.categories && bundle.categories.includes(activeTherapyBundleCategory))
+        )
+        .filter(bundle =>
+            matchesIdentityFilter(bundle.price_tiers, bundle.selling_price, activeTherapyBundleIdentity)
         );
 
     const filteredProducts = products
@@ -429,6 +547,9 @@ const ProductBundleManagement: React.FC = () => {
         )
         .filter(product =>
             activeProductCategory === 'all' || (product.categories && product.categories.includes(activeProductCategory))
+        )
+        .filter(product =>
+            matchesIdentityFilter(product.price_tiers, product.product_price, activeProductIdentity)
         );
 
     const filteredTherapies = therapies
@@ -442,6 +563,9 @@ const ProductBundleManagement: React.FC = () => {
         )
         .filter(therapy =>
             activeTherapyCategory === 'all' || (therapy.categories && therapy.categories.includes(activeTherapyCategory))
+        )
+        .filter(therapy =>
+            matchesIdentityFilter(therapy.price_tiers, therapy.price, activeTherapyIdentity)
         );
 
     const content = (
@@ -511,6 +635,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'bundle' && (
                     <>
+                        <Tabs activeKey={activeBundleIdentity} onSelect={(k) => setActiveBundleIdentity((k as MemberIdentity | 'all') || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {availableIdentityOptions.map(option => (
+                                <Tab key={`bundle-identity-${option.value}`} eventKey={option.value} title={option.label} />
+                            ))}
+                        </Tabs>
                         <Tabs activeKey={activeBundleCategory} onSelect={(k) => setActiveBundleCategory(k || 'all')} className="mb-3">
                             <Tab eventKey="all" title="全部" />
                             {bundleCategories.map(cat => (
@@ -570,7 +700,7 @@ const ProductBundleManagement: React.FC = () => {
                                                     : '---'}
                                             </td>
                                             <td className="align-middle">{formatViewerRoles(bundle.visible_permissions)}</td>
-                                            <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
+                                            <td className="align-middle">{formatPriceDisplay(bundle.price_tiers, bundle.selling_price, activeBundleIdentity)}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditModal(bundle)}>修改</Button>
                                                 {bundleStatus === 'PUBLISHED' ? (
@@ -622,6 +752,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'therapy_bundle' && (
                     <>
+                        <Tabs activeKey={activeTherapyBundleIdentity} onSelect={(k) => setActiveTherapyBundleIdentity((k as MemberIdentity | 'all') || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {availableIdentityOptions.map(option => (
+                                <Tab key={`therapy-bundle-identity-${option.value}`} eventKey={option.value} title={option.label} />
+                            ))}
+                        </Tabs>
                         <Tabs activeKey={activeTherapyBundleCategory} onSelect={(k) => setActiveTherapyBundleCategory(k || 'all')} className="mb-3">
                             <Tab eventKey="all" title="全部" />
                             {therapyBundleCategories.map(cat => (
@@ -681,7 +817,7 @@ const ProductBundleManagement: React.FC = () => {
                                                     : '---'}
                                             </td>
                                             <td className="align-middle">{formatViewerRoles(bundle.visible_permissions)}</td>
-                                            <td className="align-middle">{`$${Number(bundle.selling_price).toLocaleString()}`}</td>
+                                            <td className="align-middle">{formatPriceDisplay(bundle.price_tiers, bundle.selling_price, activeTherapyBundleIdentity)}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditTherapyBundleModal(bundle)}>修改</Button>
                                                 {therapyBundleStatus === 'PUBLISHED' ? (
@@ -733,6 +869,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'product' && (
                     <>
+                        <Tabs activeKey={activeProductIdentity} onSelect={(k) => setActiveProductIdentity((k as MemberIdentity | 'all') || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {availableIdentityOptions.map(option => (
+                                <Tab key={`product-identity-${option.value}`} eventKey={option.value} title={option.label} />
+                            ))}
+                        </Tabs>
                         <Tabs activeKey={activeProductCategory} onSelect={(k) => setActiveProductCategory(k || 'all')} className="mb-3">
                             <Tab eventKey="all" title="全部" />
                             {productCategories.map(cat => (
@@ -790,7 +932,7 @@ const ProductBundleManagement: React.FC = () => {
                                                     : '---'}
                                             </td>
                                             <td className="align-middle">{formatViewerRoles(product.visible_permissions)}</td>
-                                            <td className="align-middle">{`$${Number(product.product_price).toLocaleString()}`}</td>
+                                            <td className="align-middle">{formatPriceDisplay(product.price_tiers, product.product_price, activeProductIdentity)}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditProductModal(product)}>修改</Button>
                                                 {productStatus === 'PUBLISHED' ? (
@@ -842,6 +984,12 @@ const ProductBundleManagement: React.FC = () => {
 
                 {activeTab === 'therapy' && (
                     <>
+                        <Tabs activeKey={activeTherapyIdentity} onSelect={(k) => setActiveTherapyIdentity((k as MemberIdentity | 'all') || 'all')} className="mb-3">
+                            <Tab eventKey="all" title="全部" />
+                            {availableIdentityOptions.map(option => (
+                                <Tab key={`therapy-identity-${option.value}`} eventKey={option.value} title={option.label} />
+                            ))}
+                        </Tabs>
                         <Tabs activeKey={activeTherapyCategory} onSelect={(k) => setActiveTherapyCategory(k || 'all')} className="mb-3">
                             <Tab eventKey="all" title="全部" />
                             {therapyCategories.map(cat => (
@@ -899,7 +1047,7 @@ const ProductBundleManagement: React.FC = () => {
                                                     : '---'}
                                             </td>
                                             <td className="align-middle">{formatViewerRoles(therapy.visible_permissions)}</td>
-                                            <td className="align-middle">{`$${Number(therapy.price).toLocaleString()}`}</td>
+                                            <td className="align-middle">{formatPriceDisplay(therapy.price_tiers, therapy.price, activeTherapyIdentity)}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditTherapyModal(therapy)}>修改</Button>
                                                 {therapyStatus === 'PUBLISHED' ? (

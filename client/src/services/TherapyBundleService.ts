@@ -2,6 +2,7 @@ import axios from "axios";
 import { base_url } from "./BASE_URL";
 import { getAuthHeaders as getTokenHeaders } from "./AuthUtils";
 import { ViewerRole } from "../types/viewerRole";
+import { MemberIdentity } from "../types/memberIdentity";
 
 const API_URL = `${base_url}/therapy-bundles`;
 const API_URL_THERAPIES = `${base_url}/therapy`;
@@ -27,6 +28,7 @@ export interface TherapyBundle {
     visible_store_ids?: number[];
     categories?: string[];
     visible_permissions?: ViewerRole[];
+    price_tiers?: Partial<Record<MemberIdentity, number>>;
 }
 
 export interface TherapyBundleDetails extends TherapyBundle {
@@ -44,6 +46,7 @@ export interface Therapy {
     code: string;
     content?: string;
     visible_permissions?: ViewerRole[];
+    price_tiers?: Partial<Record<MemberIdentity, number>>;
 }
 
 export const fetchAllTherapyBundles = async (status: string = 'PUBLISHED'): Promise<TherapyBundle[]> => {

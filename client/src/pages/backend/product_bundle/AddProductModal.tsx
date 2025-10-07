@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Form, Button } from 'react-bootstrap';
+import { Modal, Form, Button, Alert } from 'react-bootstrap';
 import { addProduct, updateProduct } from '../../../services/ProductService';
 import { Product as ProductItem } from '../../../services/ProductBundleService';
 import { getCategories, Category } from '../../../services/CategoryService';
 import { Store } from '../../../services/StoreService';
 import { VIEWER_ROLE_OPTIONS, ViewerRole } from '../../../types/viewerRole';
+import { MEMBER_IDENTITY_OPTIONS, MemberIdentity } from '../../../types/memberIdentity';
 
 interface AddProductModalProps {
     show: boolean;
@@ -16,30 +17,78 @@ interface AddProductModalProps {
 const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editingProduct, stores }) => {
     const [code, setCode] = useState('');
     const [name, setName] = useState('');
-    const [price, setPrice] = useState('');
+    const createDefaultPriceMap = () => {
+        const map = {} as Record<MemberIdentity, { enabled: boolean; value: string }>;
+        MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+            map[value] = {
+                enabled: value === '一般售價',
+                value: '',
+            };
+        });
+        return map;
+    };
+
+    const [priceMap, setPriceMap] = useState<Record<MemberIdentity, { enabled: boolean; value: string }>>(createDefaultPriceMap);
     const [purchasePrice, setPurchasePrice] = useState('');
     const [selectedStoreIds, setSelectedStoreIds] = useState<number[]>([]);
     const [selectedViewerRoles, setSelectedViewerRoles] = useState<ViewerRole[]>([]);
     const [categories, setCategories] = useState<Category[]>([]);
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
+    const [formError, setFormError] = useState<string | null>(null);
+    const [tierValidationMessage, setTierValidationMessage] = useState<string | null>(null);
+
+    const computeTierValidation = (
+        map: Record<MemberIdentity, { enabled: boolean; value: string }>,
+    ): string | null => {
+        for (const { value } of MEMBER_IDENTITY_OPTIONS) {
+            if (value === '一般售價') continue;
+            const entry = map[value];
+            if (entry?.enabled && !entry.value) {
+                return `已勾選「${value}」，請輸入售價。`;
+            }
+        }
+        return null;
+    };
 
     useEffect(() => {
         if (editingProduct) {
             setCode(editingProduct.product_code);
             setName(editingProduct.product_name);
-            setPrice(String(editingProduct.product_price));
             setPurchasePrice(editingProduct.purchase_price != null ? String(editingProduct.purchase_price) : '');
             setSelectedStoreIds(editingProduct.visible_store_ids || []);
             setSelectedViewerRoles(editingProduct.visible_permissions || []);
             setSelectedCategoryIds([]);
+            const baseMap = createDefaultPriceMap();
+            const tiers = editingProduct.price_tiers || {};
+            const generalPrice = tiers?.['一般售價'] ?? editingProduct.product_price;
+            baseMap['一般售價'] = {
+                enabled: true,
+                value: generalPrice != null ? String(generalPrice) : '',
+            };
+            MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+                if (value === '一般售價') return;
+                const tierValue = tiers?.[value];
+                if (tierValue != null) {
+                    baseMap[value] = {
+                        enabled: true,
+                        value: String(tierValue),
+                    };
+                }
+            });
+            setPriceMap(baseMap);
+            setTierValidationMessage(computeTierValidation(baseMap));
+            setFormError(null);
         } else {
             setCode('');
             setName('');
-            setPrice('');
             setPurchasePrice('');
             setSelectedStoreIds([]);
             setSelectedViewerRoles([]);
             setSelectedCategoryIds([]);
+            const defaultMap = createDefaultPriceMap();
+            setPriceMap(defaultMap);
+            setTierValidationMessage(computeTierValidation(defaultMap));
+            setFormError(null);
         }
     }, [editingProduct]);
 
@@ -55,26 +104,137 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
         setSelectedViewerRoles(prev => checked ? [...prev, role] : prev.filter(r => r !== role));
     };
 
+    const handleIdentityToggle = (identity: MemberIdentity, checked: boolean) => {
+        if (identity === '一般售價') {
+            return;
+        }
+        setPriceMap(prev => {
+            const next = {
+                ...prev,
+                [identity]: { ...prev[identity], enabled: checked },
+            } as Record<MemberIdentity, { enabled: boolean; value: string }>;
+            setTierValidationMessage(computeTierValidation(next));
+            setFormError(null);
+            return next;
+        });
+    };
+
+    const handleIdentityPriceChange = (identity: MemberIdentity, value: string) => {
+        setPriceMap(prev => {
+            const next = {
+                ...prev,
+                [identity]: { ...prev[identity], value },
+            } as Record<MemberIdentity, { enabled: boolean; value: string }>;
+            setTierValidationMessage(computeTierValidation(next));
+            setFormError(null);
+            return next;
+        });
+    };
+
+    const handleSelectAllIdentities = () => {
+        setPriceMap(prev => {
+            const next = { ...prev } as Record<MemberIdentity, { enabled: boolean; value: string }>;
+            MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+                if (value !== '一般售價') {
+                    next[value] = { ...next[value], enabled: true };
+                }
+            });
+            setTierValidationMessage(computeTierValidation(next));
+            setFormError(null);
+            return next;
+        });
+    };
+
+    const handleClearIdentities = () => {
+        setPriceMap(prev => {
+            const next = { ...prev } as Record<MemberIdentity, { enabled: boolean; value: string }>;
+            MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+                if (value !== '一般售價') {
+                    next[value] = { ...next[value], enabled: false };
+                }
+            });
+            setTierValidationMessage(computeTierValidation(next));
+            setFormError(null);
+            return next;
+        });
+    };
+
+    const handleApplyGeneralPrice = () => {
+        const generalPrice = priceMap['一般售價']?.value ?? '';
+        if (!generalPrice) {
+            setTierValidationMessage('請先輸入一般售價後再套用。');
+            setFormError('請先輸入一般售價後再套用。');
+            return;
+        }
+        setPriceMap(prev => {
+            const next = { ...prev } as Record<MemberIdentity, { enabled: boolean; value: string }>;
+            MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+                if (value === '一般售價') return;
+                if (next[value]?.enabled) {
+                    next[value] = { ...next[value], value: generalPrice };
+                }
+            });
+            setTierValidationMessage(computeTierValidation(next));
+            setFormError(null);
+            return next;
+        });
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            const generalPriceRaw = priceMap['一般售價']?.value ?? '';
+            const generalPrice = Number(generalPriceRaw);
+            if (!generalPriceRaw || Number.isNaN(generalPrice) || generalPrice < 0) {
+                setFormError('請輸入有效的一般售價');
+                return;
+            }
+
+            const tierValidation = computeTierValidation(priceMap);
+            if (tierValidation) {
+                setTierValidationMessage(tierValidation);
+                setFormError(tierValidation);
+                return;
+            }
+
+            const priceTiersPayload: { identity_type: MemberIdentity; price: number }[] = [
+                { identity_type: '一般售價', price: generalPrice },
+            ];
+
+            for (const { value } of MEMBER_IDENTITY_OPTIONS) {
+                if (value === '一般售價') continue;
+                const entry = priceMap[value];
+                if (!entry?.enabled) continue;
+                const parsed = Number(entry.value);
+                if (!entry.value || Number.isNaN(parsed) || parsed < 0) {
+                    const message = `請輸入有效的「${value}」售價`;
+                    setTierValidationMessage(message);
+                    setFormError(message);
+                    return;
+                }
+                priceTiersPayload.push({ identity_type: value, price: parsed });
+            }
+
             const payload = {
                 code,
                 name,
-                price: Number(price),
+                price: generalPrice,
                 purchase_price: purchasePrice === '' ? null : Number(purchasePrice),
                 visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
                 visible_permissions: selectedViewerRoles.length > 0 ? selectedViewerRoles : null,
                 category_ids: selectedCategoryIds,
+                price_tiers: priceTiersPayload,
             };
             if (editingProduct) {
                 await updateProduct(editingProduct.product_id, payload);
             } else {
                 await addProduct(payload);
             }
+            setFormError(null);
+            setTierValidationMessage(null);
             onHide();
         } catch (err) {
-            alert(editingProduct ? '更新產品失敗' : '新增產品失敗');
+            setFormError(editingProduct ? '更新產品失敗' : '新增產品失敗');
         }
     };
 
@@ -89,6 +249,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             </Modal.Header>
             <Form onSubmit={handleSubmit}>
                 <Modal.Body>
+                    {formError && <Alert variant="danger">{formError}</Alert>}
                     <Form.Group className="mb-3">
                         <Form.Label>設定編號</Form.Label>
                         <Form.Control value={code} onChange={e => setCode(e.target.value)} />
@@ -147,8 +308,45 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
                         </div>
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>設定售價</Form.Label>
-                        <Form.Control type="number" min={0} value={price} onChange={e => setPrice(e.target.value)} />
+                        <Form.Label>一般售價</Form.Label>
+                        <Form.Control
+                            type="number"
+                            min={0}
+                            value={priceMap['一般售價']?.value ?? ''}
+                            onChange={e => handleIdentityPriceChange('一般售價', e.target.value)}
+                        />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>會員別售價 (可複選)</Form.Label>
+                        <div className="d-flex justify-content-end gap-2 mb-2 flex-wrap">
+                            <Button size="sm" variant="outline-info" onClick={handleSelectAllIdentities}>全部加入</Button>
+                            <Button size="sm" variant="outline-secondary" onClick={handleClearIdentities}>全部取消</Button>
+                            <Button size="sm" variant="outline-primary" onClick={handleApplyGeneralPrice}>套用一般售價</Button>
+                        </div>
+                        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {MEMBER_IDENTITY_OPTIONS.filter(option => option.value !== '一般售價').map(option => {
+                                const entry = priceMap[option.value];
+                                return (
+                                    <div key={`identity-${option.value}`} className="d-flex align-items-center mb-2 gap-2">
+                                        <Form.Check
+                                            type="checkbox"
+                                            id={`identity-check-${option.value}`}
+                                            label={option.label}
+                                            checked={entry?.enabled || false}
+                                            onChange={e => handleIdentityToggle(option.value, e.target.checked)}
+                                        />
+                                        <Form.Control
+                                            type="number"
+                                            min={0}
+                                            value={entry?.value ?? ''}
+                                            disabled={!entry?.enabled}
+                                            onChange={e => handleIdentityPriceChange(option.value, e.target.value)}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        {tierValidationMessage && <Form.Text className="text-danger">{tierValidationMessage}</Form.Text>}
                     </Form.Group>
                 </Modal.Body>
                 <Modal.Footer>

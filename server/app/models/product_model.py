@@ -1,5 +1,6 @@
 import pymysql
 import json
+from typing import Iterable
 from app.config import DB_CONFIG
 from pymysql.cursors import DictCursor
 
@@ -27,6 +28,8 @@ def create_product(data: dict):
                 json.dumps(data.get("visible_permissions")) if data.get("visible_permissions") is not None else None,
             ))
             product_id = conn.insert_id()
+
+            _sync_product_price_tiers(cursor, product_id, data.get("price_tiers"))
 
             # 關聯分類
             category_ids = data.get("category_ids", [])
@@ -72,12 +75,35 @@ def update_product(product_id: int, data: dict):
                         "INSERT INTO product_category (product_id, category_id) VALUES (%s, %s)",
                         (product_id, cid),
                     )
+
+            _sync_product_price_tiers(cursor, product_id, data.get("price_tiers"))
         conn.commit()
     except Exception as e:
         conn.rollback()
         raise e
     finally:
         conn.close()
+
+
+def _sync_product_price_tiers(cursor, product_id: int, tiers: Iterable[dict] | None):
+    """Replace product price tiers for a given product."""
+    cursor.execute("DELETE FROM product_price_tier WHERE product_id = %s", (product_id,))
+    if not tiers:
+        return
+
+    values = []
+    for tier in tiers:
+        identity = tier.get("identity_type")
+        price = tier.get("price")
+        if identity is None or price is None:
+            continue
+        values.append((product_id, identity, price))
+
+    if values:
+        cursor.executemany(
+            "INSERT INTO product_price_tier (product_id, identity_type, price) VALUES (%s, %s, %s)",
+            values,
+        )
 
 
 def delete_product(product_id: int):
