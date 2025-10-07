@@ -9,6 +9,7 @@ import {
 import { fetchAllStores, Store } from '../../../services/StoreService';
 import { getCategories, Category } from '../../../services/CategoryService';
 import { VIEWER_ROLE_OPTIONS, ViewerRole } from '../../../types/viewerRole';
+import { MEMBER_IDENTITY_OPTIONS, MemberIdentity } from '../../../types/memberIdentity';
 
 interface BundleCreateModalProps {
     show: boolean;
@@ -37,6 +38,19 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     // 新增數量 state
     const [productQuantities, setProductQuantities] = useState<{ [id: number]: number }>({});
     const [therapyQuantities, setTherapyQuantities] = useState<{ [id: number]: number }>({});
+
+    const createDefaultPriceMap = () => {
+        const map = {} as Record<MemberIdentity, { enabled: boolean; value: string }>;
+        MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+            map[value] = {
+                enabled: value === '一般售價',
+                value: '',
+            };
+        });
+        return map;
+    };
+
+    const [bundlePriceMap, setBundlePriceMap] = useState<Record<MemberIdentity, { enabled: boolean; value: string }>>(createDefaultPriceMap);
 
     useEffect(() => {
         // 當 Modal 顯示時，執行以下邏輯
@@ -69,6 +83,24 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                         setSelectedStoreIds(data.visible_store_ids || []);
                         setSelectedViewerRoles(data.visible_permissions || []);
                         setSelectedCategoryIds(data.category_ids || []);
+                        const baseMap = createDefaultPriceMap();
+                        const tiers = data.price_tiers || {};
+                        const generalPrice = tiers?.['一般售價'] ?? data.selling_price;
+                        baseMap['一般售價'] = {
+                            enabled: true,
+                            value: generalPrice != null ? String(generalPrice) : '',
+                        };
+                        MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+                            if (value === '一般售價') return;
+                            const tierValue = tiers?.[value];
+                            if (tierValue != null) {
+                                baseMap[value] = {
+                                    enabled: true,
+                                    value: String(tierValue),
+                                };
+                            }
+                        });
+                        setBundlePriceMap(baseMap);
                         // 填充數量
                         prodIds.forEach(id => {
                             const item = data.items.find(i => i.item_id === id && i.item_type === 'Product');
@@ -88,14 +120,15 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     const resetStates = () => {
         setFormData({ bundle_code: '', name: '', selling_price: '' });
         setSelectedProductIds([]);
-            setSelectedTherapyIds([]);
-            setSelectedStoreIds([]);
-            setSelectedViewerRoles([]);
-            setSelectedCategoryIds([]);
-            setError(null);
-            setLoading(false);
-            setProductQuantities({});
+        setSelectedTherapyIds([]);
+        setSelectedStoreIds([]);
+        setSelectedViewerRoles([]);
+        setSelectedCategoryIds([]);
+        setError(null);
+        setLoading(false);
+        setProductQuantities({});
         setTherapyQuantities({});
+        setBundlePriceMap(createDefaultPriceMap());
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -106,6 +139,13 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setFormData(prev => ({ ...prev, selling_price: value === '' ? '' : Number(value) }));
+        setBundlePriceMap(prev => ({
+            ...prev,
+            ['一般售價' as MemberIdentity]: {
+                enabled: true,
+                value,
+            },
+        }));
     };
     
     const calculatedPrice = useMemo(() => {
@@ -149,11 +189,75 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
         setSelectedViewerRoles(prev => checked ? [...prev, role] : prev.filter(r => r !== role));
     };
 
+    const handleIdentityToggle = (identity: MemberIdentity, checked: boolean) => {
+        if (identity === '一般售價') return;
+        setBundlePriceMap(prev => ({
+            ...prev,
+            [identity]: { ...prev[identity], enabled: checked },
+        }));
+    };
+
+    const handleIdentityPriceChange = (identity: MemberIdentity, value: string) => {
+        setBundlePriceMap(prev => ({
+            ...prev,
+            [identity]: { ...prev[identity], value },
+        }));
+    };
+
+    const handleSelectAllIdentities = () => {
+        setBundlePriceMap(prev => {
+            const next = { ...prev } as Record<MemberIdentity, { enabled: boolean; value: string }>;
+            MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+                if (value !== '一般售價') {
+                    next[value] = { ...next[value], enabled: true };
+                }
+            });
+            return next;
+        });
+    };
+
+    const handleClearIdentities = () => {
+        setBundlePriceMap(prev => {
+            const next = { ...prev } as Record<MemberIdentity, { enabled: boolean; value: string }>;
+            MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
+                if (value !== '一般售價') {
+                    next[value] = { ...next[value], enabled: false };
+                }
+            });
+            return next;
+        });
+    };
+
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError(null);
-        
+
+        const generalPriceValue = bundlePriceMap['一般售價']?.value ?? '';
+        const generalPrice = generalPriceValue === '' ? null : Number(generalPriceValue);
+        if (generalPriceValue === '' || generalPrice === null || Number.isNaN(generalPrice) || generalPrice < 0) {
+            setError('請輸入有效的一般售價');
+            setLoading(false);
+            return;
+        }
+
+        const priceTiers: { identity_type: MemberIdentity; price: number }[] = [
+            { identity_type: '一般售價', price: generalPrice },
+        ];
+
+        for (const { value } of MEMBER_IDENTITY_OPTIONS) {
+            if (value === '一般售價') continue;
+            const entry = bundlePriceMap[value];
+            if (!entry?.enabled) continue;
+            const parsed = Number(entry.value);
+            if (!entry.value || Number.isNaN(parsed) || parsed < 0) {
+                setError(`請輸入有效的「${value}」售價`);
+                setLoading(false);
+                return;
+            }
+            priceTiers.push({ identity_type: value, price: parsed });
+        }
+
         const payload = {
             ...formData,
             calculated_price: calculatedPrice,
@@ -163,7 +267,9 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                 ...selectedProductIds.map(id => ({ item_id: id, item_type: 'Product', quantity: productQuantities[id] || 1 })),
                 ...selectedTherapyIds.map(id => ({ item_id: id, item_type: 'Therapy', quantity: therapyQuantities[id] || 1 }))
             ],
-            category_ids: selectedCategoryIds
+            category_ids: selectedCategoryIds,
+            price_tiers: priceTiers,
+            selling_price: generalPrice,
         };
 
         try {
@@ -316,6 +422,36 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                     <Form.Group className="mb-3">
                         <Form.Label>最終售價</Form.Label>
                         <Form.Control type="number" name="selling_price" value={formData.selling_price} onChange={handlePriceChange} required min={0} />
+                    </Form.Group>
+                    <Form.Group className="mb-3">
+                        <Form.Label>會員別售價 (可複選)</Form.Label>
+                        <div className="d-flex justify-content-end gap-2 mb-2">
+                            <Button size="sm" variant="outline-info" onClick={handleSelectAllIdentities}>全部加入</Button>
+                            <Button size="sm" variant="outline-secondary" onClick={handleClearIdentities}>全部取消</Button>
+                        </div>
+                        <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                            {MEMBER_IDENTITY_OPTIONS.filter(option => option.value !== '一般售價').map(option => {
+                                const entry = bundlePriceMap[option.value];
+                                return (
+                                    <div key={`bundle-identity-${option.value}`} className="d-flex align-items-center mb-2 gap-2">
+                                        <Form.Check
+                                            type="checkbox"
+                                            id={`bundle-identity-${option.value}`}
+                                            label={option.label}
+                                            checked={entry?.enabled || false}
+                                            onChange={e => handleIdentityToggle(option.value, e.target.checked)}
+                                        />
+                                        <Form.Control
+                                            type="number"
+                                            min={0}
+                                            value={entry?.value ?? ''}
+                                            disabled={!entry?.enabled}
+                                            onChange={e => handleIdentityPriceChange(option.value, e.target.value)}
+                                        />
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </Form.Group>
                 </Modal.Body>
                 <Modal.Footer>

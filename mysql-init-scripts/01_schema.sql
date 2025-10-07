@@ -380,6 +380,25 @@ CREATE TABLE `product` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `product_price_tier`
+--
+
+DROP TABLE IF EXISTS `product_price_tier`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_price_tier` (
+  `price_tier_id` int NOT NULL AUTO_INCREMENT,
+  `product_id` int NOT NULL,
+  `identity_type` enum('直營店','加盟店','合夥商','推廣商(分店能量師)','B2B合作專案','心耀商','會員','一般售價') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `price` decimal(12,2) NOT NULL,
+  PRIMARY KEY (`price_tier_id`),
+  UNIQUE KEY `uniq_product_identity` (`product_id`,`identity_type`),
+  KEY `fk_product_price_tier_product` (`product_id`),
+  CONSTRAINT `fk_product_price_tier_product` FOREIGN KEY (`product_id`) REFERENCES `product` (`product_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `product_bundle_items`
 --
 
@@ -422,6 +441,25 @@ CREATE TABLE `product_bundles` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `product_bundle_price_tier`
+--
+
+DROP TABLE IF EXISTS `product_bundle_price_tier`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_bundle_price_tier` (
+  `price_tier_id` int NOT NULL AUTO_INCREMENT,
+  `bundle_id` int NOT NULL,
+  `identity_type` enum('直營店','加盟店','合夥商','推廣商(分店能量師)','B2B合作專案','心耀商','會員','一般售價') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `price` decimal(12,2) NOT NULL,
+  PRIMARY KEY (`price_tier_id`),
+  UNIQUE KEY `uniq_bundle_identity` (`bundle_id`,`identity_type`),
+  KEY `fk_bundle_price_tier_bundle` (`bundle_id`),
+  CONSTRAINT `fk_bundle_price_tier_bundle` FOREIGN KEY (`bundle_id`) REFERENCES `product_bundles` (`bundle_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `therapy_bundle_items`
 --
 
@@ -460,6 +498,25 @@ CREATE TABLE `therapy_bundles` (
   `unpublished_reason` text COLLATE utf8mb4_unicode_ci,
   PRIMARY KEY (`bundle_id`),
   UNIQUE KEY `bundle_code` (`bundle_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `therapy_bundle_price_tier`
+--
+
+DROP TABLE IF EXISTS `therapy_bundle_price_tier`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `therapy_bundle_price_tier` (
+  `price_tier_id` int NOT NULL AUTO_INCREMENT,
+  `bundle_id` int NOT NULL,
+  `identity_type` enum('直營店','加盟店','合夥商','推廣商(分店能量師)','B2B合作專案','心耀商','會員','一般售價') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `price` decimal(12,2) NOT NULL,
+  PRIMARY KEY (`price_tier_id`),
+  UNIQUE KEY `uniq_therapy_bundle_identity` (`bundle_id`,`identity_type`),
+  KEY `fk_therapy_bundle_price_bundle` (`bundle_id`),
+  CONSTRAINT `fk_therapy_bundle_price_bundle` FOREIGN KEY (`bundle_id`) REFERENCES `therapy_bundles` (`bundle_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
@@ -658,6 +715,25 @@ CREATE TABLE `therapy` (
   PRIMARY KEY (`therapy_id`),
   UNIQUE KEY `code` (`code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=200 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `therapy_price_tier`
+--
+
+DROP TABLE IF EXISTS `therapy_price_tier`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `therapy_price_tier` (
+  `price_tier_id` int NOT NULL AUTO_INCREMENT,
+  `therapy_id` int NOT NULL,
+  `identity_type` enum('直營店','加盟店','合夥商','推廣商(分店能量師)','B2B合作專案','心耀商','會員','一般售價') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `price` decimal(12,2) NOT NULL,
+  PRIMARY KEY (`price_tier_id`),
+  UNIQUE KEY `uniq_therapy_identity` (`therapy_id`,`identity_type`),
+  KEY `fk_therapy_price_tier_therapy` (`therapy_id`),
+  CONSTRAINT `fk_therapy_price_tier_therapy` FOREIGN KEY (`therapy_id`) REFERENCES `therapy` (`therapy_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
