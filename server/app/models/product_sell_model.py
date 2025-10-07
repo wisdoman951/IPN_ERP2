@@ -501,11 +501,14 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                     JSON_OBJECTAGG(
                         COALESCE(
                             NULLIF(ppt.identity_type, ''),
-                            CONCAT('UNKNOWN_', ppt.price_tier_id)
+                            CASE
+                                WHEN ppt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', ppt.price_tier_id)
+                                ELSE CONCAT('UNKNOWN_PRODUCT_', ppt.product_id)
+                            END
                         ),
                         ppt.price
                     ),
-                    '{}'
+                    '{{}}'
                 ) AS price_tiers
             FROM product p
             LEFT JOIN product_category pc ON p.product_id = pc.product_id
@@ -589,11 +592,14 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                     JSON_OBJECTAGG(
                         COALESCE(
                             NULLIF(ppt.identity_type, ''),
-                            CONCAT('UNKNOWN_', ppt.price_tier_id)
+                            CASE
+                                WHEN ppt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', ppt.price_tier_id)
+                                ELSE CONCAT('UNKNOWN_PRODUCT_', ppt.product_id)
+                            END
                         ),
                         ppt.price
                     ),
-                    '{}'
+                    '{{}}'
                 ) AS price_tiers
             FROM product p
             LEFT JOIN product_category pc ON p.product_id = pc.product_id

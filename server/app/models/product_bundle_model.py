@@ -58,7 +58,10 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                         JSON_OBJECTAGG(
                             COALESCE(
                                 NULLIF(pbpt.identity_type, ''),
-                                CONCAT('UNKNOWN_', pbpt.price_tier_id)
+                                CASE
+                                    WHEN pbpt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', pbpt.price_tier_id)
+                                    ELSE CONCAT('UNKNOWN_BUNDLE_', pbpt.bundle_id)
+                                END
                             ),
                             pbpt.price
                         ),
