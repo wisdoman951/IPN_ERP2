@@ -18,7 +18,16 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
                 SELECT t.therapy_id, t.code AS TherapyCode, t.price AS TherapyPrice,
                        t.name AS TherapyName, t.content AS TherapyContent,
                        t.visible_store_ids, GROUP_CONCAT(c.name) AS categories,
-                       COALESCE(JSON_OBJECTAGG(tpt.identity_type, tpt.price), '{}') AS price_tiers
+                       COALESCE(
+                           JSON_OBJECTAGG(
+                               COALESCE(
+                                   NULLIF(tpt.identity_type, ''),
+                                   CONCAT('UNKNOWN_', tpt.price_tier_id)
+                               ),
+                               tpt.price
+                           ),
+                           '{}'
+                       ) AS price_tiers
                 FROM therapy t
                 LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id
                 LEFT JOIN category c ON tc.category_id = c.category_id
@@ -72,7 +81,16 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id:
                 SELECT t.therapy_id, t.code AS TherapyCode, t.price AS TherapyPrice,
                        t.name AS TherapyName, t.content AS TherapyContent,
                        t.visible_store_ids, GROUP_CONCAT(c.name) AS categories,
-                       COALESCE(JSON_OBJECTAGG(tpt.identity_type, tpt.price), '{}') AS price_tiers
+                       COALESCE(
+                           JSON_OBJECTAGG(
+                               COALESCE(
+                                   NULLIF(tpt.identity_type, ''),
+                                   CONCAT('UNKNOWN_', tpt.price_tier_id)
+                               ),
+                               tpt.price
+                           ),
+                           '{}'
+                       ) AS price_tiers
                 FROM therapy t
                 LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id
                 LEFT JOIN category c ON tc.category_id = c.category_id
