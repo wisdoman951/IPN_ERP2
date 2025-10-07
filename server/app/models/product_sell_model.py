@@ -497,16 +497,25 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
-                COALESCE(JSON_OBJECTAGG(ppt.identity_type, ppt.price), '{{}}') AS price_tiers
+                COALESCE(ppt.price_tiers, '{{}}') AS price_tiers
             FROM product p
             LEFT JOIN product_category pc ON p.product_id = pc.product_id
             LEFT JOIN category c ON pc.category_id = c.category_id
             LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
-            LEFT JOIN product_price_tier ppt ON (
-                ppt.product_id = p.product_id
-                AND ppt.identity_type IS NOT NULL
-                AND ppt.identity_type != ''
-            )
+            LEFT JOIN (
+                SELECT
+                    product_id,
+                    JSON_OBJECTAGG(identity_type, price) AS price_tiers
+                FROM (
+                    SELECT
+                        product_id,
+                        NULLIF(TRIM(identity_type), '') AS identity_type,
+                        price
+                    FROM product_price_tier
+                ) filtered_price_tiers
+                WHERE identity_type IS NOT NULL
+                GROUP BY product_id
+            ) ppt ON ppt.product_id = p.product_id
         """
 
         params = []
@@ -580,16 +589,25 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
-                COALESCE(JSON_OBJECTAGG(ppt.identity_type, ppt.price), '{{}}') AS price_tiers
+                COALESCE(ppt.price_tiers, '{{}}') AS price_tiers
             FROM product p
             LEFT JOIN product_category pc ON p.product_id = pc.product_id
             LEFT JOIN category c ON pc.category_id = c.category_id
             LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
-            LEFT JOIN product_price_tier ppt ON (
-                ppt.product_id = p.product_id
-                AND ppt.identity_type IS NOT NULL
-                AND ppt.identity_type != ''
-            )
+            LEFT JOIN (
+                SELECT
+                    product_id,
+                    JSON_OBJECTAGG(identity_type, price) AS price_tiers
+                FROM (
+                    SELECT
+                        product_id,
+                        NULLIF(TRIM(identity_type), '') AS identity_type,
+                        price
+                    FROM product_price_tier
+                ) filtered_price_tiers
+                WHERE identity_type IS NOT NULL
+                GROUP BY product_id
+            ) ppt ON ppt.product_id = p.product_id
         """
 
         params = []
