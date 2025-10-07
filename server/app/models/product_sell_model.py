@@ -497,7 +497,7 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
-                COALESCE(ppt.price_tiers, '{}') AS price_tiers
+                COALESCE(ppt.price_tiers, '{{}}') AS price_tiers
             FROM product p
             LEFT JOIN product_category pc ON p.product_id = pc.product_id
             LEFT JOIN category c ON pc.category_id = c.category_id
@@ -589,7 +589,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
-                COALESCE(ppt.price_tiers, '{}') AS price_tiers
+                COALESCE(ppt.price_tiers, '{{}}') AS price_tiers
             FROM product p
             LEFT JOIN product_category pc ON p.product_id = pc.product_id
             LEFT JOIN category c ON pc.category_id = c.category_id
