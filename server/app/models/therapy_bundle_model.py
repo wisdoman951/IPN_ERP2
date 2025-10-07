@@ -55,7 +55,11 @@ def get_all_therapy_bundles(status: str | None = None, store_id: int | None = No
                 LEFT JOIN
                     category c ON tbc.category_id = c.category_id
                 LEFT JOIN
-                    therapy_bundle_price_tier tbpt ON tb.bundle_id = tbpt.bundle_id
+                    therapy_bundle_price_tier tbpt ON (
+                        tb.bundle_id = tbpt.bundle_id
+                        AND tbpt.identity_type IS NOT NULL
+                        AND tbpt.identity_type != ''
+                    )
             """
             params = []
             if status:
@@ -219,7 +223,11 @@ def get_bundle_details_by_id(bundle_id: int):
             bundle_details['items'] = items
             bundle_details['category_ids'] = [c['category_id'] for c in cats]
             bundle_details['categories'] = [c['name'] for c in cats]
-            bundle_details['price_tiers'] = {row['identity_type']: float(row['price']) for row in tier_rows}
+            bundle_details['price_tiers'] = {
+                row['identity_type']: float(row['price'])
+                for row in tier_rows
+                if row.get('identity_type')
+            }
             return bundle_details
     finally:
         conn.close()
