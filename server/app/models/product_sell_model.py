@@ -503,7 +503,7 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                             NULLIF(ppt.identity_type, ''),
                             CASE
                                 WHEN ppt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', ppt.price_tier_id)
-                                ELSE CONCAT('UNKNOWN_PRODUCT_', ppt.product_id)
+                                ELSE CONCAT('UNKNOWN_PRODUCT_', CAST(p.product_id AS CHAR))
                             END
                         ),
                         ppt.price
@@ -524,7 +524,7 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
             store_join = "AND i.store_id = %s"
             params.append(store_id)
 
-        query = base_query.format(store_join=store_join)
+        query = base_query.replace("{store_join}", store_join)
         if status:
             query += " WHERE p.status = %s"
             params.append(status)
@@ -594,7 +594,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                             NULLIF(ppt.identity_type, ''),
                             CASE
                                 WHEN ppt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', ppt.price_tier_id)
-                                ELSE CONCAT('UNKNOWN_PRODUCT_', ppt.product_id)
+                                ELSE CONCAT('UNKNOWN_PRODUCT_', CAST(p.product_id AS CHAR))
                             END
                         ),
                         ppt.price
@@ -623,7 +623,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
             conditions.append("p.status = %s")
             params.append(status)
 
-        query = base_query.format(store_join=store_join)
+        query = base_query.replace("{store_join}", store_join)
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)

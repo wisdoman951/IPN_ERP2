@@ -543,7 +543,11 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
                 "GROUP_CONCAT(c.name) AS categories, "
                 "COALESCE(" \
                 "JSON_OBJECTAGG(" \
-                "COALESCE(NULLIF(tpt.identity_type, ''), CONCAT('UNKNOWN_', tpt.price_tier_id))," \
+                "COALESCE(" \
+                "NULLIF(tpt.identity_type, '')," \
+                "CASE WHEN tpt.price_tier_id IS NOT NULL THEN CONCAT('UNKNOWN_', tpt.price_tier_id) " \
+                "ELSE CONCAT('UNKNOWN_TIER_', CAST(t.therapy_id AS CHAR)) END" \
+                ")," \
                 "tpt.price)," \
                 "'{}') AS price_tiers FROM therapy t "
                 "LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id "
