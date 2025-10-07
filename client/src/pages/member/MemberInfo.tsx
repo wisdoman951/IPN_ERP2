@@ -10,6 +10,7 @@ import { formatGregorianBirthday, formatGender, calculateAge } from "../../utils
 import { useMemberManagement } from "../../hooks/useMemberManagement";
 import "./memberInfo.css";
 import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
+import { resolveMemberIdentityLabel } from "../../utils/memberIdentity";
 import usePermissionGuard from "../../hooks/usePermissionGuard";
 
 const MemberInfo: React.FC = () => {
@@ -81,7 +82,7 @@ const MemberInfo: React.FC = () => {
                 <td className="align-middle">{member.Name}</td>
                 {/* 顯示資料庫中的 member_code */}
                 <td className="align-middle" style={{ whiteSpace: 'nowrap' }}>{member.member_code ?? ""}</td>
-                <td className="align-middle">{member.IdentityType || ""}</td>
+                <td className="align-middle">{resolveMemberIdentityLabel(member.IdentityType) || ""}</td>
                 <td className="align-middle">{formatGregorianBirthday(member.Birth, 'YYYY/MM/DD')}</td>
                 <td className="align-middle">{calculateAge(member.Birth)}</td>
                 <td className="align-middle">{member.Address}</td>
