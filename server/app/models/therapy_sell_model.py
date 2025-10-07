@@ -17,10 +17,12 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
             query = """
                 SELECT t.therapy_id, t.code AS TherapyCode, t.price AS TherapyPrice,
                        t.name AS TherapyName, t.content AS TherapyContent,
-                       t.visible_store_ids, GROUP_CONCAT(c.name) AS categories
+                       t.visible_store_ids, GROUP_CONCAT(c.name) AS categories,
+                       COALESCE(JSON_OBJECTAGG(tpt.identity_type, tpt.price), '{}') AS price_tiers
                 FROM therapy t
                 LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id
                 LEFT JOIN category c ON tc.category_id = c.category_id
+                LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id AND tpt.identity_type IS NOT NULL
             """
             params = []
             if status:
@@ -43,6 +45,16 @@ def get_all_therapy_packages(status: str | None = 'PUBLISHED', store_id: int | N
                     row.pop('visible_store_ids', None)
                     if row.get('categories'):
                         row['categories'] = row['categories'].split(',')
+                    if row.get('price_tiers'):
+                        try:
+                            parsed = json.loads(row['price_tiers'])
+                            row['price_tiers'] = {
+                                key: float(value) for key, value in parsed.items() if value is not None
+                            }
+                        except Exception:
+                            row['price_tiers'] = {}
+                    else:
+                        row['price_tiers'] = {}
                     filtered.append(row)
             return filtered
     except Exception as e:
@@ -59,10 +71,12 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id:
             query = """
                 SELECT t.therapy_id, t.code AS TherapyCode, t.price AS TherapyPrice,
                        t.name AS TherapyName, t.content AS TherapyContent,
-                       t.visible_store_ids, GROUP_CONCAT(c.name) AS categories
+                       t.visible_store_ids, GROUP_CONCAT(c.name) AS categories,
+                       COALESCE(JSON_OBJECTAGG(tpt.identity_type, tpt.price), '{}') AS price_tiers
                 FROM therapy t
                 LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id
                 LEFT JOIN category c ON tc.category_id = c.category_id
+                LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id AND tpt.identity_type IS NOT NULL
                 WHERE (t.code LIKE %s OR t.name LIKE %s OR t.content LIKE %s)
             """
             params = []
@@ -88,6 +102,16 @@ def search_therapy_packages(keyword, status: str | None = 'PUBLISHED', store_id:
                     row.pop('visible_store_ids', None)
                     if row.get('categories'):
                         row['categories'] = row['categories'].split(',')
+                    if row.get('price_tiers'):
+                        try:
+                            parsed = json.loads(row['price_tiers'])
+                            row['price_tiers'] = {
+                                key: float(value) for key, value in parsed.items() if value is not None
+                            }
+                        except Exception:
+                            row['price_tiers'] = {}
+                    else:
+                        row['price_tiers'] = {}
                     filtered.append(row)
             return filtered
     except Exception as e:

@@ -1,6 +1,7 @@
 import pymysql
 import json
 from datetime import date, datetime
+from typing import Iterable
 from app.config import DB_CONFIG
 from app.utils import get_store_based_where_condition
 
@@ -539,9 +540,11 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
         with conn.cursor() as cursor:
             sql = (
                 "SELECT t.therapy_id, t.code, t.name, t.price, t.visible_store_ids, t.visible_permissions, "
-                "GROUP_CONCAT(c.name) AS categories FROM therapy t "
+                "GROUP_CONCAT(c.name) AS categories, "
+                "COALESCE(JSON_OBJECTAGG(tpt.identity_type, tpt.price), '{}') AS price_tiers FROM therapy t "
                 "LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id "
-                "LEFT JOIN category c ON tc.category_id = c.category_id"
+                "LEFT JOIN category c ON tc.category_id = c.category_id "
+                "LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id AND tpt.identity_type IS NOT NULL"
             )
             params = []
             if status:
@@ -578,6 +581,13 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
                         row['visible_permissions'] = permissions
                     if row.get('categories'):
                         row['categories'] = row['categories'].split(',')
+                    if row.get('price_tiers'):
+                        try:
+                            row['price_tiers'] = json.loads(row['price_tiers'])
+                        except Exception:
+                            row['price_tiers'] = None
+                    if row.get('price_tiers') is None:
+                        row['price_tiers'] = {}
                     filtered.append(row)
             return filtered
     finally:
@@ -609,6 +619,8 @@ def create_therapy(data: dict):
                     "INSERT INTO therapy_category (therapy_id, category_id) VALUES (%s, %s)",
                     (therapy_id, cid),
                 )
+
+            _sync_therapy_price_tiers(cursor, therapy_id, data.get("price_tiers"))
         conn.commit()
         return therapy_id
     except Exception as e:
@@ -646,12 +658,34 @@ def update_therapy(therapy_id: int, data: dict):
                         "INSERT INTO therapy_category (therapy_id, category_id) VALUES (%s, %s)",
                         (therapy_id, cid),
                     )
+
+            _sync_therapy_price_tiers(cursor, therapy_id, data.get("price_tiers"))
         conn.commit()
     except Exception as e:
         conn.rollback()
         raise e
     finally:
         conn.close()
+
+
+def _sync_therapy_price_tiers(cursor, therapy_id: int, tiers: Iterable[dict] | None):
+    cursor.execute("DELETE FROM therapy_price_tier WHERE therapy_id = %s", (therapy_id,))
+    if not tiers:
+        return
+
+    values = []
+    for tier in tiers:
+        identity = tier.get("identity_type")
+        price = tier.get("price")
+        if identity is None or price is None:
+            continue
+        values.append((therapy_id, identity, price))
+
+    if values:
+        cursor.executemany(
+            "INSERT INTO therapy_price_tier (therapy_id, identity_type, price) VALUES (%s, %s, %s)",
+            values,
+        )
 
 
 def delete_therapy(therapy_id: int):

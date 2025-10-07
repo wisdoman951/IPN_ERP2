@@ -21,6 +21,8 @@ import { getStoreName, getUserRole } from "../../utils/authUtils";
 import { fetchTherapyBundlesForSale, TherapyBundle } from "../../services/TherapyBundleService";
 import { getMemberByCode } from "../../services/MedicalService";
 import { MemberData } from "../../types/medicalTypes";
+import type { MemberIdentity } from "../../types/memberIdentity";
+import { normalizeMemberIdentity } from "../../utils/memberIdentity";
 
 interface DropdownItem {
   id: number;
@@ -64,6 +66,7 @@ const AddTherapySell: React.FC = () => {
   const [therapyPackages, setTherapyPackages] = useState<SelectedTherapyPackageUIData[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [memberIdentity, setMemberIdentity] = useState<MemberIdentity | null>(null);
 
   const [packagesOriginalTotal, setPackagesOriginalTotal] = useState<number>(0);
   const [finalPayableAmount, setFinalPayableAmount] = useState<number>(0);
@@ -103,6 +106,9 @@ const AddTherapySell: React.FC = () => {
           if (formState.memberId) setFormData(prev => ({ ...prev, memberId: formState.memberId }));
           if (formState.memberCode) setFormData(prev => ({ ...prev, memberCode: formState.memberCode }));
           if (formState.memberName) setMemberName(formState.memberName);
+          if (formState.memberIdentity) {
+            setMemberIdentity(normalizeMemberIdentity(formState.memberIdentity));
+          }
           if (formState.staffId) setFormData(prev => ({ ...prev, staffId: formState.staffId }));
           if (formState.date) setFormData(prev => ({ ...prev, date: formState.date }));
           if (formState.paymentMethod) setFormData(prev => ({ ...prev, paymentMethod: formState.paymentMethod }));
@@ -112,7 +118,11 @@ const AddTherapySell: React.FC = () => {
           if (typeof formState.discountAmount === 'number') setFormData(prev => ({ ...prev, discountAmount: formState.discountAmount }));
           if (formState.note) setFormData(prev => ({ ...prev, note: formState.note }));
           if (Array.isArray(formState.selectedTherapyPackages)) {
-            setTherapyPackages(formState.selectedTherapyPackages);
+            setTherapyPackages(formState.selectedTherapyPackages.map((pkg: SelectedTherapyPackageUIData) => ({
+              ...pkg,
+              basePrice: pkg.basePrice ?? pkg.TherapyPrice ?? 0,
+              TherapyPrice: pkg.TherapyPrice ?? pkg.basePrice ?? 0,
+            })));
           }
         } catch (e) {
           console.error('解析 addTherapySellFormState 失敗', e);
@@ -123,7 +133,11 @@ const AddTherapySell: React.FC = () => {
         try {
           const pkgs = JSON.parse(storedPkgs);
           if (Array.isArray(pkgs)) {
-            setTherapyPackages(pkgs);
+            setTherapyPackages(pkgs.map((pkg: SelectedTherapyPackageUIData) => ({
+              ...pkg,
+              basePrice: pkg.basePrice ?? pkg.TherapyPrice ?? 0,
+              TherapyPrice: pkg.TherapyPrice ?? pkg.basePrice ?? 0,
+            })));
           }
         } catch (e) {
           console.error('解析 selectedTherapyPackagesWithSessions 失敗', e);
@@ -224,10 +238,19 @@ const AddTherapySell: React.FC = () => {
   };
 
   const openPackageSelection = () => {
+    if (!formData.memberId || !formData.memberCode) {
+      setError('請先輸入會員編號並確認會員資料。');
+      return;
+    }
+    const normalizedIdentity =
+      memberIdentity ||
+      normalizeMemberIdentity(selectedMember?.identity_type) ||
+      ('一般售價' as MemberIdentity);
     const formState = {
       memberId: formData.memberId,
       memberCode: formData.memberCode,
       memberName,
+      memberIdentity: normalizedIdentity,
       staffId: formData.staffId,
       date: formData.date,
       paymentMethod: formData.paymentMethod,
@@ -236,10 +259,17 @@ const AddTherapySell: React.FC = () => {
       cardNumber: formData.cardNumber,
       discountAmount: formData.discountAmount,
       note: formData.note,
-      selectedTherapyPackages: therapyPackages,
+      selectedTherapyPackages: therapyPackages.map(pkg => ({
+        ...pkg,
+        basePrice: pkg.basePrice ?? pkg.TherapyPrice ?? 0,
+      })),
     };
     localStorage.setItem('addTherapySellFormState', JSON.stringify(formState));
-    localStorage.setItem('selectedTherapyPackagesWithSessions', JSON.stringify(therapyPackages));
+    const enrichedPackages = therapyPackages.map(pkg => ({
+      ...pkg,
+      basePrice: pkg.basePrice ?? pkg.TherapyPrice ?? 0,
+    }));
+    localStorage.setItem('selectedTherapyPackagesWithSessions', JSON.stringify(enrichedPackages));
     navigate('/therapy-package-selection', { state: { fromSellPage: true } });
   };
 
@@ -404,12 +434,16 @@ const AddTherapySell: React.FC = () => {
                             onMemberChange={(code, name, data) => {
                               setFormData(prev => ({ ...prev, memberCode: code, memberId: data?.member_id?.toString() || "" }));
                               setMemberName(name);
+                              setSelectedMember(data);
+                              setMemberIdentity(normalizeMemberIdentity(data?.identity_type));
                               if (data) {
                                 setError(null);
                               }
                             }}
                           onError={(msg) => {
                             setError(msg);
+                            setMemberIdentity(null);
+                            setSelectedMember(null);
                           }}
                         />
                       </Col>

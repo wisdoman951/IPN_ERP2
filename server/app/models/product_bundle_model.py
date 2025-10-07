@@ -2,6 +2,7 @@
 
 import pymysql
 import json
+from typing import Iterable
 from app.config import DB_CONFIG
 from pymysql.cursors import DictCursor
 
@@ -52,7 +53,8 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                         ),
                         ''
                     ) AS bundle_contents,
-                    GROUP_CONCAT(DISTINCT c.name) AS categories
+                    GROUP_CONCAT(DISTINCT c.name) AS categories,
+                    COALESCE(JSON_OBJECTAGG(pbpt.identity_type, pbpt.price), '{}') AS price_tiers
                 FROM
                     product_bundles pb
                 LEFT JOIN
@@ -65,6 +67,8 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                     product_bundle_category pbc ON pb.bundle_id = pbc.bundle_id
                 LEFT JOIN
                     category c ON pbc.category_id = c.category_id
+                LEFT JOIN
+                    product_bundle_price_tier pbpt ON pb.bundle_id = pbpt.bundle_id AND pbpt.identity_type IS NOT NULL
             """
             params = []
             if status:
@@ -125,6 +129,13 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                         row['visible_permissions'] = []
                 if row.get('categories'):
                     row['categories'] = row['categories'].split(',')
+                if row.get('price_tiers'):
+                    try:
+                        row['price_tiers'] = json.loads(row['price_tiers'])
+                    except Exception:
+                        row['price_tiers'] = None
+                if row.get('price_tiers') is None:
+                    row['price_tiers'] = {}
             if store_id is not None or user_permission is not None:
                 result = [
                     row
@@ -184,6 +195,7 @@ def create_product_bundle(data: dict):
                 for cid in data.get("category_ids", []):
                     cursor.execute("INSERT INTO product_bundle_category (bundle_id, category_id) VALUES (%s, %s)", (bundle_id, cid))
 
+            _sync_product_bundle_price_tiers(cursor, bundle_id, data.get("price_tiers"))
             conn.commit()
         return bundle_id
     except Exception as e:
@@ -230,9 +242,16 @@ def get_bundle_details_by_id(bundle_id: int):
             )
             cats = cursor.fetchall()
 
+            cursor.execute(
+                "SELECT identity_type, price FROM product_bundle_price_tier WHERE bundle_id = %s",
+                (bundle_id,),
+            )
+            tier_rows = cursor.fetchall()
+
             bundle_details['items'] = items
             bundle_details['category_ids'] = [c['category_id'] for c in cats]
             bundle_details['categories'] = [c['name'] for c in cats]
+            bundle_details['price_tiers'] = {row['identity_type']: float(row['price']) for row in tier_rows}
             return bundle_details
     finally:
         conn.close()
@@ -286,6 +305,7 @@ def update_product_bundle(bundle_id: int, data: dict):
                 for cid in data.get("category_ids", []):
                     cursor.execute("INSERT INTO product_bundle_category (bundle_id, category_id) VALUES (%s, %s)", (bundle_id, cid))
 
+            _sync_product_bundle_price_tiers(cursor, bundle_id, data.get("price_tiers"))
             conn.commit()
         return True
     except Exception as e:
@@ -293,6 +313,26 @@ def update_product_bundle(bundle_id: int, data: dict):
         raise e
     finally:
         conn.close()
+
+
+def _sync_product_bundle_price_tiers(cursor, bundle_id: int, tiers: Iterable[dict] | None):
+    cursor.execute("DELETE FROM product_bundle_price_tier WHERE bundle_id = %s", (bundle_id,))
+    if not tiers:
+        return
+
+    values = []
+    for tier in tiers:
+        identity = tier.get("identity_type")
+        price = tier.get("price")
+        if identity is None or price is None:
+            continue
+        values.append((bundle_id, identity, price))
+
+    if values:
+        cursor.executemany(
+            "INSERT INTO product_bundle_price_tier (bundle_id, identity_type, price) VALUES (%s, %s, %s)",
+            values,
+        )
 
 def delete_product_bundle(bundle_id: int):
     """

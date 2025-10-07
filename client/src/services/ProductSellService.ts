@@ -1,6 +1,7 @@
 // ./src/services/ProductSellService.ts
 import axios from "axios";
 import { base_url } from "./BASE_URL";
+import type { MemberIdentity } from "../types/memberIdentity";
 
 const API_URL = `${base_url}/product-sell`;
 
@@ -26,6 +27,7 @@ export interface Product {
   inventory_id: number;
   inventory_quantity: number;
   categories?: string[];
+  price_tiers?: Partial<Record<MemberIdentity, number>>;
 }
 
 export interface ProductSellData {

@@ -2,6 +2,7 @@
 import axios from "axios";
 import { base_url } from "./BASE_URL";
 import { getAuthHeaders } from "./AuthUtils";
+import type { MemberIdentity } from "../types/memberIdentity";
 
 // API 端點基礎路徑
 const API_URL = `${base_url}/therapy-sell`; // 所有此服務的 API 都基於此路徑
@@ -30,6 +31,8 @@ export interface TherapyPackage { // 這是基礎的 TherapyPackage 型別
   content?: string;
   price?: number;
   categories?: string[];
+  price_tiers?: Partial<Record<MemberIdentity, number>>;
+  basePrice?: number;
 }
 
 export interface Store {
@@ -113,6 +116,7 @@ export const getAllTherapyPackages = async (): Promise<ApiResponse<TherapyPackag
                 TherapyName: item.TherapyName || item.name,
                 TherapyContent: item.TherapyContent || item.content || item.TherapyName || item.name || '',
                 categories: item.categories || [],
+                price_tiers: item.price_tiers || {},
             }));
             return { success: true, data: formattedData };
         } else if (response.data && typeof response.data === 'object' && response.data.hasOwnProperty('data') && Array.isArray(response.data.data)) {
@@ -124,6 +128,7 @@ export const getAllTherapyPackages = async (): Promise<ApiResponse<TherapyPackag
                 TherapyName: item.TherapyName || item.name,
                 TherapyContent: item.TherapyContent || item.content || item.TherapyName || item.name || '',
                 categories: item.categories || [],
+                price_tiers: item.price_tiers || {},
             }));
             return { success: response.data.success, data: formattedData, message: response.data.message };
         }
