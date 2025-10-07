@@ -544,7 +544,11 @@ def get_all_therapies_for_dropdown(status: str | None = 'PUBLISHED', store_id: i
                 "COALESCE(JSON_OBJECTAGG(tpt.identity_type, tpt.price), '{}') AS price_tiers FROM therapy t "
                 "LEFT JOIN therapy_category tc ON t.therapy_id = tc.therapy_id "
                 "LEFT JOIN category c ON tc.category_id = c.category_id "
-                "LEFT JOIN therapy_price_tier tpt ON tpt.therapy_id = t.therapy_id"
+                "LEFT JOIN therapy_price_tier tpt ON ("
+                "    tpt.therapy_id = t.therapy_id "
+                "    AND tpt.identity_type IS NOT NULL "
+                "    AND tpt.identity_type != ''"
+                ")"
             )
             params = []
             if status:

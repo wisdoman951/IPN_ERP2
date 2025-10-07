@@ -68,7 +68,11 @@ def get_all_product_bundles(status: str | None = None, store_id: int | None = No
                 LEFT JOIN
                     category c ON pbc.category_id = c.category_id
                 LEFT JOIN
-                    product_bundle_price_tier pbpt ON pb.bundle_id = pbpt.bundle_id
+                    product_bundle_price_tier pbpt ON (
+                        pb.bundle_id = pbpt.bundle_id
+                        AND pbpt.identity_type IS NOT NULL
+                        AND pbpt.identity_type != ''
+                    )
             """
             params = []
             if status:
@@ -251,7 +255,11 @@ def get_bundle_details_by_id(bundle_id: int):
             bundle_details['items'] = items
             bundle_details['category_ids'] = [c['category_id'] for c in cats]
             bundle_details['categories'] = [c['name'] for c in cats]
-            bundle_details['price_tiers'] = {row['identity_type']: float(row['price']) for row in tier_rows}
+            bundle_details['price_tiers'] = {
+                row['identity_type']: float(row['price'])
+                for row in tier_rows
+                if row.get('identity_type')
+            }
             return bundle_details
     finally:
         conn.close()
