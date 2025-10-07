@@ -6,6 +6,7 @@ from app.models.therapy_sell_model import (
     get_all_members, get_all_staff, get_all_stores,
     get_remaining_sessions, get_remaining_sessions_bulk
 )
+from app.models.member_model import get_member_identity_type
 from app.middleware import auth_required, get_user_from_token, login_required
 import pandas as pd
 import io
@@ -71,7 +72,32 @@ def get_packages():
     try:
         user = get_user_from_token(request)
         store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
-        result = get_all_therapy_packages(store_id=store_id)
+
+        identity_param = request.args.get('identity_type')
+        member_id_param = request.args.get('member_id')
+        pricing_store_param = request.args.get('pricing_store_id')
+
+        pricing_store_id = None
+        if pricing_store_param:
+            try:
+                pricing_store_id = int(pricing_store_param)
+            except (TypeError, ValueError):
+                pricing_store_id = None
+        if pricing_store_id is None:
+            pricing_store_id = store_id
+
+        member_identity = identity_param
+        if not member_identity and member_id_param:
+            try:
+                member_identity = get_member_identity_type(int(member_id_param))
+            except (TypeError, ValueError):
+                member_identity = None
+
+        result = get_all_therapy_packages(
+            store_id=store_id,
+            member_identity_type=member_identity,
+            price_store_id=pricing_store_id,
+        )
         return jsonify(result)
     except Exception as e:
         print(f"獲取療程套餐失敗: {e}")
@@ -85,7 +111,33 @@ def search_packages():
         keyword = request.args.get('keyword', '')
         user = get_user_from_token(request)
         store_id = user.get('store_id') if user and user.get('permission') != 'admin' else None
-        result = search_therapy_packages(keyword, store_id=store_id)
+
+        identity_param = request.args.get('identity_type')
+        member_id_param = request.args.get('member_id')
+        pricing_store_param = request.args.get('pricing_store_id')
+
+        pricing_store_id = None
+        if pricing_store_param:
+            try:
+                pricing_store_id = int(pricing_store_param)
+            except (TypeError, ValueError):
+                pricing_store_id = None
+        if pricing_store_id is None:
+            pricing_store_id = store_id
+
+        member_identity = identity_param
+        if not member_identity and member_id_param:
+            try:
+                member_identity = get_member_identity_type(int(member_id_param))
+            except (TypeError, ValueError):
+                member_identity = None
+
+        result = search_therapy_packages(
+            keyword,
+            store_id=store_id,
+            member_identity_type=member_identity,
+            price_store_id=pricing_store_id,
+        )
         return jsonify(result)
     except Exception as e:
         print(f"搜尋療程套餐失敗: {e}")

@@ -18,6 +18,8 @@ interface ItemBase {
   name: string;
   code?: string;
   price: number;
+  basePrice?: number;
+  memberPrice?: number | null;
   inventory_id?: number;
   stock_quantity?: number;
   content?: string;
@@ -44,46 +46,85 @@ const ProductSelection: React.FC = () => {
   const [memberCode, setMemberCode] = useState<string>('');
   const [memberName, setMemberName] = useState<string>('');
   const [memberSummary, setMemberSummary] = useState<MemberData | null>(null);
+  const [memberIdForPricing, setMemberIdForPricing] = useState<number | null>(null);
+  const [pricingStoreId, setPricingStoreId] = useState<number | null>(null);
+  const [memberIdentityCode, setMemberIdentityCode] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true); setPageError(null);
       try {
+        const fallbackStoreId = (() => {
+          const stored = getStoreId();
+          if (!stored) return null;
+          const numeric = Number(stored);
+          return Number.isNaN(numeric) ? null : numeric;
+        })();
+        const effectiveStoreId = pricingStoreId ?? fallbackStoreId;
+
         const [productData, bundleData, categoryData, bundleCatData] = await Promise.all([
-          getAllProducts(),
-          fetchAllBundles(),
+          getAllProducts({
+            memberId: memberIdForPricing ?? undefined,
+            identityType: memberIdentityCode ?? undefined,
+            pricingStoreId: effectiveStoreId ?? undefined,
+          }),
+          fetchAllBundles('PUBLISHED', {
+            memberId: memberIdForPricing ?? undefined,
+            identityType: memberIdentityCode ?? undefined,
+            pricingStoreId: effectiveStoreId ?? undefined,
+          }),
           getCategories('product'),
-          getCategories('product_bundle')
+          getCategories('product_bundle'),
         ]);
 
-        const products: ItemBase[] = productData.map((p: Product) => ({
-          type: 'product',
-          product_id: p.product_id,
-          name: p.product_name,
-          code: p.product_code,
-          price: Number(p.product_price),
-          inventory_id: p.inventory_id,
-          stock_quantity: p.inventory_quantity,
-          categories: p.categories || []
-        }));
+        const products: ItemBase[] = productData.map((p: Product) => {
+          const basePrice = typeof p.product_price === 'number' ? Number(p.product_price) : Number(p.product_price ?? 0);
+          const memberPrice = typeof p.member_price === 'number' ? p.member_price : null;
+          const effectivePrice = typeof p.effective_price === 'number'
+            ? p.effective_price
+            : memberPrice ?? basePrice;
+          return {
+            type: 'product',
+            product_id: p.product_id,
+            name: p.member_custom_name || p.product_name,
+            code: p.member_custom_code || p.product_code,
+            price: effectivePrice,
+            basePrice,
+            memberPrice,
+            inventory_id: p.inventory_id,
+            stock_quantity: p.inventory_quantity,
+            categories: p.categories || [],
+          };
+        });
 
-        const storeId = Number(getStoreId());
-        const filteredBundles = storeId
+        const storeFilterId = effectiveStoreId ?? fallbackStoreId;
+
+        const filteredBundles = storeFilterId
           ? bundleData.filter(b =>
               !b.visible_store_ids ||
               b.visible_store_ids.length === 0 ||
-              b.visible_store_ids.includes(storeId)
+              b.visible_store_ids.includes(storeFilterId)
             )
           : bundleData;
-        const bundles: ItemBase[] = filteredBundles.map((b: Bundle) => ({
-          type: 'bundle',
-          bundle_id: b.bundle_id,
-          name: b.name || b.bundle_contents,
-          code: b.bundle_code,
-          price: Number(b.selling_price),
-          content: b.bundle_contents,
-          categories: b.categories || []
-        }));
+
+        const bundles: ItemBase[] = filteredBundles.map((b: Bundle) => {
+          const basePrice = typeof b.selling_price === 'number' ? Number(b.selling_price) : Number(b.selling_price ?? 0);
+          const memberPrice = typeof (b as any).member_price === 'number' ? (b as any).member_price : null;
+          const effectivePrice = typeof (b as any).effective_price === 'number'
+            ? (b as any).effective_price
+            : memberPrice ?? basePrice;
+          return {
+            type: 'bundle',
+            bundle_id: b.bundle_id,
+            name: (b as any).member_custom_name || b.name || b.bundle_contents,
+            code: (b as any).member_custom_code || b.bundle_code,
+            price: effectivePrice,
+            basePrice,
+            memberPrice,
+            content: b.bundle_contents,
+            categories: b.categories || [],
+          };
+        });
 
         const combined = [...products, ...bundles];
         setAllItems(combined);
@@ -99,7 +140,9 @@ const ProductSelection: React.FC = () => {
     };
 
     fetchData();
+  }, [memberIdentityCode, pricingStoreId, memberIdForPricing]);
 
+  useEffect(() => {
     const formState = localStorage.getItem('productSellFormState');
     if (formState) {
       try {
@@ -109,6 +152,18 @@ const ProductSelection: React.FC = () => {
         }
         if (parsed.memberName) {
           setMemberName(parsed.memberName);
+        }
+        if (parsed.memberId) {
+          const numericMemberId = Number(parsed.memberId);
+          if (!Number.isNaN(numericMemberId)) {
+            setMemberIdForPricing(numericMemberId);
+          }
+        }
+        if (parsed.storeId) {
+          const numericStoreId = Number(parsed.storeId);
+          if (!Number.isNaN(numericStoreId)) {
+            setPricingStoreId(numericStoreId);
+          }
         }
       } catch (e) {
         console.error('解析 productSellFormState 失敗', e);
@@ -139,7 +194,9 @@ const ProductSelection: React.FC = () => {
       member_id: Number(raw?.member_id) || 0,
       member_code: raw?.member_code || undefined,
       name: raw?.name || '',
-      identity_type: raw?.identity_type || '',
+      identity_type: raw?.identity_type_display_name || raw?.identity_type || '',
+      identity_type_code: raw?.identity_type || '',
+      identity_type_display_name: raw?.identity_type_display_name || raw?.identity_type || '',
       address: raw?.address || '',
       birthday: raw?.birthday || '',
       blood_type: raw?.blood_type || '',
@@ -159,12 +216,21 @@ const ProductSelection: React.FC = () => {
       try {
         const data = await fetchMemberByCode(memberCode);
         if (!cancelled) {
-          setMemberSummary(data ? normalizeMember(data) : null);
+          if (data) {
+            const normalized = normalizeMember(data);
+            setMemberSummary(normalized);
+            setMemberIdentityCode(normalized.identity_type_code || null);
+            setMemberIdForPricing(normalized.member_id || null);
+          } else {
+            setMemberSummary(null);
+            setMemberIdentityCode(null);
+          }
         }
       } catch (err) {
         console.error('載入會員資料失敗', err);
         if (!cancelled) {
           setMemberSummary(null);
+          setMemberIdentityCode(null);
         }
       }
     };

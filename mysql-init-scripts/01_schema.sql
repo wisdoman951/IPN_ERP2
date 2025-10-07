@@ -15,6 +15,9 @@
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
 
+DROP VIEW IF EXISTS `vw_member_product_prices`;
+DROP VIEW IF EXISTS `vw_member_therapy_prices`;
+
 --
 -- Table structure for table `emergency_contact`
 --
@@ -317,13 +320,30 @@ CREATE TABLE `medical_record` (
 --
 
 DROP TABLE IF EXISTS `member`;
+DROP TABLE IF EXISTS `member_identity_type`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `member_identity_type` (
+  `identity_type_code` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `description` text COLLATE utf8mb4_unicode_ci,
+  `priority` int NOT NULL DEFAULT '100' COMMENT '數字越小代表優先權越高',
+  `is_default` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否為預設身分類別',
+  `is_system` tinyint(1) NOT NULL DEFAULT '0' COMMENT '是否為系統保留類型，避免被刪除',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`identity_type_code`),
+  UNIQUE KEY `uniq_member_identity_display_name` (`display_name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `member` (
   `member_id` int NOT NULL AUTO_INCREMENT,
   `member_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `identity_type` enum('直營店','加盟店','合夥商','推廣商(分店能量師)','B2B合作專案','心耀商','會員','一般會員') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT '一般會員' COMMENT '會員身份別',
+  `identity_type` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'GENERAL_MEMBER' COMMENT '對應到 member_identity_type.identity_type_code',
   `birthday` date DEFAULT NULL,
   `gender` enum('Male','Female','Other') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `blood_type` enum('A','B','AB','O') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -337,6 +357,8 @@ CREATE TABLE `member` (
   PRIMARY KEY (`member_id`),
   KEY `inferrer_id` (`inferrer_id`),
   KEY `fk_member_store` (`store_id`),
+  KEY `identity_type` (`identity_type`),
+  CONSTRAINT `fk_member_identity_type` FOREIGN KEY (`identity_type`) REFERENCES `member_identity_type` (`identity_type_code`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_member_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `member_ibfk_1` FOREIGN KEY (`inferrer_id`) REFERENCES `member` (`member_id`)
 ) ENGINE=InnoDB AUTO_INCREMENT=556 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -420,6 +442,147 @@ CREATE TABLE `product_bundles` (
   UNIQUE KEY `bundle_code` (`bundle_code`)
 ) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `member_price_book`
+--
+
+DROP TABLE IF EXISTS `member_price_book`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `member_price_book` (
+  `price_book_id` int NOT NULL AUTO_INCREMENT,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '價目表名稱',
+  `identity_type` varchar(32) COLLATE utf8mb4_unicode_ci NOT NULL COMMENT '對應 member_identity_type.identity_type_code',
+  `scope_type` enum('ALL','PRODUCT','THERAPY','PRODUCT_BUNDLE','THERAPY_BUNDLE') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ALL' COMMENT '價目表的適用項目範圍',
+  `status` enum('DRAFT','ACTIVE','INACTIVE') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT',
+  `priority` int NOT NULL DEFAULT '100' COMMENT '處理價目表時的優先順序，數字越小優先度越高',
+  `valid_from` date DEFAULT NULL,
+  `valid_to` date DEFAULT NULL,
+  `note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`price_book_id`),
+  KEY `idx_member_price_book_identity` (`identity_type`),
+  KEY `idx_member_price_book_status` (`status`),
+  UNIQUE KEY `uniq_member_price_book_identity_scope_name` (`identity_type`,`scope_type`,`name`),
+  CONSTRAINT `fk_member_price_book_identity` FOREIGN KEY (`identity_type`) REFERENCES `member_identity_type` (`identity_type_code`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `chk_member_price_book_validity` CHECK (`valid_to` IS NULL OR `valid_from` IS NULL OR `valid_to` >= `valid_from`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `member_price_book_store`
+--
+
+DROP TABLE IF EXISTS `member_price_book_store`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `member_price_book_store` (
+  `price_book_id` int NOT NULL,
+  `store_id` int NOT NULL,
+  PRIMARY KEY (`price_book_id`,`store_id`),
+  KEY `idx_member_price_book_store_store` (`store_id`),
+  CONSTRAINT `fk_member_price_book_store_price_book` FOREIGN KEY (`price_book_id`) REFERENCES `member_price_book` (`price_book_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_member_price_book_store_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `member_price_book_item`
+--
+
+DROP TABLE IF EXISTS `member_price_book_item`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `member_price_book_item` (
+  `price_book_item_id` int NOT NULL AUTO_INCREMENT,
+  `price_book_id` int NOT NULL,
+  `item_type` enum('PRODUCT','THERAPY','PRODUCT_BUNDLE','THERAPY_BUNDLE') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `item_id` int NOT NULL,
+  `price` decimal(12,2) NOT NULL,
+  `currency` char(3) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'TWD',
+  `min_quantity` int NOT NULL DEFAULT '1' COMMENT '價格適用的最低購買數量',
+  `max_quantity` int DEFAULT NULL COMMENT '價格適用的最高購買數量，NULL 代表無上限',
+  `custom_code` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '針對特定身分顯示的自訂品號',
+  `custom_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT '針對特定身分顯示的自訂名稱',
+  `metadata` json DEFAULT NULL COMMENT '額外資訊，例如包裝數量、促銷備註等',
+  `status` enum('ACTIVE','INACTIVE') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ACTIVE',
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`price_book_item_id`),
+  UNIQUE KEY `uniq_member_price_book_item` (`price_book_id`,`item_type`,`item_id`,`min_quantity`),
+  UNIQUE KEY `uniq_member_price_book_custom_code` (`price_book_id`,`custom_code`),
+  KEY `idx_member_price_book_item_status` (`status`),
+  CONSTRAINT `chk_member_price_book_item_price_non_negative` CHECK (`price` >= 0),
+  CONSTRAINT `chk_member_price_book_item_quantity_range` CHECK (`max_quantity` IS NULL OR `max_quantity` >= `min_quantity`),
+  CONSTRAINT `fk_member_price_book_item_price_book` FOREIGN KEY (`price_book_id`) REFERENCES `member_price_book` (`price_book_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- View structure for view `vw_member_product_prices`
+--
+
+DROP VIEW IF EXISTS `vw_member_product_prices`;
+CREATE VIEW `vw_member_product_prices` AS
+SELECT
+    p.product_id AS product_id,
+    p.code AS base_product_code,
+    p.name AS base_product_name,
+    mpb.price_book_id,
+    mpb.name AS price_book_name,
+    mpb.identity_type,
+    mit.display_name AS identity_display_name,
+    mpb.priority,
+    mpb.status,
+    mpb.valid_from,
+    mpb.valid_to,
+    mpi.price_book_item_id,
+    mpi.price,
+    mpi.currency,
+    mpi.min_quantity,
+    mpi.max_quantity,
+    mpi.custom_code,
+    COALESCE(mpi.custom_name, p.name) AS custom_name,
+    mpi.metadata,
+    mpi.status AS item_status
+FROM member_price_book mpb
+JOIN member_identity_type mit ON mpb.identity_type = mit.identity_type_code
+JOIN member_price_book_item mpi ON mpb.price_book_id = mpi.price_book_id AND mpi.item_type = 'PRODUCT'
+JOIN product p ON mpi.item_id = p.product_id;
+
+--
+-- View structure for view `vw_member_therapy_prices`
+--
+
+DROP VIEW IF EXISTS `vw_member_therapy_prices`;
+CREATE VIEW `vw_member_therapy_prices` AS
+SELECT
+    t.therapy_id AS therapy_id,
+    t.code AS base_therapy_code,
+    t.name AS base_therapy_name,
+    mpb.price_book_id,
+    mpb.name AS price_book_name,
+    mpb.identity_type,
+    mit.display_name AS identity_display_name,
+    mpb.priority,
+    mpb.status,
+    mpb.valid_from,
+    mpb.valid_to,
+    mpi.price_book_item_id,
+    mpi.price,
+    mpi.currency,
+    mpi.min_quantity,
+    mpi.max_quantity,
+    mpi.custom_code,
+    COALESCE(mpi.custom_name, t.name) AS custom_name,
+    mpi.metadata,
+    mpi.status AS item_status
+FROM member_price_book mpb
+JOIN member_identity_type mit ON mpb.identity_type = mit.identity_type_code
+JOIN member_price_book_item mpi ON mpb.price_book_id = mpi.price_book_id AND mpi.item_type = 'THERAPY'
+JOIN therapy t ON mpi.item_id = t.therapy_id;
 
 --
 -- Table structure for table `therapy_bundle_items`
