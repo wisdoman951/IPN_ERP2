@@ -1094,7 +1094,8 @@ WHERE p.code IN ('PSA1000', 'PSA1002', 'PSA1003',
                  'PSA2000', 'PSA2001', 'PSA2002', 'PSA2003',
                  'PSB1000', 'PSB1001', 'PSB1002', 'PSB1003',
                  'PSO0100', 'PSO0101', 'PSO0102', 'PSO0103', 'PSO0104', 'PSO0105', 'PSO0106',
-                 'PSS0100', 'PSS0101', 'PSS0102');
+                 'PSS0100', 'PSS0101', 'PSS0102')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1106,7 +1107,8 @@ WHERE p.code IN ('PCP0100', 'PCP0101', 'PCP0102',
                  'PCP0400', 'PCP0401', 'PCP0402',
                  'PCP0500', 'PCP0501', 'PCP0502',
                  'PCP0600', 'PCP0601', 'PCP0602', 'PCP0603',
-                 'PCC0001');
+                 'PCC0001')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1123,7 +1125,8 @@ WHERE p.code IN ('SMA0100', 'SMA0101', 'SMA0102',
                  'SMA0900', 'SMA0901', 'SMA0902',
                  'SMA1000', 'SMA1001', 'SMA1002',
                  'SMA1100', 'SMA1101', 'SMA1102',
-                 'SMA1200', 'SMA1201', 'SMA1202');
+                 'SMA1200', 'SMA1201', 'SMA1202')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1134,7 +1137,8 @@ WHERE p.code IN ('SMW0100', 'SMW0101', 'SMW0102',
                  'SMW0300', 'SMW0301', 'SMW0302',
                  'SMW0400', 'SMW0401', 'SMW0402',
                  'SMW0500', 'SMW0501', 'SMW0502',
-                 'SMW0600', 'SMW0601', 'SMW0602');
+                 'SMW0600', 'SMW0601', 'SMW0602')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1155,7 +1159,8 @@ WHERE p.code IN ('SHA0100', 'SHA0101', 'SHA0102',
                  'SHA1400', 'SHA1401', 'SHA1402',
                  'SHA1500', 'SHA1501', 'SHA1502',
                  'SHA1600',
-                 'SHA1700', 'SHA1701');
+                 'SHA1700', 'SHA1701')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1168,14 +1173,16 @@ WHERE p.code IN ('SHW0100', 'SHW0101', 'SHW0102',
                  'SHW0500', 'SHW0501', 'SHW0502',
                  'SHW0600', 'SHW0601', 'SHW0602',
                  'SHW0700', 'SHW0701', 'SHW0702',
-                 'SHW0800', 'SHW0801', 'SHW0802');
+                 'SHW0800', 'SHW0801', 'SHW0802')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
 FROM `product` p
 JOIN `category` c ON c.name = '理療區備品' AND c.target_type = 'product'
 WHERE p.code IN ('SPO0100', 'SPO0200', 'SPO0300', 'SPO0400', 'SPO0500', 'SPO0600', 'SPO0700', 'SPO0800',
-                 'SPO0101', 'SPO0201', 'SPO0301', 'SPO0401', 'SPO0501', 'SPO0601', 'SPO0701', 'SPO0801');
+                 'SPO0101', 'SPO0201', 'SPO0301', 'SPO0401', 'SPO0501', 'SPO0601', 'SPO0701', 'SPO0801')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1188,13 +1195,15 @@ WHERE p.code IN ('SSO0100', 'SSO0101',
                  'SSO0500',
                  'SSO0600',
                  'SSO0700',
-                 'SSO0800');
+                 'SSO0800')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
 FROM `product` p
 JOIN `category` c ON c.name = '系統教育訓練' AND c.target_type = 'product'
-WHERE p.code IN ('SCP0101', 'SCP0102', 'SCP0103', 'SCP0201', 'SCP0202', 'SCP0203', 'SCP0301', 'SCP0302', 'SCP0303', 'SCP0401', 'SCP0402', 'SCP0403');
+WHERE p.code IN ('SCP0101', 'SCP0102', 'SCP0103', 'SCP0201', 'SCP0202', 'SCP0203', 'SCP0301', 'SCP0302', 'SCP0303', 'SCP0401', 'SCP0402', 'SCP0403')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `therapy` (`code`, `name`, `price`, `content`, `status`) VALUES
 ('TH001', '全身放鬆按摩', 2800.00, '60分鐘全身按摩，幫助放鬆肌肉，改善血液循環', 'PUBLISHED'),
@@ -1452,7 +1461,8 @@ WHERE p.code IN (
   'PSB1001','PSB1002','PSB1003','PSB1004','PSB1005','PSB1006','PSB1007','PSB1008','PSB1009','PSB1010',
   'PSO0101','PSO0102','PSO0103','PSO0104','PSO0105','PSO0106','PSO0107','PSO0108','PSO0109','PSO0110','PSO0111',
   'PSS0101','PSS0102','PSS0103','PSS0104','PSS0105','PSS0106','PSS0107'
-);
+)
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1466,7 +1476,8 @@ WHERE p.code IN (
   'PCP0501','PCP0502','PCP0503',
   'PCP0604',
   'PCC0001'
-);
+)
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1482,13 +1493,15 @@ WHERE p.code IN (
   'SMA0701','SMA0702','SMA0703',
   'SMA0801','SMA0802',
   'SMA0901','SMA0902','SMA0903'
-);
+)
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
 FROM `product` p
 JOIN `category` c ON c.name = 'MINI QP線材組' AND c.target_type = 'product'
-WHERE p.code IN ('SMW0101','SMW0102','SMW0103','SMW0104','SMW0105','SMW0106');
+WHERE p.code IN ('SMW0101','SMW0102','SMW0103','SMW0104','SMW0105','SMW0106')
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1507,7 +1520,8 @@ WHERE p.code IN (
   'SHA1001','SHA1002','SHA1003','SHA1004','SHA1005',
   'SHA1101','SHA1102',
   'SHA1201','SHA1202','SHA1203'
-);
+)
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1522,7 +1536,8 @@ WHERE p.code IN (
   'SHW0601','SHW0602',
   'SHW0701','SHW0702',
   'SHW0801','SHW0802'
-);
+)
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 INSERT INTO `product_category` (`product_id`, `category_id`)
 SELECT p.product_id, c.category_id
@@ -1534,7 +1549,8 @@ WHERE p.code IN (
   'SCP0201','SCP0202','SCP0203',
   'SCP0301','SCP0302','SCP0303',
   'SCP0401','SCP0402','SCP0403'
-);
+)
+ON DUPLICATE KEY UPDATE category_id = VALUES(category_id);
 
 -- Assign therapies to categories
 INSERT INTO `therapy_category` (`therapy_id`, `category_id`)
