@@ -2,6 +2,7 @@
 import pymysql
 import json
 from decimal import Decimal
+from uuid import uuid4
 from app.config import DB_CONFIG
 
 def connect_to_db():
@@ -94,11 +95,13 @@ def insert_product_sell(data: dict):
             if data.get('bundle_id'):
                 bundle_id = data.get('bundle_id')
                 bundle_qty = int(data.get('quantity', 1))
+                bundle_order_reference = data.get('order_reference') or f"bundle-{bundle_id}-{uuid4()}"
                 cursor.execute(
                     "SELECT item_id, quantity FROM product_bundle_items WHERE bundle_id = %s AND item_type = 'Product'",
                     (bundle_id,),
                 )
                 bundle_items = cursor.fetchall()
+                bundle_components = []
                 if not bundle_items:
                     bundle_data = {
                         "member_id": data.get('member_id'),
@@ -113,8 +116,8 @@ def insert_product_sell(data: dict):
                         "final_price": float(data.get('final_price', 0)),
                         "payment_method": data.get('payment_method'),
                         "sale_category": data.get('sale_category'),
-                        "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
-                        "order_reference": data.get('order_reference'),
+                        "note": f"{data.get('note', '').strip()} [bundle:{bundle_id}]".strip(),
+                        "order_reference": bundle_order_reference,
                     }
                     cursor.execute(insert_query, bundle_data)
                     conn.commit()
@@ -129,13 +132,24 @@ def insert_product_sell(data: dict):
                         raise ValueError("品項已下架")
                     unit_price = Decimal(str(price_row['price'])) if price_row.get('price') is not None else Decimal('0')
                     product_name = price_row.get('name')
-                    quantity = int(item.get('quantity', 0)) * bundle_qty
+                    per_bundle_qty = int(item.get('quantity', 0))
+                    quantity = per_bundle_qty * bundle_qty
                     item_total = unit_price * quantity
-                    item_totals.append((item, unit_price, product_name, quantity, item_total))
+                    item_totals.append((item, unit_price, product_name, quantity, per_bundle_qty, item_total))
                     total_price += item_total
+                    bundle_components.append(f"{product_name} x{per_bundle_qty}")
                 discount_total = Decimal(str(data.get('discount_amount') or 0))
 
-                for item, unit_price, product_name, quantity, item_total in item_totals:
+                bundle_note_parts = []
+                base_note = (data.get('note') or '').strip()
+                if base_note:
+                    bundle_note_parts.append(base_note)
+                if bundle_components:
+                    bundle_note_parts.append(', '.join(bundle_components))
+                bundle_note = ' '.join(part for part in bundle_note_parts if part).strip()
+                bundle_note_with_tag = f"{bundle_note} [bundle:{bundle_id}]".strip()
+
+                for item, unit_price, product_name, quantity, per_bundle_qty, item_total in item_totals:
                     discount_amount = (item_total / total_price * discount_total) if total_price > 0 else Decimal('0')
                     final_price = item_total - discount_amount
                     item_data = {
@@ -151,8 +165,8 @@ def insert_product_sell(data: dict):
                         "final_price": float(final_price),
                         "payment_method": data.get('payment_method'),
                         "sale_category": data.get('sale_category'),
-                        "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
-                        "order_reference": data.get('order_reference'),
+                        "note": bundle_note_with_tag,
+                        "order_reference": bundle_order_reference,
                     }
                     cursor.execute(insert_query, item_data)
                     update_inventory_quantity(item['item_id'], data['store_id'], -quantity, cursor)
