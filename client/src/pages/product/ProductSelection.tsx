@@ -406,6 +406,19 @@ const ProductSelection: React.FC = () => {
       }
     }
     filtered = filtered.filter(item => matchesIdentityFilter(item, activeIdentity));
+    if (activeIdentity === '一般售價') {
+      filtered = filtered.filter(item => {
+        if (item.type !== 'bundle') {
+          return true;
+        }
+        const generalPrice = resolvePriceForIdentity(
+          item.price_tiers,
+          item.basePrice,
+          '一般售價',
+        );
+        return generalPrice !== 0;
+      });
+    }
     if (searchTerm.trim() !== '') {
       const lower = searchTerm.toLowerCase();
       filtered = filtered.filter(item =>
@@ -415,7 +428,16 @@ const ProductSelection: React.FC = () => {
       );
     }
     setDisplayedItems(filtered);
-  }, [searchTerm, allItems, activeTab, activeProductTab, activeBundleTab, activeIdentity, matchesIdentityFilter]);
+  }, [
+    searchTerm,
+    allItems,
+    activeTab,
+    activeProductTab,
+    activeBundleTab,
+    activeIdentity,
+    matchesIdentityFilter,
+    resolvePriceForIdentity,
+  ]);
 
   const getItemKey = (item: ItemBase) =>
     item.type === 'bundle' ? `b-${item.bundle_id}` : `p-${item.product_id}`;
