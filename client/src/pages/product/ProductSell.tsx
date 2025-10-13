@@ -484,16 +484,32 @@ const ProductSell: React.FC = () => {
                 base.combined_display_name = items
                     .map((item) => getDisplayName(item as DisplaySale))
                     .join("\n");
-                const noteSet = new Set<string>();
+                const manualNoteSet = new Set<string>();
+                const productQuantityMap = new Map<string, number>();
                 items.forEach((item) => {
-                    const text = getNote(item as DisplaySale);
-                    if (!text || text === "-") {
+                    const displayName = getDisplayName(item as DisplaySale);
+                    const normalizedName = displayName.trim();
+                    if (normalizedName && normalizedName !== "-") {
+                        const rawQuantity = Number(item.quantity ?? 0);
+                        if (Number.isFinite(rawQuantity) && rawQuantity > 0) {
+                            productQuantityMap.set(
+                                normalizedName,
+                                (productQuantityMap.get(normalizedName) ?? 0) + rawQuantity
+                            );
+                        } else if (!productQuantityMap.has(normalizedName)) {
+                            productQuantityMap.set(normalizedName, 0);
+                        }
+                    }
+
+                    const rawNote = cleanBundleTags(item.note);
+                    const noteText = rawNote.length > 0 ? rawNote : getNote(item as DisplaySale);
+                    if (!noteText || noteText === "-") {
                         return;
                     }
-                    text.split("\n").forEach((line) => {
+                    noteText.split("\n").forEach((line) => {
                         const trimmed = line.trim();
                         if (trimmed.length > 0) {
-                            noteSet.add(trimmed);
+                            manualNoteSet.add(trimmed);
                         }
                     });
                 });
