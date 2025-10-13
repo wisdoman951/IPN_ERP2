@@ -75,6 +75,13 @@ const AddProductSell: React.FC = () => {
   const [formSubmitted, setFormSubmitted] = useState<boolean>(false);
   const [selectedMember, setSelectedMember] = useState<MemberData | null>(null);
   const [memberIdentity, setMemberIdentity] = useState<MemberIdentity | null>(null);
+  const [orderReference, setOrderReference] = useState<string | null>(null);
+
+  const generateOrderReference = () => {
+    const now = new Date();
+    const pad = (value: number) => value.toString().padStart(2, '0');
+    return `PS${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${now.getMilliseconds().toString().padStart(3, '0')}`;
+  };
 
   useEffect(() => {
     const init = async () => {
@@ -144,11 +151,16 @@ const AddProductSell: React.FC = () => {
           setOrderDiscountAmount(saleData.discount_amount || 0);
           setFinalPayableAmount(saleData.final_price ?? originalTotal - (saleData.discount_amount || 0));
           setPaymentMethod(paymentMethodValueMap[saleData.payment_method || 'Cash'] || paymentMethodOptions[0]);
-          setSaleCategory(saleCategoryOptions.includes(saleData.sale_category || '') ? saleData.sale_category! : saleCategoryOptions[0]);
+          setSaleCategory(
+            saleCategoryOptions.includes(saleData.sale_category || '')
+              ? saleData.sale_category!
+              : saleCategoryOptions[0]
+          );
           setSelectedStaffId(saleData.staff_id ? saleData.staff_id.toString() : '');
           setNote(saleData.note || '');
           if (saleData.store_id) setStoreId(saleData.store_id.toString());
           if (saleData.store_name) setSelectedStore(saleData.store_name);
+          if (saleData.order_reference) setOrderReference(saleData.order_reference);
         } catch (err) {
           console.error("載入銷售資料失敗：", err);
           setError("載入銷售資料失敗");
@@ -294,6 +306,10 @@ const AddProductSell: React.FC = () => {
 
     setLoading(true);
     try {
+      const currentOrderReference = orderReference ?? generateOrderReference();
+      if (!orderReference) {
+        setOrderReference(currentOrderReference);
+      }
       const paymentMethodInEnglish = paymentMethodDisplayMap[paymentMethod] || paymentMethod;
 
       if (isEditMode && sellId) {
@@ -318,6 +334,7 @@ const AddProductSell: React.FC = () => {
           unit_price: product.price,
           discount_amount: itemDiscountAmount,
           final_price: itemFinalPrice,
+          order_reference: currentOrderReference,
         };
 
         if (product.product_id) {
@@ -355,6 +372,7 @@ const AddProductSell: React.FC = () => {
             unit_price: product.price,
             discount_amount: itemDiscountAmount,
             final_price: itemFinalPrice,
+            order_reference: currentOrderReference,
           };
 
           if (product.product_id) {
