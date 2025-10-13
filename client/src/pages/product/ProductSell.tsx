@@ -237,6 +237,101 @@ const computeBundleQuantityForGroup = (
     return referenceQuantity;
 };
 
+const normalizeText = (text: string | undefined | null) =>
+    (text ?? "")
+        .replace(/\s+/g, "")
+        .replace(/[　]/g, "")
+        .toLowerCase();
+
+const parseBundleItems = (contents: string | undefined | null): BundleInfo["items"] => {
+    if (!contents) {
+        return [];
+    }
+    return contents
+        .split(/[,，]/)
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0)
+        .map((part) => {
+            const match = part.match(/(.+?)[x×＊*]\s*(\d+)/i);
+            if (match) {
+                const name = match[1].trim();
+                const quantity = Number.parseInt(match[2], 10);
+                return {
+                    name,
+                    normalized: normalizeText(name),
+                    quantity: Number.isFinite(quantity) && quantity > 0 ? quantity : 1,
+                };
+            }
+            return {
+                name: part,
+                normalized: normalizeText(part),
+                quantity: 1,
+            };
+        });
+};
+
+const extractBundleId = (note?: string | null) => {
+    if (!note) {
+        return null;
+    }
+    const match = note.match(/\[bundle:(\d+)\]/);
+    if (!match) {
+        return null;
+    }
+    const id = Number.parseInt(match[1], 10);
+    return Number.isFinite(id) ? id : null;
+};
+
+const computeBundleQuantityFromSale = (
+    sale: ProductSellType,
+    bundleInfo: BundleInfo | undefined,
+): number | undefined => {
+    if (!bundleInfo || !sale.quantity) {
+        return undefined;
+    }
+    const normalizedName = normalizeText(sale.product_name);
+    if (!normalizedName) {
+        return undefined;
+    }
+    const targetItem =
+        bundleInfo.items.find((item) => item.normalized === normalizedName) ||
+        bundleInfo.items.find(
+            (item) =>
+                item.normalized.includes(normalizedName) ||
+                normalizedName.includes(item.normalized),
+        );
+    if (!targetItem || !targetItem.quantity) {
+        return undefined;
+    }
+    const bundleQuantity = sale.quantity / targetItem.quantity;
+    if (!Number.isFinite(bundleQuantity) || bundleQuantity <= 0) {
+        return undefined;
+    }
+    return bundleQuantity;
+};
+
+const computeBundleQuantityForGroup = (
+    items: ProductSellType[],
+    bundleInfo: BundleInfo | undefined,
+): number | undefined => {
+    if (!bundleInfo || items.length === 0) {
+        return undefined;
+    }
+    let referenceQuantity: number | undefined;
+    for (const item of items) {
+        const quantity = computeBundleQuantityFromSale(item, bundleInfo);
+        if (quantity === undefined) {
+            return undefined;
+        }
+        if (referenceQuantity === undefined) {
+            referenceQuantity = quantity;
+        } else if (Math.abs(referenceQuantity - quantity) > 1e-6) {
+            return undefined;
+        }
+    }
+    return referenceQuantity;
+};
+
 const paymentMethodValueToDisplayMap: { [key: string]: string } = {
     Cash: "現金",
     CreditCard: "信用卡",
