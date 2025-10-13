@@ -187,6 +187,90 @@ const cleanBundleTags = (note?: string | null) =>
         .replace(/\[bundle:[^\]]*\]/gi, "")
         .trim();
 
+const hasBundleTag = (note?: string | null) => Boolean(note && /\[bundle:/i.test(note));
+
+const pickFirstDefined = <T,>(values: (T | undefined | null)[]): T | undefined => {
+    for (const value of values) {
+        if (value !== undefined && value !== null) {
+            return value;
+        }
+    }
+    return undefined;
+};
+
+const mergeBundleMetadataList = (
+    metadataList: (BundleMetadata | null | undefined)[],
+): BundleMetadata | undefined => {
+    const merged: BundleMetadata = {};
+    metadataList.forEach((metadata) => {
+        if (!metadata) {
+            return;
+        }
+        if (metadata.id !== undefined && merged.id === undefined) {
+            merged.id = metadata.id;
+        }
+        if (metadata.quantity !== undefined && merged.quantity === undefined) {
+            merged.quantity = metadata.quantity;
+        }
+        if (metadata.total !== undefined && merged.total === undefined) {
+            merged.total = metadata.total;
+        }
+        if (metadata.name && !merged.name) {
+            merged.name = metadata.name;
+        }
+    });
+    return Object.keys(merged).length > 0 ? merged : undefined;
+};
+
+const determineBundleContext = (
+    items: ProductSellType[],
+    metadataList: (BundleMetadata | null)[],
+) => {
+    let hasIndicator = false;
+    const idCandidates = new Set<number>();
+
+    items.forEach((item, index) => {
+        const metadata = metadataList[index];
+        if (metadata) {
+            hasIndicator = true;
+            if (metadata.id !== undefined) {
+                idCandidates.add(metadata.id);
+            }
+            if (
+                metadata.name ||
+                metadata.total !== undefined ||
+                metadata.quantity !== undefined
+            ) {
+                hasIndicator = true;
+            }
+        }
+
+        if (!metadata || metadata.id === undefined) {
+            const fallbackId = extractBundleId(item.note);
+            if (fallbackId !== null) {
+                hasIndicator = true;
+                idCandidates.add(fallbackId);
+            } else if (hasBundleTag(item.note)) {
+                hasIndicator = true;
+            }
+        }
+    });
+
+    return {
+        isBundleGroup: hasIndicator && idCandidates.size <= 1,
+        bundleId: idCandidates.size === 1 ? Array.from(idCandidates)[0] : null,
+        hasIndicator,
+    };
+};
+
+const getComponentLines = (bundleInfo?: BundleInfo) =>
+    bundleInfo?.contents
+        ? bundleInfo.contents
+              .split(/[,，]/)
+              .map((line) => line.trim())
+              .filter((line) => line.length > 0)
+        : [];
+
 const computeBundleQuantityFromSale = (
     sale: ProductSellType,
     bundleInfo: BundleInfo | undefined,
@@ -283,25 +367,19 @@ const ProductSell: React.FC = () => {
         loadBundles();
     }, []);
 
-    const getDisplayName = (sale: DisplaySale) => {
-        if (sale.combined_display_name) {
-            return sale.combined_display_name;
-        }
+    const resolveDisplayNameForSale = (sale: ProductSellType) => {
         const metadata = extractBundleMetadata(sale.note);
         if (metadata?.name) {
             return metadata.name;
         }
-        const bundleId = extractBundleId(sale.note);
+        const bundleId = metadata?.id ?? extractBundleId(sale.note);
         if (bundleId !== null) {
             return bundleMap[bundleId]?.name || sale.product_name || "-";
         }
         return sale.product_name || "-";
     };
 
-    const getNote = (sale: DisplaySale) => {
-        if (sale.combined_note) {
-            return sale.combined_note;
-        }
+    const resolveNoteForSale = (sale: ProductSellType) => {
         const metadata = extractBundleMetadata(sale.note);
         const bundleId = metadata?.id ?? extractBundleId(sale.note);
         const manualNote = cleanBundleTags(sale.note);
@@ -322,9 +400,126 @@ const ProductSell: React.FC = () => {
         return manualNote.length > 0 ? manualNote : sale.note || "-";
     };
 
+    const getDisplayName = (sale: DisplaySale) => {
+        if (sale.combined_display_name) {
+            return sale.combined_display_name;
+        }
+        return resolveDisplayNameForSale(sale);
+    };
+
+    const getNote = (sale: DisplaySale) => {
+        if (sale.combined_note) {
+            return sale.combined_note;
+        }
+        return resolveNoteForSale(sale);
+    };
+
+    const createAggregatedBundleGroup = (
+        items: ProductSellType[],
+        metadataList: (BundleMetadata | null)[],
+    ): DisplaySale => {
+        const base: DisplaySale = { ...items[0] };
+        base.product_sell_ids = items.map((item) => item.product_sell_id);
+
+        const mergedMetadata = mergeBundleMetadataList(metadataList);
+        if (mergedMetadata) {
+            base.bundle_metadata = { ...mergedMetadata };
+        } else {
+            base.bundle_metadata = undefined;
+        }
+
+        const metadataTotal = mergedMetadata?.total ?? pickFirstDefined(metadataList.map((meta) => meta?.total));
+        const aggregatedPrice =
+            metadataTotal !== undefined
+                ? metadataTotal
+                : items.reduce(
+                      (sum, item) => sum + Number(item.final_price ?? item.unit_price ?? 0),
+                      0,
+                  );
+        base.final_price = aggregatedPrice;
+
+        const context = determineBundleContext(items, metadataList);
+        const bundleId = context.bundleId;
+        if (bundleId !== null) {
+            base.bundle_metadata = {
+                ...(base.bundle_metadata ?? {}),
+                id: bundleId,
+            };
+        }
+
+        const bundleInfo = bundleId !== null ? bundleMap[bundleId] : undefined;
+        const explicitQuantity =
+            mergedMetadata?.quantity ?? pickFirstDefined(metadataList.map((meta) => meta?.quantity));
+        const computedQuantity = computeBundleQuantityForGroup(items, bundleInfo);
+        base.quantity =
+            explicitQuantity !== undefined
+                ? explicitQuantity
+                : computedQuantity !== undefined
+                ? computedQuantity
+                : items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+
+        const resolvedName =
+            bundleInfo?.name ?? mergedMetadata?.name ?? pickFirstDefined(metadataList.map((meta) => meta?.name));
+        if (resolvedName) {
+            base.combined_display_name = resolvedName;
+        }
+
+        const manualNotes = new Set<string>();
+        items.forEach((item) => {
+            const rawNote = cleanBundleTags(item.note);
+            if (rawNote.length > 0) {
+                manualNotes.add(rawNote);
+            }
+        });
+
+        const componentLines = getComponentLines(bundleInfo);
+        componentLines.forEach((line) => manualNotes.add(line));
+
+        base.combined_note = manualNotes.size > 0 ? Array.from(manualNotes).join("\n") : undefined;
+
+        return base;
+    };
+
+    const createAggregatedNonBundleGroup = (items: ProductSellType[]): DisplaySale => {
+        const base: DisplaySale = { ...items[0] };
+        base.product_sell_ids = items.map((item) => item.product_sell_id);
+        base.bundle_metadata = undefined;
+
+        base.quantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+        base.final_price = items.reduce(
+            (sum, item) => sum + Number(item.final_price ?? item.unit_price ?? 0),
+            0,
+        );
+
+        const nameSet = new Set<string>();
+        items.forEach((item) => {
+            const name = resolveDisplayNameForSale(item);
+            if (name && name !== "-") {
+                nameSet.add(name);
+            }
+        });
+        base.combined_display_name = nameSet.size > 0 ? Array.from(nameSet).join("\n") : undefined;
+
+        const noteSet = new Set<string>();
+        items.forEach((item) => {
+            const note = resolveNoteForSale(item);
+            if (!note || note === "-") {
+                return;
+            }
+            note
+                .split("\n")
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0)
+                .forEach((line) => noteSet.add(line));
+        });
+        base.combined_note = noteSet.size > 0 ? Array.from(noteSet).join("\n") : undefined;
+
+        return base;
+    };
+
     const groupedSales = useMemo(() => {
-        const orderGrouped = new Map<string, DisplaySale[]>();
-        const remainder: DisplaySale[] = [];
+        const orderGrouped = new Map<string, ProductSellType[]>();
+        const remainder: ProductSellType[] = [];
 
         sales.forEach((sale) => {
             if (sale.order_reference) {
@@ -342,201 +537,77 @@ const ProductSell: React.FC = () => {
                 aggregatedOrders.push(items[0]);
                 return;
             }
-            const base: DisplaySale = { ...items[0] };
-            base.product_sell_ids = items.map((item) => item.product_sell_id);
 
             const metadataList = items.map((item) => extractBundleMetadata(item.note));
-            const aggregatedPrice = items.reduce((sum, item, index) => {
+            const bundleGroupsMap = new Map<
+                string,
+                { items: ProductSellType[]; metadataList: (BundleMetadata | null)[] }
+            >();
+            const nonBundleItems: ProductSellType[] = [];
+
+            items.forEach((item, index) => {
                 const metadata = metadataList[index];
-                if (metadata?.total !== undefined) {
-                    return sum + metadata.total;
-                }
-                return sum + Number(item.final_price ?? item.unit_price ?? 0);
-            }, 0);
-            base.final_price = aggregatedPrice;
-
-            const primaryMetadata = metadataList[0];
-            const bundleId = primaryMetadata?.id ?? extractBundleId(items[0].note);
-            const isBundleGroup =
-                bundleId !== null &&
-                items.every((item, index) => {
-                    const metadata = metadataList[index];
-                    const id = metadata?.id ?? extractBundleId(item.note);
-                    return id === bundleId;
-                });
-
-            if (primaryMetadata) {
-                base.bundle_metadata = { ...primaryMetadata };
-            } else {
-                base.bundle_metadata = undefined;
-            }
-
-            if (isBundleGroup) {
-                const bundleInfo = bundleId !== null ? bundleMap[bundleId] : undefined;
-                const explicitQuantity = primaryMetadata?.quantity;
-                const computedQuantity = computeBundleQuantityForGroup(items, bundleInfo);
-                base.quantity =
-                    explicitQuantity !== undefined
-                        ? explicitQuantity
-                        : computedQuantity !== undefined
-                        ? computedQuantity
-                        : items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-
-                if (primaryMetadata?.total !== undefined) {
-                    base.final_price = primaryMetadata.total;
-                }
-
-                if (bundleInfo) {
-                    base.combined_display_name = bundleInfo.name || base.product_name;
-                    const manualNotes = new Set<string>();
-                    items.forEach((item) => {
-                        const rawNote = cleanBundleTags(item.note);
-                        if (rawNote.length > 0) {
-                            manualNotes.add(rawNote);
-                        }
-                    });
-                    const componentNote = bundleInfo.contents
-                        ? bundleInfo.contents
-                              .split(/[,，]/)
-                              .map((line) => line.trim())
-                              .filter((line) => line.length > 0)
-                              .join("\n")
-                        : undefined;
-                    const noteParts = [
-                        ...Array.from(manualNotes),
-                        ...(componentNote ? [componentNote] : []),
-                    ].filter((part) => part && part.length > 0);
-                    base.combined_note = noteParts.length > 0 ? noteParts.join("\n") : undefined;
+                const context = determineBundleContext([item], [metadata]);
+                if (context.isBundleGroup) {
+                    const key =
+                        context.bundleId !== null
+                            ? `id:${context.bundleId}`
+                            : metadata?.name
+                            ? `name:${normalizeBundleText(metadata.name)}`
+                            : `product:${normalizeBundleText(item.product_name) || item.product_sell_id}`;
+                    const group = bundleGroupsMap.get(key) ?? { items: [], metadataList: [] };
+                    group.items.push(item);
+                    group.metadataList.push(metadata);
+                    bundleGroupsMap.set(key, group);
                 } else {
-                    const metadataName = primaryMetadata?.name;
-                    base.combined_display_name = metadataName || getDisplayName(base);
-                    const manualNote = cleanBundleTags(base.note);
-                    base.combined_note = manualNote.length > 0 ? manualNote : getNote(base);
+                    nonBundleItems.push(item);
                 }
-            } else {
-                base.quantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
-                base.combined_display_name = items
-                    .map((item) => getDisplayName(item as DisplaySale))
-                    .join("\n");
-                const noteSet = new Set<string>();
-                items.forEach((item) => {
-                    const text = getNote(item as DisplaySale);
-                    if (!text || text === "-") {
-                        return;
-                    }
-                    text.split("\n").forEach((line) => {
-                        const trimmed = line.trim();
-                        if (trimmed.length > 0) {
-                            noteSet.add(trimmed);
-                        }
-                    });
-                });
-                base.combined_note = noteSet.size ? Array.from(noteSet).join("\n") : undefined;
-                base.bundle_metadata = undefined;
-            }
+            });
 
-            aggregatedOrders.push(base);
+            bundleGroupsMap.forEach(({ items: bundleItems, metadataList: bundleMetadataList }) => {
+                if (bundleItems.length > 0) {
+                    aggregatedOrders.push(createAggregatedBundleGroup(bundleItems, bundleMetadataList));
+                }
+            });
+
+            if (nonBundleItems.length > 0) {
+                aggregatedOrders.push(createAggregatedNonBundleGroup(nonBundleItems));
+            }
         });
 
-        const bundleGroups: Record<string, DisplaySale> = {};
-        const singles: DisplaySale[] = [];
+        const remainderBundleGroups = new Map<
+            string,
+            { items: ProductSellType[]; metadataList: (BundleMetadata | null)[] }
+        >();
+        const remainderSingles: DisplaySale[] = [];
 
         remainder.forEach((sale) => {
             const metadata = extractBundleMetadata(sale.note);
-            const bundleId = metadata?.id ?? extractBundleId(sale.note);
-            if (bundleId !== null) {
-                const key = `${bundleId}-${sale.member_id}-${sale.date}-${sale.payment_method}-${sale.staff_id}-${sale.store_id ?? ''}`;
-                const existing = bundleGroups[key];
-                const fallbackPrice = Number(sale.final_price ?? sale.unit_price ?? 0);
-                const metadataTotal = metadata?.total;
-                const bundleInfo = bundleMap[bundleId];
-                const bundleQuantity =
-                    metadata?.quantity ?? computeBundleQuantityFromSale(sale, bundleInfo);
-                if (existing) {
-                    if (metadataTotal === undefined) {
-                        const existingPrice = Number(existing.final_price ?? 0);
-                        existing.final_price = existingPrice + fallbackPrice;
-                    } else if (existing.bundle_metadata?.total === undefined) {
-                        existing.final_price = metadataTotal;
-                    }
-                    existing.product_sell_ids = [
-                        ...(existing.product_sell_ids ?? [existing.product_sell_id]),
-                        sale.product_sell_id,
-                    ];
-                    if (bundleQuantity === undefined) {
-                        existing.quantity = (existing.quantity || 0) + (sale.quantity || 0);
-                    } else if (!existing.quantity || existing.quantity < bundleQuantity) {
-                        existing.quantity = bundleQuantity;
-                    }
-                    if (bundleInfo || metadata?.name) {
-                        existing.combined_display_name = bundleInfo?.name || metadata?.name;
-                        const manualNotes = new Set<string>();
-                        const rawNote = cleanBundleTags(sale.note);
-                        if (rawNote.length > 0) {
-                            manualNotes.add(rawNote);
-                        }
-                        if (existing.combined_note) {
-                            existing.combined_note
-                                .split("\n")
-                                .map((line) => line.trim())
-                                .filter((line) => line.length > 0)
-                                .forEach((line) => manualNotes.add(line));
-                        }
-                        const componentNote = bundleInfo?.contents
-                            ? bundleInfo.contents
-                                  .split(/[,，]/)
-                                  .map((line) => line.trim())
-                                  .filter((line) => line.length > 0)
-                            : [];
-                        componentNote.forEach((line) => manualNotes.add(line));
-                        existing.combined_note = manualNotes.size
-                            ? Array.from(manualNotes).join("\n")
-                            : existing.combined_note;
-                    }
-                    if (metadata) {
-                        existing.bundle_metadata = {
-                            ...(existing.bundle_metadata ?? {}),
-                            ...metadata,
-                            total:
-                                metadataTotal !== undefined
-                                    ? metadataTotal
-                                    : existing.bundle_metadata?.total,
-                        };
-                    }
-                } else {
-                    bundleGroups[key] = {
-                        ...sale,
-                        final_price: metadataTotal !== undefined ? metadataTotal : fallbackPrice,
-                        product_sell_ids: [sale.product_sell_id],
-                        quantity: bundleQuantity ?? sale.quantity ?? 1,
-                        combined_display_name: bundleInfo?.name || metadata?.name,
-                        combined_note: (() => {
-                            const manualNotes = new Set<string>();
-                            const rawNote = cleanBundleTags(sale.note);
-                            if (rawNote.length > 0) {
-                                manualNotes.add(rawNote);
-                            }
-                            const componentNote = bundleInfo?.contents
-                                ? bundleInfo.contents
-                                      .split(/[,，]/)
-                                      .map((line) => line.trim())
-                                      .filter((line) => line.length > 0)
-                                : [];
-                            componentNote.forEach((line) => manualNotes.add(line));
-                            return manualNotes.size ? Array.from(manualNotes).join("\n") : undefined;
-                        })(),
-                        bundle_metadata: metadata
-                            ? {
-                                  ...metadata,
-                              }
-                            : undefined,
-                    };
-                }
+            const context = determineBundleContext([sale], [metadata]);
+            if (context.isBundleGroup) {
+                const keyParts = [
+                    context.bundleId ?? metadata?.id ?? metadata?.name ?? normalizeBundleText(sale.product_name) ?? "bundle",
+                    sale.member_id ?? "",
+                    sale.date ?? "",
+                    sale.payment_method ?? "",
+                    sale.staff_id ?? "",
+                    sale.store_id ?? "",
+                ];
+                const key = keyParts.join("-");
+                const group = remainderBundleGroups.get(key) ?? { items: [], metadataList: [] };
+                group.items.push(sale);
+                group.metadataList.push(metadata);
+                remainderBundleGroups.set(key, group);
             } else {
-                singles.push(sale);
+                remainderSingles.push({ ...sale });
             }
         });
-        return [...aggregatedOrders, ...Object.values(bundleGroups), ...singles];
+
+        const aggregatedRemainderBundles = Array.from(remainderBundleGroups.values()).map(({ items, metadataList }) =>
+            createAggregatedBundleGroup(items, metadataList),
+        );
+
+        return [...aggregatedOrders, ...aggregatedRemainderBundles, ...remainderSingles];
     }, [sales, bundleMap]);
 
     const sortedGroupedSales = useMemo(
