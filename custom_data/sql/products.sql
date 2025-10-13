@@ -169,3 +169,11 @@ INSERT INTO product (code, name, price) VALUES
 ('SCP0401', '初級四階課程-系統', 0.00),
 ('SCP0402', '初級四階課程-自費', 4600.00),
 ('SCP0403', '初級四階課程-複訓', 1000.00);
+
+INSERT INTO product (code, name, price)
+SELECT 'PSA10018', '抺茶肽-7+7天套組-單盒', 2050.00
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM product
+    WHERE code = 'PSA10018'
+);
