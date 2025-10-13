@@ -47,6 +47,7 @@ export interface ProductSellData {
   unit_price: number;
   discount_amount: number;
   final_price: number;
+  order_reference?: string;
 }
 
 // 獲取所有產品及庫存
@@ -97,6 +98,7 @@ export interface ProductSell extends ProductSellData {
   product_name?: string;
   product_code?: string;
   staff_name?: string;
+  order_reference?: string;
 }
 
 // 獲取所有產品銷售記錄

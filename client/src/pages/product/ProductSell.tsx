@@ -13,6 +13,12 @@ import { fetchAllBundles, Bundle } from "../../services/ProductBundleService";
 import { sortByStoreAndMemberCode } from "../../utils/storeMemberSort";
 import usePermissionGuard from "../../hooks/usePermissionGuard";
 
+type DisplaySale = ProductSellType & {
+    product_sell_ids?: number[];
+    combined_display_name?: string;
+    combined_note?: string;
+};
+
 const paymentMethodValueToDisplayMap: { [key: string]: string } = {
     Cash: "現金",
     CreditCard: "信用卡",
@@ -55,7 +61,10 @@ const ProductSell: React.FC = () => {
         loadBundles();
     }, []);
 
-    const getDisplayName = (sale: ProductSellType) => {
+    const getDisplayName = (sale: DisplaySale) => {
+        if (sale.combined_display_name) {
+            return sale.combined_display_name;
+        }
         const match = sale.note?.match(/\[bundle:(\d+)\]/);
         if (match) {
             const id = parseInt(match[1], 10);
@@ -64,7 +73,10 @@ const ProductSell: React.FC = () => {
         return sale.product_name || "-";
     };
 
-    const getNote = (sale: ProductSellType) => {
+    const getNote = (sale: DisplaySale) => {
+        if (sale.combined_note) {
+            return sale.combined_note;
+        }
         const match = sale.note?.match(/\[bundle:(\d+)\]/);
         if (match) {
             const id = parseInt(match[1], 10);
@@ -78,36 +90,84 @@ const ProductSell: React.FC = () => {
     };
 
     const groupedSales = useMemo(() => {
-        const bundles: Record<string, ProductSellType & { product_sell_ids: number[] }> = {};
-        const singles: (ProductSellType & { product_sell_ids?: number[] })[] = [];
+        const orderGrouped = new Map<string, DisplaySale[]>();
+        const remainder: DisplaySale[] = [];
 
         sales.forEach((sale) => {
+            if (sale.order_reference) {
+                const group = orderGrouped.get(sale.order_reference) ?? [];
+                group.push(sale);
+                orderGrouped.set(sale.order_reference, group);
+            } else {
+                remainder.push(sale);
+            }
+        });
+
+        const aggregatedOrders: DisplaySale[] = [];
+        orderGrouped.forEach((items) => {
+            if (items.length === 1) {
+                aggregatedOrders.push(items[0]);
+                return;
+            }
+            const base: DisplaySale = { ...items[0] };
+            base.product_sell_ids = items.map((item) => item.product_sell_id);
+            base.quantity = items.reduce((sum, item) => sum + (item.quantity || 0), 0);
+            base.final_price = items.reduce(
+                (sum, item) => sum + Number(item.final_price ?? item.unit_price ?? 0),
+                0
+            );
+            base.combined_display_name = items
+                .map((item) => getDisplayName(item as DisplaySale))
+                .join("\n");
+            const noteSet = new Set<string>();
+            items.forEach((item) => {
+                const text = getNote(item as DisplaySale);
+                if (!text || text === "-") {
+                    return;
+                }
+                text.split("\n").forEach((line) => {
+                    const trimmed = line.trim();
+                    if (trimmed.length > 0) {
+                        noteSet.add(trimmed);
+                    }
+                });
+            });
+            base.combined_note = noteSet.size ? Array.from(noteSet).join("\n") : undefined;
+            aggregatedOrders.push(base);
+        });
+
+        const bundleGroups: Record<string, DisplaySale> = {};
+        const singles: DisplaySale[] = [];
+
+        remainder.forEach((sale) => {
             const match = sale.note?.match(/\[bundle:(\d+)\]/);
             if (match) {
                 const bundleId = match[1];
                 const key = `${bundleId}-${sale.member_id}-${sale.date}-${sale.payment_method}-${sale.staff_id}-${sale.store_id ?? ''}`;
-                const existing = bundles[key];
-                const price = Number(sale.final_price ?? sale.product_price ?? 0);
+                const existing = bundleGroups[key];
+                const price = Number(sale.final_price ?? sale.unit_price ?? 0);
                 if (existing) {
                     existing.final_price = Number(existing.final_price) + price;
-                    existing.product_sell_ids.push(sale.product_sell_id);
+                    existing.product_sell_ids = [
+                        ...(existing.product_sell_ids ?? [existing.product_sell_id]),
+                        sale.product_sell_id,
+                    ];
+                    existing.quantity = (existing.quantity || 0) + (sale.quantity || 0);
                 } else {
-                    bundles[key] = {
+                    bundleGroups[key] = {
                         ...sale,
                         final_price: price,
-                        product_price: price,
-                        product_sell_id: sale.product_sell_id,
                         product_sell_ids: [sale.product_sell_id],
-                        quantity: 1
-                    } as ProductSellType & { product_sell_ids: number[] };
+                        quantity: sale.quantity ?? 1,
+                    };
                 }
             } else {
                 singles.push(sale);
             }
         });
 
-        return [...Object.values(bundles), ...singles];
-    }, [sales]);
+        return [...aggregatedOrders, ...Object.values(bundleGroups), ...singles];
+    }, [sales, bundleMap]);
 
     const sortedGroupedSales = useMemo(
         () =>
@@ -145,20 +205,29 @@ const ProductSell: React.FC = () => {
             </td>
         </tr>
     ) : sortedGroupedSales.length > 0 ? (
-        sortedGroupedSales.map((sale: ProductSellType & { product_sell_ids?: number[] }) => (
-            <tr key={sale.product_sell_id}>
-                <td className="text-center align-middle">
-                    <Form.Check
-                        type="checkbox"
-                        checked={selectedSales.includes(sale.product_sell_id)}
-                        onChange={(e) => handleCheckboxChange(sale.product_sell_id, e.target.checked)}
+        sortedGroupedSales.map((sale: DisplaySale) => {
+            const relatedIds = sale.product_sell_ids && sale.product_sell_ids.length > 0
+                ? sale.product_sell_ids
+                : [sale.product_sell_id];
+            const isChecked = relatedIds.every((id) => selectedSales.includes(id));
+            const handleRowSelection = (checked: boolean) => {
+                relatedIds.forEach((id) => handleCheckboxChange(id, checked));
+            };
+
+            return (
+                <tr key={`${sale.product_sell_id}-${sale.order_reference ?? 'single'}`}>
+                    <td className="text-center align-middle">
+                        <Form.Check
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => handleRowSelection(e.target.checked)}
                     />
                 </td>
                 <td className="align-middle">{sale.store_name ?? '-'}</td>
                 <td className="align-middle">{sale.member_code || "-"}</td>
                 <td className="align-middle">{sale.member_name || "-"}</td>
                 <td className="align-middle">{formatDateToYYYYMMDD(sale.date) || "-"}</td>
-                <td className="align-middle">{getDisplayName(sale)}</td>
+                <td className="align-middle" style={{ whiteSpace: 'pre-line' }}>{getDisplayName(sale)}</td>
                 <td className="text-center align-middle">{sale.quantity || "-"}</td>
                 <td className="text-end align-middle">
                     {/* 顯示 final_price，如果沒有則顯示 product_price 或計算值 */}
@@ -174,12 +243,13 @@ const ProductSell: React.FC = () => {
                     {sale.payment_method
                         ? paymentMethodValueToDisplayMap[sale.payment_method] || sale.payment_method
                         : "-"}
-                </td>
-                <td className="align-middle">{sale.staff_name || "-"}</td>
-                <td className="align-middle">{sale.sale_category || "-"}</td>
-                <td className="align-middle" style={{ maxWidth: '200px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
-            </tr>
-        ))
+                    </td>
+                    <td className="align-middle">{sale.staff_name || "-"}</td>
+                    <td className="align-middle">{sale.sale_category || "-"}</td>
+                    <td className="align-middle" style={{ maxWidth: '200px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
+                </tr>
+            );
+        })
     ) : (
         <tr>
             <td colSpan={12} className="text-center text-muted py-5">

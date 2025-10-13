@@ -19,7 +19,8 @@ def get_all_product_sells(store_id=None):
                 st.store_name as store_name, ps.product_id,
                 COALESCE(p.name, ps.product_name) as product_name,
                 ps.quantity, ps.unit_price, ps.discount_amount, ps.final_price,
-                ps.payment_method, sf.name as staff_name, ps.sale_category, ps.date, ps.note
+                ps.payment_method, sf.name as staff_name, ps.sale_category, ps.date, ps.note,
+                ps.order_reference
             FROM product_sell ps
             LEFT JOIN member m ON ps.member_id = m.member_id
             LEFT JOIN store st ON ps.store_id = st.store_id
@@ -83,11 +84,11 @@ def insert_product_sell(data: dict):
                 INSERT INTO product_sell (
                     member_id, staff_id, store_id, product_id, product_name, date, quantity,
                     unit_price, discount_amount, final_price, payment_method,
-                    sale_category, note
+                    sale_category, note, order_reference
                 ) VALUES (
                     %(member_id)s, %(staff_id)s, %(store_id)s, %(product_id)s, %(product_name)s, %(date)s, %(quantity)s,
                     %(unit_price)s, %(discount_amount)s, %(final_price)s, %(payment_method)s,
-                    %(sale_category)s, %(note)s
+                    %(sale_category)s, %(note)s, %(order_reference)s
                 )
             """
             if data.get('bundle_id'):
@@ -113,6 +114,7 @@ def insert_product_sell(data: dict):
                         "payment_method": data.get('payment_method'),
                         "sale_category": data.get('sale_category'),
                         "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
+                        "order_reference": data.get('order_reference'),
                     }
                     cursor.execute(insert_query, bundle_data)
                     conn.commit()
@@ -150,6 +152,7 @@ def insert_product_sell(data: dict):
                         "payment_method": data.get('payment_method'),
                         "sale_category": data.get('sale_category'),
                         "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
+                        "order_reference": data.get('order_reference'),
                     }
                     cursor.execute(insert_query, item_data)
                     update_inventory_quantity(item['item_id'], data['store_id'], -quantity, cursor)
@@ -162,6 +165,7 @@ def insert_product_sell(data: dict):
                 if not name_row or name_row.get('status') != 'PUBLISHED':
                     raise ValueError("品項已下架")
                 data['product_name'] = name_row.get('name')
+                data['order_reference'] = data.get('order_reference')
                 cursor.execute(insert_query, data)
                 quantity_change = -int(data['quantity'])
                 update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
@@ -679,7 +683,8 @@ def export_product_sells(store_id=None):
                 m.name as member_name, ps.store_id,
                 st.store_name, ps.product_id, COALESCE(p.name, ps.product_name) as product_name, ps.quantity,
                 ps.unit_price, ps.discount_amount, ps.final_price, ps.payment_method,
-                sf.name as staff_name, ps.sale_category, DATE_FORMAT(ps.date, '%%Y-%%m-%%d') as date, ps.note
+                sf.name as staff_name, ps.sale_category, DATE_FORMAT(ps.date, '%%Y-%%m-%%d') as date, ps.note,
+                ps.order_reference
             FROM product_sell ps
             LEFT JOIN member m ON ps.member_id = m.member_id
             LEFT JOIN store st ON ps.store_id = st.store_id
@@ -717,7 +722,8 @@ def search_product_sells(keyword, store_id=None):
                 m.name as member_name, ps.store_id,
                 st.store_name, ps.product_id, COALESCE(p.name, ps.product_name) as product_name, ps.quantity,
                 ps.unit_price, ps.discount_amount, ps.final_price, ps.payment_method,
-                sf.name as staff_name, ps.sale_category, DATE_FORMAT(ps.date, '%%Y-%%m-%%d') as date, ps.note
+                sf.name as staff_name, ps.sale_category, DATE_FORMAT(ps.date, '%%Y-%%m-%%d') as date, ps.note,
+                ps.order_reference
             FROM product_sell ps
             LEFT JOIN member m ON ps.member_id = m.member_id
             LEFT JOIN store st ON ps.store_id = st.store_id
