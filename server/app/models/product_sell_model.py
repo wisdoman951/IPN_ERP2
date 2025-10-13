@@ -2,6 +2,7 @@
 import pymysql
 import json
 from decimal import Decimal
+from uuid import uuid4
 from app.config import DB_CONFIG
 
 def connect_to_db():
@@ -94,11 +95,19 @@ def insert_product_sell(data: dict):
             if data.get('bundle_id'):
                 bundle_id = data.get('bundle_id')
                 bundle_qty = int(data.get('quantity', 1))
+                bundle_order_reference = data.get('order_reference') or f"bundle-{bundle_id}-{uuid4()}"
                 cursor.execute(
                     "SELECT item_id, quantity FROM product_bundle_items WHERE bundle_id = %s AND item_type = 'Product'",
                     (bundle_id,),
                 )
                 bundle_items = cursor.fetchall()
+                cursor.execute(
+                    "SELECT name FROM product_bundles WHERE bundle_id = %s",
+                    (bundle_id,),
+                )
+                bundle_row = cursor.fetchone() or {}
+                bundle_name = bundle_row.get('name') or data.get('product_name')
+                bundle_components = []
                 if not bundle_items:
                     bundle_data = {
                         "member_id": data.get('member_id'),
@@ -113,8 +122,8 @@ def insert_product_sell(data: dict):
                         "final_price": float(data.get('final_price', 0)),
                         "payment_method": data.get('payment_method'),
                         "sale_category": data.get('sale_category'),
-                        "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
-                        "order_reference": data.get('order_reference'),
+                        "note": f"{data.get('note', '').strip()} [bundle:{bundle_id}]".strip(),
+                        "order_reference": bundle_order_reference,
                     }
                     cursor.execute(insert_query, bundle_data)
                     conn.commit()
@@ -129,15 +138,85 @@ def insert_product_sell(data: dict):
                         raise ValueError("品項已下架")
                     unit_price = Decimal(str(price_row['price'])) if price_row.get('price') is not None else Decimal('0')
                     product_name = price_row.get('name')
-                    quantity = int(item.get('quantity', 0)) * bundle_qty
+                    per_bundle_qty = int(item.get('quantity', 0))
+                    quantity = per_bundle_qty * bundle_qty
                     item_total = unit_price * quantity
-                    item_totals.append((item, unit_price, product_name, quantity, item_total))
+                    item_totals.append((item, unit_price, product_name, quantity, per_bundle_qty, item_total))
                     total_price += item_total
-                discount_total = Decimal(str(data.get('discount_amount') or 0))
+                    bundle_components.append(f"{product_name} x{per_bundle_qty}")
+                provided_final_price = Decimal(str(data.get('final_price') or 0))
+                provided_unit_price = Decimal(str(data.get('unit_price') or 0))
+                provided_discount = Decimal(str(data.get('discount_amount') or 0))
 
-                for item, unit_price, product_name, quantity, item_total in item_totals:
-                    discount_amount = (item_total / total_price * discount_total) if total_price > 0 else Decimal('0')
-                    final_price = item_total - discount_amount
+                if provided_final_price <= 0 and provided_unit_price > 0:
+                    provided_final_price = provided_unit_price
+
+                if total_price > 0:
+                    if provided_final_price > 0:
+                        target_total = provided_final_price
+                        discount_total = total_price - target_total
+                    else:
+                        discount_total = provided_discount
+                        target_total = total_price - discount_total
+                        if target_total <= 0:
+                            target_total = total_price
+                            discount_total = Decimal('0')
+                else:
+                    target_total = provided_final_price if provided_final_price > 0 else Decimal('0')
+                    discount_total = Decimal('0')
+
+                bundle_note_parts = []
+                base_note = (data.get('note') or '').strip()
+                if base_note:
+                    bundle_note_parts.append(base_note)
+                if bundle_components:
+                    bundle_note_parts.append(', '.join(bundle_components))
+                bundle_note = ' '.join(part for part in bundle_note_parts if part).strip()
+
+                bundle_metadata = {
+                    "id": bundle_id,
+                    "qty": bundle_qty,
+                    "total": float(target_total) if target_total else 0,
+                    "name": bundle_name,
+                }
+                bundle_metadata_tag = f"[[bundle_meta {json.dumps(bundle_metadata, ensure_ascii=False)}]]"
+                bundle_note_with_tag = (
+                    ' '.join(
+                        part
+                        for part in [bundle_note, bundle_metadata_tag, f"[bundle:{bundle_id}]"]
+                        if part
+                    ).strip()
+                )
+
+                distributed_rows = []
+                if total_price > 0 and item_totals:
+                    running_discount = Decimal('0')
+                    running_final = Decimal('0')
+                    for index, item_data in enumerate(item_totals):
+                        item_total = item_data[5]
+                        if index == len(item_totals) - 1:
+                            discount_amount = (discount_total - running_discount).quantize(Decimal('0.01'))
+                            final_price = (target_total - running_final).quantize(Decimal('0.01'))
+                        else:
+                            ratio = (item_total / total_price) if total_price > 0 else Decimal('0')
+                            discount_amount = (discount_total * ratio).quantize(Decimal('0.01'))
+                            final_price = (item_total - discount_amount).quantize(Decimal('0.01'))
+                            running_discount += discount_amount
+                            running_final += final_price
+                        distributed_rows.append((discount_amount, final_price))
+                    if len(distributed_rows) == len(item_totals):
+                        discount_total = sum(row[0] for row in distributed_rows)
+                elif item_totals:
+                    per_item_total = (target_total / len(item_totals)) if item_totals else Decimal('0')
+                    for _ in item_totals:
+                        distributed_rows.append((Decimal('0'), per_item_total))
+
+                for index, (item, unit_price, product_name, quantity, per_bundle_qty, item_total) in enumerate(item_totals):
+                    if distributed_rows and index < len(distributed_rows):
+                        discount_amount, final_price = distributed_rows[index]
+                    else:
+                        discount_amount = (item_total / total_price * discount_total) if total_price > 0 else Decimal('0')
+                        final_price = item_total - discount_amount
                     item_data = {
                         "member_id": data.get('member_id'),
                         "staff_id": data.get('staff_id'),
@@ -151,8 +230,8 @@ def insert_product_sell(data: dict):
                         "final_price": float(final_price),
                         "payment_method": data.get('payment_method'),
                         "sale_category": data.get('sale_category'),
-                        "note": f"{data.get('note', '')} [bundle:{bundle_id}]",
-                        "order_reference": data.get('order_reference'),
+                        "note": bundle_note_with_tag,
+                        "order_reference": bundle_order_reference,
                     }
                     cursor.execute(insert_query, item_data)
                     update_inventory_quantity(item['item_id'], data['store_id'], -quantity, cursor)
