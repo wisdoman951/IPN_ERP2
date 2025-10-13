@@ -102,7 +102,7 @@ def insert_product_sell(data: dict):
                 )
                 bundle_items = cursor.fetchall()
                 cursor.execute(
-                    "SELECT name, bundle_contents FROM product_bundle WHERE bundle_id = %s",
+                    "SELECT name, bundle_contents FROM product_bundles WHERE bundle_id = %s",
                     (bundle_id,),
                 )
                 bundle_row = cursor.fetchone() or {}
