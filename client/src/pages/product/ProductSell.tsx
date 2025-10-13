@@ -37,6 +37,12 @@ type DisplaySale = ProductSellType & {
     bundle_metadata?: BundleMetadata;
 };
 
+type AggregatedChunk = {
+    display: DisplaySale;
+    items: ProductSellType[];
+    metadataList: (BundleMetadata | null)[];
+};
+
 const normalizeBundleText = (text: string | undefined | null) =>
     (text ?? "")
         .replace(/\s+/g, "")
@@ -517,6 +523,182 @@ const ProductSell: React.FC = () => {
         return base;
     };
 
+    const withProductSellIds = (entry: DisplaySale, items: ProductSellType[]): DisplaySale => {
+        const idSet = new Set<number>();
+        (entry.product_sell_ids ?? [])
+            .filter((id): id is number => typeof id === "number" && Number.isFinite(id))
+            .forEach((id) => idSet.add(id));
+        items.forEach((item) => {
+            if (typeof item.product_sell_id === "number" && Number.isFinite(item.product_sell_id)) {
+                idSet.add(item.product_sell_id);
+            }
+        });
+        return { ...entry, product_sell_ids: Array.from(idSet) };
+    };
+
+    const aggregateItemsIntoChunks = (items: ProductSellType[]): AggregatedChunk[] => {
+        if (items.length === 0) {
+            return [];
+        }
+
+        const metadataList = items.map((item) => extractBundleMetadata(item.note));
+        const bundleGroupsMap = new Map<
+            string,
+            { items: ProductSellType[]; metadataList: (BundleMetadata | null)[] }
+        >();
+        const nonBundleItems: ProductSellType[] = [];
+        const nonBundleMetadata: (BundleMetadata | null)[] = [];
+
+        items.forEach((item, index) => {
+            const metadata = metadataList[index];
+            const context = determineBundleContext([item], [metadata]);
+            if (context.isBundleGroup) {
+                const key =
+                    context.bundleId !== null
+                        ? `id:${context.bundleId}`
+                        : metadata?.name
+                        ? `name:${normalizeBundleText(metadata.name)}`
+                        : `product:${normalizeBundleText(item.product_name) || item.product_sell_id}`;
+                const group = bundleGroupsMap.get(key) ?? { items: [], metadataList: [] };
+                group.items.push(item);
+                group.metadataList.push(metadata);
+                bundleGroupsMap.set(key, group);
+            } else {
+                nonBundleItems.push(item);
+                nonBundleMetadata.push(metadata);
+            }
+        });
+
+        const chunks: AggregatedChunk[] = [];
+        bundleGroupsMap.forEach(({ items: bundleItems, metadataList: bundleMetadataList }) => {
+            if (bundleItems.length > 0) {
+                const aggregated = withProductSellIds(
+                    createAggregatedBundleGroup(bundleItems, bundleMetadataList),
+                    bundleItems,
+                );
+                chunks.push({ display: aggregated, items: bundleItems, metadataList: bundleMetadataList });
+            }
+        });
+
+        if (nonBundleItems.length > 0) {
+            const aggregated = withProductSellIds(
+                createAggregatedNonBundleGroup(nonBundleItems),
+                nonBundleItems,
+            );
+            chunks.push({ display: aggregated, items: nonBundleItems, metadataList: nonBundleMetadata });
+        }
+
+        return chunks;
+    };
+
+    const createAggregatedOrderGroup = (
+        items: ProductSellType[],
+        aggregatedChunks: AggregatedChunk[],
+    ): DisplaySale => {
+        if (items.length === 0) {
+            return aggregatedChunks.length > 0
+                ? aggregatedChunks[0].display
+                : ({} as DisplaySale);
+        }
+
+        if (aggregatedChunks.length === 0) {
+            return withProductSellIds({ ...items[0] }, items);
+        }
+
+        if (aggregatedChunks.length === 1) {
+            const [single] = aggregatedChunks;
+            return withProductSellIds(single.display, single.items);
+        }
+
+        const base: DisplaySale = { ...items[0] };
+
+        const idSet = new Set<number>();
+        aggregatedChunks.forEach(({ display, items: chunkItems }) => {
+            const ids =
+                display.product_sell_ids && display.product_sell_ids.length > 0
+                    ? display.product_sell_ids
+                    : chunkItems.map((item) => item.product_sell_id);
+            ids
+                .filter((id): id is number => typeof id === "number" && Number.isFinite(id))
+                .forEach((id) => idSet.add(id));
+        });
+        base.product_sell_ids = Array.from(idSet);
+
+        const totalFinal = aggregatedChunks.reduce(
+            (sum, { display }) => sum + Number(display.final_price ?? display.unit_price ?? 0),
+            0,
+        );
+        base.final_price = Number(totalFinal.toFixed(2));
+
+        const totalQuantity = aggregatedChunks.reduce(
+            (sum, { display }) => sum + (display.quantity || 0),
+            0,
+        );
+        base.quantity = totalQuantity > 0 ? totalQuantity : undefined;
+
+        const nameQuantityMap = new Map<string, number>();
+        aggregatedChunks.forEach(({ display, items: chunkItems, metadataList }) => {
+            const chunkContext = determineBundleContext(chunkItems, metadataList);
+            if (chunkContext.isBundleGroup) {
+                const displayName = display.combined_display_name ?? resolveDisplayNameForSale(display);
+                if (!displayName || displayName === "-") {
+                    return;
+                }
+                const explicitQuantity = metadataList
+                    .map((meta) => (meta && meta.quantity !== undefined ? meta.quantity : undefined))
+                    .find((qty): qty is number => qty !== undefined && Number.isFinite(qty) && qty > 0);
+                const quantity =
+                    explicitQuantity !== undefined
+                        ? explicitQuantity
+                        : display.quantity && display.quantity > 0
+                        ? display.quantity
+                        : 1;
+                nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + quantity);
+            } else {
+                chunkItems.forEach((item) => {
+                    const name = resolveDisplayNameForSale(item);
+                    if (!name || name === "-") {
+                        return;
+                    }
+                    const quantity = item.quantity ?? 0;
+                    nameQuantityMap.set(name, (nameQuantityMap.get(name) ?? 0) + quantity);
+                });
+            }
+        });
+
+        const nameLines = Array.from(nameQuantityMap.entries())
+            .map(([name, qty]) => {
+                if (!name) {
+                    return "";
+                }
+                if (!qty || Math.abs(qty) < 1e-6) {
+                    return name;
+                }
+                const rounded = Math.abs(qty - Math.round(qty)) < 1e-6 ? Math.round(qty) : Number(qty.toFixed(2));
+                return `${name} x${rounded}`;
+            })
+            .filter((line) => line.length > 0);
+        base.combined_display_name = nameLines.length > 0 ? nameLines.join("\n") : undefined;
+
+        const noteSet = new Set<string>();
+        aggregatedChunks.forEach(({ display }) => {
+            const note = display.combined_note ?? resolveNoteForSale(display);
+            if (!note || note === "-") {
+                return;
+            }
+            note
+                .split("\n")
+                .map((line) => line.trim())
+                .filter((line) => line.length > 0)
+                .forEach((line) => noteSet.add(line));
+        });
+        base.combined_note = noteSet.size > 0 ? Array.from(noteSet).join("\n") : undefined;
+
+        base.bundle_metadata = undefined;
+
+        return base;
+    };
+
     const groupedSales = useMemo(() => {
         const orderGrouped = new Map<string, ProductSellType[]>();
         const remainder: ProductSellType[] = [];
@@ -533,52 +715,22 @@ const ProductSell: React.FC = () => {
 
         const aggregatedOrders: DisplaySale[] = [];
         orderGrouped.forEach((items) => {
-            if (items.length === 1) {
-                aggregatedOrders.push(items[0]);
+            const chunks = aggregateItemsIntoChunks(items);
+            if (chunks.length === 0) {
+                aggregatedOrders.push(withProductSellIds({ ...items[0] }, items));
                 return;
             }
 
-            const metadataList = items.map((item) => extractBundleMetadata(item.note));
-            const bundleGroupsMap = new Map<
-                string,
-                { items: ProductSellType[]; metadataList: (BundleMetadata | null)[] }
-            >();
-            const nonBundleItems: ProductSellType[] = [];
-
-            items.forEach((item, index) => {
-                const metadata = metadataList[index];
-                const context = determineBundleContext([item], [metadata]);
-                if (context.isBundleGroup) {
-                    const key =
-                        context.bundleId !== null
-                            ? `id:${context.bundleId}`
-                            : metadata?.name
-                            ? `name:${normalizeBundleText(metadata.name)}`
-                            : `product:${normalizeBundleText(item.product_name) || item.product_sell_id}`;
-                    const group = bundleGroupsMap.get(key) ?? { items: [], metadataList: [] };
-                    group.items.push(item);
-                    group.metadataList.push(metadata);
-                    bundleGroupsMap.set(key, group);
-                } else {
-                    nonBundleItems.push(item);
-                }
-            });
-
-            bundleGroupsMap.forEach(({ items: bundleItems, metadataList: bundleMetadataList }) => {
-                if (bundleItems.length > 0) {
-                    aggregatedOrders.push(createAggregatedBundleGroup(bundleItems, bundleMetadataList));
-                }
-            });
-
-            if (nonBundleItems.length > 0) {
-                aggregatedOrders.push(createAggregatedNonBundleGroup(nonBundleItems));
+            if (chunks.length === 1) {
+                const [single] = chunks;
+                aggregatedOrders.push(withProductSellIds(single.display, single.items));
+                return;
             }
+
+            aggregatedOrders.push(createAggregatedOrderGroup(items, chunks));
         });
 
-        const remainderBundleGroups = new Map<
-            string,
-            { items: ProductSellType[]; metadataList: (BundleMetadata | null)[] }
-        >();
+        const remainderBundleGroups = new Map<string, ProductSellType[]>();
         const remainderSingles: DisplaySale[] = [];
 
         remainder.forEach((sale) => {
@@ -594,18 +746,21 @@ const ProductSell: React.FC = () => {
                     sale.store_id ?? "",
                 ];
                 const key = keyParts.join("-");
-                const group = remainderBundleGroups.get(key) ?? { items: [], metadataList: [] };
-                group.items.push(sale);
-                group.metadataList.push(metadata);
+                const group = remainderBundleGroups.get(key) ?? [];
+                group.push(sale);
                 remainderBundleGroups.set(key, group);
             } else {
-                remainderSingles.push({ ...sale });
+                remainderSingles.push(withProductSellIds({ ...sale }, [sale]));
             }
         });
 
-        const aggregatedRemainderBundles = Array.from(remainderBundleGroups.values()).map(({ items, metadataList }) =>
-            createAggregatedBundleGroup(items, metadataList),
-        );
+        const aggregatedRemainderBundles = Array.from(remainderBundleGroups.values()).flatMap((items) => {
+            const chunks = aggregateItemsIntoChunks(items);
+            if (chunks.length === 0) {
+                return [withProductSellIds({ ...items[0] }, items)];
+            }
+            return chunks.map(({ display, items: chunkItems }) => withProductSellIds(display, chunkItems));
+        });
 
         return [...aggregatedOrders, ...aggregatedRemainderBundles, ...remainderSingles];
     }, [sales, bundleMap]);
