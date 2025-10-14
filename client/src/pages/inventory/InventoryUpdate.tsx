@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { Container, Row, Col, Form, Button } from "react-bootstrap";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
+import { Container, Row, Col, Form, Button, Modal, ListGroup } from "react-bootstrap";
 import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
 import { getAllStaffs, Staff } from "../../services/StaffService";
 import { getCategories, Category } from "../../services/CategoryService";
@@ -8,6 +8,7 @@ import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
 import { getStoreName } from "../../services/AuthUtils";
+import { MemberIdentity } from "../../types/memberIdentity";
 
 const InventoryEntryForm = () => {
   const navigate = useNavigate();
@@ -18,6 +19,7 @@ const InventoryEntryForm = () => {
   const [staffs, setStaffs] = useState<Staff[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [productSearch, setProductSearch] = useState('');
+  const [showProductModal, setShowProductModal] = useState(false);
 
   const [formData, setFormData] = useState({
     product_id: "",
@@ -149,13 +151,117 @@ const InventoryEntryForm = () => {
     [products, formData.product_id]
   );
 
+  const determinePricingIdentity = useCallback((storeName: string | null | undefined): MemberIdentity | null => {
+    if (!storeName) {
+      return null;
+    }
+    const normalized = storeName.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const matchesKeyword = (keywords: string[]) =>
+      keywords.some(keyword => normalized.includes(keyword));
+
+    if (matchesKeyword(["桃園", "桃園店", "桃園門市"])) {
+      return "加盟店";
+    }
+
+    if (matchesKeyword([
+      "台北", "台北店", "台北門市",
+      "台中", "台中店", "台中門市",
+      "澎湖", "澎湖店", "澎湖門市",
+      "總部", "總店"
+    ])) {
+      return "直營店";
+    }
+
+    return null;
+  }, []);
+
+  const pricingIdentity = useMemo(
+    () => determinePricingIdentity(formData.store_name),
+    [determinePricingIdentity, formData.store_name]
+  );
+
+  const resolvePriceForIdentity = useCallback((
+    tiers: Product["price_tiers"],
+    fallback: number | string | undefined | null,
+    identity: MemberIdentity
+  ): number | undefined => {
+    const toNumber = (value: number | string | null | undefined) => {
+      if (value === undefined || value === null || value === "") {
+        return undefined;
+      }
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    };
+
+    if (identity === "一般售價") {
+      const general = toNumber(tiers?.["一般售價"]);
+      if (general !== undefined) {
+        return general;
+      }
+      return toNumber(fallback);
+    }
+
+    const specific = toNumber(tiers?.[identity]);
+    if (specific !== undefined) {
+      return specific;
+    }
+
+    const general = toNumber(tiers?.["一般售價"]);
+    if (general !== undefined) {
+      return general;
+    }
+
+    return toNumber(fallback);
+  }, []);
+
   const purchasePriceDisplay = useMemo(() => {
-    const price = selectedProduct?.purchase_price as number | string | undefined | null;
-    if (price === null || price === undefined) {
+    if (!selectedProduct) {
       return "";
     }
-    return typeof price === "number" ? price.toString() : price;
-  }, [selectedProduct]);
+
+    const toNumber = (value: number | string | null | undefined) => {
+      if (value === undefined || value === null || value === "") {
+        return undefined;
+      }
+      const parsed = Number(value);
+      return Number.isNaN(parsed) ? undefined : parsed;
+    };
+
+    const identityPrice = pricingIdentity
+      ? resolvePriceForIdentity(selectedProduct.price_tiers, selectedProduct.product_price, pricingIdentity)
+      : undefined;
+
+    if (identityPrice !== undefined) {
+      return Number(identityPrice).toLocaleString();
+    }
+
+    const purchase = toNumber(selectedProduct.purchase_price as number | string | null | undefined);
+    if (purchase !== undefined) {
+      return Number(purchase).toLocaleString();
+    }
+
+    const fallback = toNumber(selectedProduct.product_price as number | string | null | undefined);
+    if (fallback !== undefined) {
+      return Number(fallback).toLocaleString();
+    }
+
+    return "";
+  }, [pricingIdentity, resolvePriceForIdentity, selectedProduct]);
+
+  const handleProductSelect = useCallback((product: Product) => {
+    setFormData(prev => ({ ...prev, product_id: String(product.product_id) }));
+    setShowProductModal(false);
+    setProductSearch('');
+  }, []);
+
+  const handleCloseProductModal = useCallback(() => {
+    setShowProductModal(false);
+    setProductSearch('');
+  }, []);
 
   return (
     <>
@@ -165,49 +271,25 @@ const InventoryEntryForm = () => {
         style={{ marginLeft: "200px", paddingRight: "30px", maxWidth: "calc(100% - 220px)" }}
       >
         <Form>
-          {/* 搜尋與品項選擇 */}
           <Row className="mb-3">
-            <Col xs={12} md={6} className="mb-3 mb-md-0">
-              <Form.Group controlId="product_search" className="mb-2">
-                <Form.Label>搜尋品項</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={productSearch}
-                  onChange={e => setProductSearch(e.target.value)}
-                  placeholder="輸入名稱或編號"
-                />
-              </Form.Group>
-            </Col>
-            <Col xs={12} md={6}>
+            <Col xs={12}>
               <Form.Group controlId="product_id">
                 <Form.Label>品項</Form.Label>
-                <Form.Select
-                  name="product_id"
-                  value={formData.product_id}
-                  onChange={handleChange}
-                >
-                  <option value="">-- 選擇品項 --</option>
-                  {grouped.map(g => (
-                    g.items.length > 0 ? (
-                      <optgroup key={g.name} label={g.name}>
-                        {g.items.map(p => (
-                          <option key={p.product_id} value={p.product_id}>
-                            [{p.product_code ?? ""}] {p.product_name}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null
-                  ))}
-                  {ungrouped.length > 0 && (
-                    <optgroup label="未分類">
-                      {ungrouped.map(p => (
-                        <option key={p.product_id} value={p.product_id}>
-                          [{p.product_code ?? ""}] {p.product_name}
-                        </option>
-                      ))}
-                    </optgroup>
-                  )}
-                </Form.Select>
+                <div className="d-flex gap-2">
+                  <Form.Control
+                    type="text"
+                    readOnly
+                    placeholder="請選擇品項"
+                    value={selectedProduct ? `[${selectedProduct.product_code ?? ""}] ${selectedProduct.product_name}` : ""}
+                  />
+                  <Button
+                    variant="info"
+                    className="text-white"
+                    onClick={() => setShowProductModal(true)}
+                  >
+                    選擇品項
+                  </Button>
+                </div>
               </Form.Group>
             </Col>
           </Row>
@@ -394,6 +476,77 @@ const InventoryEntryForm = () => {
 
         </Form>
       </Container>
+
+      <Modal
+        show={showProductModal}
+        onHide={handleCloseProductModal}
+        size="lg"
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>選擇品項</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <Form.Group controlId="product_search_modal" className="mb-3">
+            <Form.Control
+              type="text"
+              value={productSearch}
+              onChange={e => setProductSearch(e.target.value)}
+              placeholder="輸入名稱或編號搜尋"
+            />
+          </Form.Group>
+          <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+            {grouped.filter(g => g.items.length > 0).map(g => (
+              <div key={g.name} className="mb-3">
+                <h6 className="mb-2">{g.name}</h6>
+                <ListGroup>
+                  {g.items.map(item => (
+                    <ListGroup.Item
+                      action
+                      key={item.product_id}
+                      onClick={() => handleProductSelect(item)}
+                    >
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span>[{item.product_code ?? ""}] {item.product_name}</span>
+                        <small className="text-muted">庫存 {item.inventory_quantity}</small>
+                      </div>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              </div>
+            ))}
+
+            {ungrouped.length > 0 && (
+              <div>
+                <h6 className="mb-2">未分類</h6>
+                <ListGroup>
+                  {ungrouped.map(item => (
+                    <ListGroup.Item
+                      action
+                      key={item.product_id}
+                      onClick={() => handleProductSelect(item)}
+                    >
+                      <div className="d-flex justify-content-between align-items-center">
+                        <span>[{item.product_code ?? ""}] {item.product_name}</span>
+                        <small className="text-muted">庫存 {item.inventory_quantity}</small>
+                      </div>
+                    </ListGroup.Item>
+                  ))}
+                </ListGroup>
+              </div>
+            )}
+
+            {filteredProducts.length === 0 && (
+              <div className="text-center text-muted">沒有符合條件的品項</div>
+            )}
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={handleCloseProductModal}>
+            關閉
+          </Button>
+        </Modal.Footer>
+      </Modal>
     </>
   );
 };
