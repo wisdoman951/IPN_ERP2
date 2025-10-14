@@ -43,6 +43,37 @@ const normalizeNumber = (value: unknown): number => {
   return Number.isFinite(parsed) ? parsed : 0;
 };
 
+const computeSaleFinalTotal = (sale: ProductSell): number => {
+  const explicitFinal = normalizeNumber(sale.final_price);
+  if (explicitFinal > 0) {
+    return explicitFinal;
+  }
+
+  const unitPrice = normalizeNumber(sale.unit_price);
+  const quantity = normalizeNumber(sale.quantity);
+  const discount = normalizeNumber(sale.discount_amount);
+  const fallback = unitPrice * quantity;
+  const derived = fallback - discount;
+
+  if (derived > 0) {
+    return derived;
+  }
+
+  return fallback > 0 ? fallback : 0;
+};
+
+const computeSaleOriginalTotal = (sale: ProductSell, finalTotal: number): number => {
+  const unitPrice = normalizeNumber(sale.unit_price);
+  const quantity = normalizeNumber(sale.quantity);
+  if (unitPrice > 0 && quantity > 0) {
+    return unitPrice * quantity;
+  }
+
+  const discount = normalizeNumber(sale.discount_amount);
+  const derived = finalTotal + discount;
+  return derived > 0 ? derived : finalTotal;
+};
+
 const extractBundleMetadata = (note?: string | null): BundleMetadata | null => {
   if (!note) {
     return null;
@@ -202,17 +233,24 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
         ? bundleQuantityCandidate
         : normalizeNumber(group.items[0]?.quantity);
       const bundleQuantity = inferredQuantity > 0 ? inferredQuantity : 1;
-      const totalDiscountForGroup = group.items.reduce((sum, item) => sum + normalizeNumber(item.discount_amount), 0);
-      const totalFinalForGroup = group.items.reduce((sum, item) => {
-        const final = item.final_price !== undefined && item.final_price !== null
-          ? normalizeNumber(item.final_price)
-          : normalizeNumber(item.unit_price) * normalizeNumber(item.quantity);
-        return sum + final;
+      const groupFinalFromMetadata = Number.isFinite(Number(group.metadata.total))
+        ? Number(group.metadata.total)
+        : undefined;
+      const totalFinalForGroup = groupFinalFromMetadata !== undefined
+        ? groupFinalFromMetadata
+        : group.items.reduce((sum, item) => sum + computeSaleFinalTotal(item), 0);
+      const totalOriginalForGroup = group.items.reduce((sum, item) => {
+        const itemFinal = computeSaleFinalTotal(item);
+        return sum + computeSaleOriginalTotal(item, itemFinal);
       }, 0);
-      const pricePerBundle = bundleQuantity > 0
-        ? (totalFinalForGroup + totalDiscountForGroup) / bundleQuantity
-        : (totalFinalForGroup + totalDiscountForGroup);
-      const roundedPrice = Number(pricePerBundle.toFixed(2));
+      const pricePerBundleFinal = bundleQuantity > 0
+        ? totalFinalForGroup / bundleQuantity
+        : totalFinalForGroup;
+      const pricePerBundleOriginal = bundleQuantity > 0
+        ? totalOriginalForGroup / bundleQuantity
+        : totalOriginalForGroup;
+      const roundedFinalPrice = Number(pricePerBundleFinal.toFixed(2));
+      const roundedBasePrice = Number(pricePerBundleOriginal.toFixed(2));
       const contentParts = group.items
         .map(item => {
           const quantity = bundleQuantity > 0
@@ -236,9 +274,9 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
           : undefined,
         name: group.metadata.name || group.cleanNote || sale.product_name || '產品組合',
         content: contentParts.length > 0 ? contentParts.join(', ') : (group.cleanNote || undefined),
-        price: roundedPrice,
+        price: roundedFinalPrice,
         quantity: bundleQuantity,
-        basePrice: roundedPrice,
+        basePrice: roundedBasePrice,
         product_sell_id: linkedIds[0],
         linkedSaleIds: linkedIds.length > 0 ? linkedIds : undefined,
         order_reference: sale.order_reference ?? null,
@@ -246,34 +284,47 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
       return;
     }
 
-    const unitPrice = normalizeNumber(sale.unit_price);
+    const saleFinalTotal = computeSaleFinalTotal(sale);
+    const saleOriginalTotal = computeSaleOriginalTotal(sale, saleFinalTotal);
     const quantity = normalizeNumber(sale.quantity);
+    const resolvedQuantity = quantity > 0 ? quantity : 1;
+    const pricePerUnitFinal = resolvedQuantity > 0
+      ? saleFinalTotal / resolvedQuantity
+      : saleFinalTotal;
+    const pricePerUnitOriginal = resolvedQuantity > 0
+      ? saleOriginalTotal / resolvedQuantity
+      : saleOriginalTotal;
     products.push({
       type: 'product',
       product_id: sale.product_id ?? undefined,
       code: sale.product_code ?? undefined,
       name: sale.product_name || '',
-      price: Number(unitPrice.toFixed(2)),
-      quantity,
-      basePrice: Number(unitPrice.toFixed(2)),
+      price: Number(pricePerUnitFinal.toFixed(2)),
+      quantity: resolvedQuantity,
+      basePrice: Number(pricePerUnitOriginal.toFixed(2)),
       product_sell_id: sale.product_sell_id,
       linkedSaleIds: sale.product_sell_id ? [sale.product_sell_id] : undefined,
       order_reference: sale.order_reference ?? null,
     });
   });
 
-  const originalTotal = products.reduce((sum, product) => sum + (product.price || 0) * (product.quantity || 0), 0);
-  const totalDiscount = saleEntries.reduce((sum, entry) => sum + normalizeNumber(entry.sale.discount_amount), 0);
-  const totalFinal = saleEntries.reduce((sum, entry) => {
-    const sale = entry.sale;
-    if (sale.final_price !== undefined && sale.final_price !== null) {
-      return sum + normalizeNumber(sale.final_price);
-    }
-    return sum + normalizeNumber(sale.unit_price) * normalizeNumber(sale.quantity);
+  const originalTotal = products.reduce((sum, product) => {
+    const base = product.basePrice ?? product.price ?? 0;
+    return sum + base * (product.quantity || 0);
   }, 0);
+  const totalFinal = products.reduce((sum, product) => {
+    return sum + (product.price || 0) * (product.quantity || 0);
+  }, 0);
+  const totalDiscount = originalTotal - totalFinal;
   const cleanedNote = cleanBundleNote(saleEntries[0]?.sale.note ?? '') || (saleEntries[0]?.sale.note ?? '');
 
-  return { products, originalTotal, totalDiscount, totalFinal, cleanedNote };
+  return {
+    products,
+    originalTotal: Number(originalTotal.toFixed(2)),
+    totalDiscount: Number(totalDiscount.toFixed(2)),
+    totalFinal: Number(totalFinal.toFixed(2)),
+    cleanedNote,
+  };
 };
 
 const paymentMethodDisplayMap: { [key: string]: string } = {
@@ -443,7 +494,8 @@ const AddProductSell: React.FC = () => {
       }
       let currentTotalFromProds = 0;
       initialProducts.forEach(p => {
-        currentTotalFromProds += (p.price || 0) * (p.quantity || 0);
+        const base = p.basePrice ?? p.price ?? 0;
+        currentTotalFromProds += base * (p.quantity || 0);
       });
       setProductsOriginalTotal(currentTotalFromProds);
 
@@ -486,7 +538,10 @@ const AddProductSell: React.FC = () => {
   }, [isEditMode, sellId]);
 
   useEffect(() => {
-    const newTotal = selectedProducts.reduce((sum, p) => sum + (p.price || 0) * (p.quantity || 0), 0);
+    const newTotal = selectedProducts.reduce((sum, p) => {
+      const base = p.basePrice ?? p.price ?? 0;
+      return sum + base * (p.quantity || 0);
+    }, 0);
     setProductsOriginalTotal(newTotal);
   }, [selectedProducts]);
 
