@@ -43,6 +43,8 @@ type AggregatedChunk = {
     metadataList: (BundleMetadata | null)[];
 };
 
+const getDisplaySaleRowKey = (sale: DisplaySale) => `${sale.product_sell_id}-${sale.order_reference ?? "single"}`;
+
 const normalizeBundleText = (text: string | undefined | null) =>
     (text ?? "")
         .replace(/\s+/g, "")
@@ -352,6 +354,13 @@ const ProductSell: React.FC = () => {
         // handleExport, // Figma 中沒有此按鈕，暫時移除
         handleCheckboxChange
     } = useProductSell();
+    const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
+
+    useEffect(() => {
+        if (selectedSales.length === 0) {
+            setSelectedRowKeys([]);
+        }
+    }, [selectedSales.length]);
 
     useEffect(() => {
         const loadBundles = async () => {
@@ -776,6 +785,32 @@ const ProductSell: React.FC = () => {
         [groupedSales]
     );
 
+    useEffect(() => {
+        setSelectedRowKeys((prev) => {
+            if (prev.length === 0) {
+                return prev;
+            }
+            const validKeys = new Set(sortedGroupedSales.map(getDisplaySaleRowKey));
+            const filtered = prev.filter((key) => validKeys.has(key));
+            return filtered.length === prev.length ? prev : filtered;
+        });
+    }, [sortedGroupedSales]);
+
+    const selectedSaleIdForEdit = useMemo<number | null>(() => {
+        if (selectedRowKeys.length !== 1) {
+            return null;
+        }
+        const targetKey = selectedRowKeys[0];
+        const targetSale = sortedGroupedSales.find((sale) => getDisplaySaleRowKey(sale) === targetKey);
+        if (!targetSale) {
+            return null;
+        }
+        if (Array.isArray(targetSale.product_sell_ids) && targetSale.product_sell_ids.length > 0) {
+            return targetSale.product_sell_ids[0];
+        }
+        return targetSale.product_sell_id ?? null;
+    }, [selectedRowKeys, sortedGroupedSales]);
+
     const tableHeader = (
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
@@ -806,7 +841,17 @@ const ProductSell: React.FC = () => {
                 ? sale.product_sell_ids
                 : [sale.product_sell_id];
             const isChecked = relatedIds.every((id) => selectedSales.includes(id));
+            const rowKey = getDisplaySaleRowKey(sale);
             const handleRowSelection = (checked: boolean) => {
+                setSelectedRowKeys((prev) => {
+                    if (checked) {
+                        if (prev.includes(rowKey)) {
+                            return prev;
+                        }
+                        return [...prev, rowKey];
+                    }
+                    return prev.filter((key) => key !== rowKey);
+                });
                 relatedIds.forEach((id) => handleCheckboxChange(id, checked));
             };
 
@@ -931,13 +976,13 @@ const ProductSell: React.FC = () => {
                         <Button
                             variant="info" // "修改"按鈕使用更合適的 variant
                             className="text-white px-4" // warning 配 text-dark 可能較好
-                            disabled={loading || selectedSales.length !== 1}
+                            disabled={loading || selectedSaleIdForEdit === null}
                             onClick={() => {
                                 if (!checkPermission()) {
                                     return;
                                 }
-                                if (selectedSales.length === 1) {
-                                    navigate(`/add-product-sell/${selectedSales[0]}`);
+                                if (selectedSaleIdForEdit !== null) {
+                                    navigate(`/add-product-sell/${selectedSaleIdForEdit}`);
                                 }
                             }} // 使用新增頁面進行修改
                         >
