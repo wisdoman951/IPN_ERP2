@@ -189,9 +189,10 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
   totalDiscount: number;
   totalFinal: number;
   cleanedNote: string;
+  hasExplicitDiscount: boolean;
 } => {
   if (sales.length === 0) {
-    return { products: [], originalTotal: 0, totalDiscount: 0, totalFinal: 0, cleanedNote: '' };
+    return { products: [], originalTotal: 0, totalDiscount: 0, totalFinal: 0, cleanedNote: '', hasExplicitDiscount: false };
   }
 
   const saleEntries = sales.map(sale => ({
@@ -215,7 +216,7 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
   });
 
   const handledBundleKeys = new Set<string>();
-  const products: SelectedProduct[] = [];
+  const builtProducts: SelectedProduct[] = [];
 
   saleEntries.forEach(({ sale, metadata, cleanNote }) => {
     if (metadata) {
@@ -267,7 +268,7 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
         .map(item => item.product_sell_id)
         .filter((id): id is number => typeof id === 'number');
 
-      products.push({
+      builtProducts.push({
         type: 'bundle',
         bundle_id: typeof group.metadata.id === 'number' && Number.isFinite(group.metadata.id)
           ? group.metadata.id
@@ -294,7 +295,7 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
     const pricePerUnitOriginal = resolvedQuantity > 0
       ? saleOriginalTotal / resolvedQuantity
       : saleOriginalTotal;
-    products.push({
+    builtProducts.push({
       type: 'product',
       product_id: sale.product_id ?? undefined,
       code: sale.product_code ?? undefined,
@@ -308,22 +309,37 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
     });
   });
 
+  const totalFinal = builtProducts.reduce((sum, product) => {
+    return sum + (product.price || 0) * (product.quantity || 0);
+  }, 0);
+  const explicitDiscountTotal = saleEntries.reduce((sum, { sale }) => {
+    const discountAmount = normalizeNumber(sale.discount_amount);
+    return sum + (discountAmount > 0 ? discountAmount : 0);
+  }, 0);
+  const hasExplicitDiscount = explicitDiscountTotal > 0;
+  const products = hasExplicitDiscount
+    ? builtProducts
+    : builtProducts.map(product => ({
+      ...product,
+      basePrice: product.price,
+    }));
   const originalTotal = products.reduce((sum, product) => {
     const base = product.basePrice ?? product.price ?? 0;
     return sum + base * (product.quantity || 0);
   }, 0);
-  const totalFinal = products.reduce((sum, product) => {
-    return sum + (product.price || 0) * (product.quantity || 0);
-  }, 0);
-  const totalDiscount = originalTotal - totalFinal;
+  const derivedDiscount = originalTotal - totalFinal;
+  const resolvedDiscount = hasExplicitDiscount
+    ? explicitDiscountTotal
+    : (derivedDiscount > 0 ? derivedDiscount : 0);
   const cleanedNote = cleanBundleNote(saleEntries[0]?.sale.note ?? '') || (saleEntries[0]?.sale.note ?? '');
 
   return {
     products,
     originalTotal: Number(originalTotal.toFixed(2)),
-    totalDiscount: Number(totalDiscount.toFixed(2)),
+    totalDiscount: Number(resolvedDiscount.toFixed(2)),
     totalFinal: Number(totalFinal.toFixed(2)),
     cleanedNote,
+    hasExplicitDiscount,
   };
 };
 
@@ -439,11 +455,12 @@ const AddProductSell: React.FC = () => {
             totalDiscount,
             totalFinal,
             cleanedNote,
+            hasExplicitDiscount,
           } = transformSalesToSelectedProducts(relatedSales);
 
           setSelectedProducts(products);
           setProductsOriginalTotal(Number(originalTotal.toFixed(2)));
-          setOrderDiscountAmount(Number(totalDiscount.toFixed(2)));
+          setOrderDiscountAmount(hasExplicitDiscount ? Number(totalDiscount.toFixed(2)) : 0);
           setFinalPayableAmount(Number(totalFinal.toFixed(2)));
 
           setMemberCode(saleData.member_code || "");
