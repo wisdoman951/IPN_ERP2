@@ -2,11 +2,12 @@ from flask import Blueprint, request, jsonify, send_file
 import pandas as pd
 import io
 from app.models.product_sell_model import (
-    get_all_product_sells, 
-    search_product_sells, 
+    get_all_product_sells,
+    search_product_sells,
     get_product_sell_by_id,
-    insert_product_sell, 
-    update_product_sell, 
+    get_product_sells_by_order_reference,
+    insert_product_sell,
+    update_product_sell,
     delete_product_sell,
     get_all_products_with_inventory,
     search_products_with_inventory,
@@ -40,7 +41,7 @@ def get_sale_detail(sale_id):
         sale = get_product_sell_by_id(sale_id)
         if not sale:
             return jsonify({"error": "找不到產品銷售記錄"}), 404
-        
+
         user = get_user_from_token(request)
         user_store_id = user.get('store_id')
         user_permission = user.get('permission')
@@ -48,8 +49,31 @@ def get_sale_detail(sale_id):
         # 總店(admin)可以查看所有紀錄，分店只能看自己的
         if user_permission != 'admin' and sale.get('store_id') != user_store_id:
             return jsonify({"error": "無權限查看其他商店的記錄"}), 403
-            
+
         return jsonify(sale)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@product_sell_bp.route("/order/<order_reference>", methods=["GET"])
+@auth_required
+def get_sales_by_order_reference(order_reference):
+    """取得同一訂單參考號的所有銷售資料"""
+    try:
+        sales = get_product_sells_by_order_reference(order_reference)
+        if not sales:
+            return jsonify([])
+
+        user = get_user_from_token(request)
+        user_store_id = user.get('store_id')
+        user_permission = user.get('permission')
+
+        if user_permission != 'admin':
+            filtered = [sale for sale in sales if sale.get('store_id') == user_store_id]
+            if not filtered:
+                return jsonify({"error": "無權限查看其他商店的記錄"}), 403
+            sales = filtered
+
+        return jsonify(sales)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

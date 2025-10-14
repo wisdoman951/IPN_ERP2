@@ -122,6 +122,11 @@ export const getProductSellById = async (saleId: number): Promise<ProductSell> =
   return response.data;
 };
 
+export const getProductSellsByOrderReference = async (orderReference: string): Promise<ProductSell[]> => {
+  const response = await axios.get(`${API_URL}/order/${encodeURIComponent(orderReference)}`, getAuthHeaders());
+  return response.data as ProductSell[];
+};
+
 // 更新產品銷售記錄
 export const updateProductSell = async (saleId: number, data: ProductSellData) => {
   return axios.put(`${API_URL}/update/${saleId}`, data, getAuthHeaders());

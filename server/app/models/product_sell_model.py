@@ -71,6 +71,28 @@ def get_product_sell_by_id(sell_id: int):
     conn.close()
     return result
 
+def get_product_sells_by_order_reference(order_reference: str):
+    """根據訂單參考號取得同筆銷售的所有項目"""
+    conn = connect_to_db()
+    with conn.cursor() as cursor:
+        query = """
+            SELECT
+                ps.*, m.member_code AS member_code, m.name AS member_name,
+                st.store_name, p.code AS product_code,
+                COALESCE(p.name, ps.product_name) AS product_name, sf.name AS staff_name
+            FROM product_sell ps
+            LEFT JOIN member m ON ps.member_id = m.member_id
+            LEFT JOIN store st ON ps.store_id = st.store_id
+            LEFT JOIN product p ON ps.product_id = p.product_id
+            LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
+            WHERE ps.order_reference = %s
+            ORDER BY ps.product_sell_id ASC
+        """
+        cursor.execute(query, (order_reference,))
+        result = cursor.fetchall()
+    conn.close()
+    return result
+
 def insert_product_sell(data: dict):
     """新增產品銷售紀錄，可處理單品或產品組合"""
     # 若沒有提供 product_id 或 bundle_id，則不進行插入
