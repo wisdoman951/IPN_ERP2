@@ -1148,6 +1148,11 @@ const AddProductSell: React.FC = () => {
                 <Button variant="info" type="button" className="text-white align-self-start px-3" onClick={openProductSelection}>選取</Button>
               </div>
               <Form.Text muted>可複選，跳出新視窗選取。</Form.Text>
+              {isEditMode && (
+                <Alert variant="warning" className="mt-2 mb-0">
+                  銷售資品項無法修改，請重新建立銷售單
+                </Alert>
+              )}
               {formSubmitted && selectedProducts.length === 0 && <div className="text-danger d-block small mt-1">請選擇購買品項</div>}
             </Form.Group>
             <Form.Group className="mb-3">
