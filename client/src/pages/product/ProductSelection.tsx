@@ -489,20 +489,31 @@ const ProductSelection: React.FC = () => {
       return;
     }
 
-    const final = selectedArray.map(item => ({
-      type: item.type,
-      product_id: item.product_id,
-      bundle_id: item.bundle_id,
-      code: item.code,
-      name: item.name || item.content,
-      price: item.price,
-      basePrice: item.basePrice,
-      quantity: Number(item.quantity),
-      inventory_id: item.inventory_id,
-      stock_quantity: item.stock_quantity,
-      content: item.content,
-      price_tiers: item.price_tiers,
-    }));
+    const final = selectedArray.map(item => {
+      const resolveNumeric = (value: unknown): number => {
+        if (value === null || value === undefined || value === '') {
+          return 0;
+        }
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const resolvedPrice = resolveNumeric(item.price ?? item.basePrice);
+
+      return {
+        type: item.type,
+        product_id: item.product_id,
+        bundle_id: item.bundle_id,
+        code: item.code,
+        name: item.name || item.content,
+        price: resolvedPrice,
+        basePrice: resolvedPrice,
+        quantity: Number(item.quantity),
+        inventory_id: item.inventory_id,
+        stock_quantity: item.stock_quantity,
+        content: item.content,
+        price_tiers: item.price_tiers,
+      };
+    });
 
     localStorage.setItem('selectedProducts', JSON.stringify(final));
     const total = final.reduce((sum, i) => sum + (i.price || 0) * (i.quantity || 0), 0);
