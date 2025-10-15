@@ -311,7 +311,10 @@ const transformSalesToSelectedProducts = (sales: ProductSell[]): {
         ? totalOriginalForGroup / bundleQuantity
         : totalOriginalForGroup;
       const roundedFinalPrice = Number(pricePerBundleFinal.toFixed(2));
-      const roundedBasePrice = Number(pricePerBundleOriginal.toFixed(2));
+      const hasMetadataTotal = typeof group.metadata.total === 'number' && Number.isFinite(group.metadata.total);
+      const roundedBasePrice = hasMetadataTotal
+        ? roundedFinalPrice
+        : Number(pricePerBundleOriginal.toFixed(2));
       const contentParts = group.items
         .map(item => {
           const quantity = bundleQuantity > 0
@@ -442,6 +445,10 @@ const paymentMethodValueMap: { [key: string]: string } = Object.fromEntries(
 );
 
 const computeProductOriginalValue = (product: SelectedProduct): number => {
+  const base = product.basePrice ?? product.price ?? 0;
+  const quantity = product.quantity ?? 0;
+  const derivedFromBase = Number((base * quantity).toFixed(2));
+
   if (product.linkedSaleDetails && product.linkedSaleDetails.length > 0) {
     const total = product.linkedSaleDetails.reduce((sum, detail) => {
       const value = Number.isFinite(detail.originalValue)
@@ -450,12 +457,37 @@ const computeProductOriginalValue = (product: SelectedProduct): number => {
       return sum + (Number.isFinite(value) ? value : 0);
     }, 0);
     if (total > 0) {
-      return Number(total.toFixed(2));
+      const roundedLinkedTotal = Number(total.toFixed(2));
+      if (derivedFromBase > 0 && Math.abs(roundedLinkedTotal - derivedFromBase) > 0.01) {
+        return derivedFromBase;
+      }
+      return roundedLinkedTotal;
     }
   }
-  const base = product.basePrice ?? product.price ?? 0;
-  const quantity = product.quantity ?? 0;
-  return Number((base * quantity).toFixed(2));
+
+  return derivedFromBase;
+};
+
+const normalizeSelectedProductEntry = (product: SelectedProduct): SelectedProduct => {
+  const toNumber = (value: unknown): number | undefined => {
+    if (value === null || value === undefined || value === '') {
+      return undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const resolvedPrice = toNumber(product.price) ?? toNumber(product.basePrice) ?? 0;
+  const hasLinkedDetails = Array.isArray(product.linkedSaleDetails) && product.linkedSaleDetails.length > 0;
+  const resolvedBasePrice = hasLinkedDetails
+    ? (toNumber(product.basePrice) ?? resolvedPrice)
+    : resolvedPrice;
+
+  return {
+    ...product,
+    price: resolvedPrice,
+    basePrice: resolvedBasePrice,
+  };
 };
 
 const distributeAmountProportionally = (total: number, weights: number[]): number[] => {
@@ -592,7 +624,7 @@ const AddProductSell: React.FC = () => {
             hasExplicitDiscount,
           } = transformSalesToSelectedProducts(relatedSales);
 
-          setSelectedProducts(products);
+          setSelectedProducts(products.map(normalizeSelectedProductEntry));
           setProductsOriginalTotal(Number(originalTotal.toFixed(2)));
           setOrderDiscountAmount(hasExplicitDiscount ? Number(totalDiscount.toFixed(2)) : 0);
           setFinalPayableAmount(Number(totalFinal.toFixed(2)));
@@ -639,11 +671,12 @@ const AddProductSell: React.FC = () => {
       let initialProducts: SelectedProduct[] = [];
       if (selectedProductsData) {
         try {
-          initialProducts = JSON.parse(selectedProductsData);
-          initialProducts = initialProducts.map(p => ({
-            ...p,
-            basePrice: p.basePrice ?? p.price,
-          }));
+          initialProducts = (JSON.parse(selectedProductsData) as SelectedProduct[]).map(p =>
+            normalizeSelectedProductEntry({
+              ...p,
+              basePrice: p.basePrice ?? p.price,
+            }),
+          );
           setSelectedProducts(initialProducts);
         }
         catch (e) { console.error("解析 selectedProducts 失敗", e); }
@@ -849,29 +882,75 @@ const AddProductSell: React.FC = () => {
               return;
             }
 
-            const detailOriginals = product.linkedSaleDetails.map(detail => {
-              const value = Number.isFinite(detail.originalValue)
+            const detailWeights = product.linkedSaleDetails.map(detail => {
+              const originalCandidate = Number.isFinite(detail.originalValue)
                 ? detail.originalValue
                 : Number((detail.unit_price * detail.quantity).toFixed(2));
-              return Number.isFinite(value) ? value : 0;
+              if (Number.isFinite(originalCandidate) && originalCandidate > 0) {
+                return originalCandidate;
+              }
+              const finalCandidate = Number(normalizeNumber(detail.final_price).toFixed(2));
+              if (finalCandidate > 0) {
+                return finalCandidate;
+              }
+              const quantityWeight = detail.quantity && detail.quantity > 0 ? detail.quantity : 1;
+              return quantityWeight;
             });
-            const detailOriginalTotal = detailOriginals.reduce((sum, value) => sum + value, 0);
-            const detailDiscounts = detailOriginalTotal > 0
-              ? distributeAmountProportionally(productDiscountShare, detailOriginals)
-              : new Array(product.linkedSaleDetails.length).fill(0);
-            const detailFinals = detailOriginals.map((value, detailIndex) => {
-              const discountValue = detailDiscounts[detailIndex] ?? 0;
-              return Number((value - discountValue).toFixed(2));
-            });
-            const detailFinalSum = Number(detailFinals.reduce((sum, value) => sum + value, 0).toFixed(2));
-            const detailDelta = Number((productFinalShare - detailFinalSum).toFixed(2));
-            if (Math.abs(detailDelta) >= 0.01 && detailFinals.length > 0) {
-              const lastDetail = detailFinals.length - 1;
-              detailFinals[lastDetail] = Number((detailFinals[lastDetail] + detailDelta).toFixed(2));
-              detailDiscounts[lastDetail] = Number((detailOriginals[lastDetail] - detailFinals[lastDetail]).toFixed(2));
+            const sanitizedWeights = detailWeights.map(weight => (Number.isFinite(weight) && weight > 0 ? weight : 1));
+            const totalWeight = sanitizedWeights.reduce((sum, weight) => sum + weight, 0);
+            const resolvedWeights = totalWeight > 0 ? sanitizedWeights : sanitizedWeights.map(() => 1);
+
+            const productQuantity = product.quantity && product.quantity > 0 ? product.quantity : 1;
+            const productBaseUnit = product.basePrice ?? product.price ?? 0;
+            const productBaseTotal = Number((productBaseUnit * productQuantity).toFixed(2));
+            const fallbackBaseTotal = Number(product.linkedSaleDetails.reduce((sum, detail) => {
+              const candidate = Number.isFinite(detail.originalValue)
+                ? detail.originalValue
+                : Number((detail.unit_price * detail.quantity).toFixed(2));
+              return sum + (Number.isFinite(candidate) && candidate > 0 ? candidate : 0);
+            }, 0).toFixed(2));
+            const normalizedProductFinalShare = Number(productFinalShare.toFixed(2));
+            const resolvedBaseTotal = productBaseTotal > 0
+              ? productBaseTotal
+              : (fallbackBaseTotal > 0 ? fallbackBaseTotal : normalizedProductFinalShare);
+            const resolvedFinalTotal = normalizedProductFinalShare > 0 ? normalizedProductFinalShare : resolvedBaseTotal;
+
+            const detailBaseTotals = distributeAmountProportionally(resolvedBaseTotal, resolvedWeights);
+            let detailFinalTotals: number[] = [];
+            let detailDiscountTotals: number[] = [];
+
+            if (resolvedFinalTotal >= resolvedBaseTotal) {
+              detailFinalTotals = distributeAmountProportionally(resolvedFinalTotal, resolvedWeights);
+              detailDiscountTotals = new Array(resolvedWeights.length).fill(0);
+            } else {
+              const expectedDiscountTotal = Number((resolvedBaseTotal - resolvedFinalTotal).toFixed(2));
+              detailDiscountTotals = expectedDiscountTotal > 0
+                ? distributeAmountProportionally(expectedDiscountTotal, resolvedWeights)
+                : new Array(resolvedWeights.length).fill(0);
+              detailFinalTotals = detailBaseTotals.map((base, detailIndex) => {
+                const discountShare = detailDiscountTotals[detailIndex] ?? 0;
+                return Number((base - discountShare).toFixed(2));
+              });
+            }
+
+            const detailFinalSum = Number(detailFinalTotals.reduce((sum, value) => sum + value, 0).toFixed(2));
+            if (Math.abs(detailFinalSum - resolvedFinalTotal) >= 0.01 && detailFinalTotals.length > 0) {
+              const lastDetail = detailFinalTotals.length - 1;
+              detailFinalTotals[lastDetail] = Number((detailFinalTotals[lastDetail] + (resolvedFinalTotal - detailFinalSum)).toFixed(2));
+            }
+
+            const detailDiscountSum = Number(detailDiscountTotals.reduce((sum, value) => sum + value, 0).toFixed(2));
+            const expectedDiscountTotal = Math.max(Number((resolvedBaseTotal - resolvedFinalTotal).toFixed(2)), 0);
+            if (Math.abs(detailDiscountSum - expectedDiscountTotal) >= 0.01 && detailDiscountTotals.length > 0) {
+              const lastDetail = detailDiscountTotals.length - 1;
+              const adjustment = expectedDiscountTotal - detailDiscountSum;
+              detailDiscountTotals[lastDetail] = Number((Math.max(detailDiscountTotals[lastDetail] + adjustment, 0)).toFixed(2));
             }
 
             product.linkedSaleDetails.forEach((detail, detailIndex) => {
+              const finalTotal = detailFinalTotals[detailIndex] ?? 0;
+              const quantity = detail.quantity && detail.quantity > 0 ? detail.quantity : 1;
+              const resolvedUnitPrice = quantity > 0 ? Number((finalTotal / quantity).toFixed(2)) : Number(finalTotal.toFixed(2));
               const payload: ProductSellData = {
                 member_id: parsedMemberId,
                 store_id: parsedStoreId,
@@ -883,9 +962,9 @@ const AddProductSell: React.FC = () => {
                 sale_category: saleCategory,
                 quantity: detail.quantity,
                 note: noteWithTags,
-                unit_price: detail.unit_price,
-                discount_amount: Number((detailDiscounts[detailIndex] ?? 0).toFixed(2)),
-                final_price: Number((detailFinals[detailIndex] ?? 0).toFixed(2)),
+                unit_price: resolvedUnitPrice,
+                discount_amount: Number((detailDiscountTotals[detailIndex] ?? 0).toFixed(2)),
+                final_price: Number(finalTotal.toFixed(2)),
                 order_reference: currentOrderReference,
               };
               if (detail.product_id) {
