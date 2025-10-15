@@ -458,6 +458,28 @@ const computeProductOriginalValue = (product: SelectedProduct): number => {
   return Number((base * quantity).toFixed(2));
 };
 
+const normalizeSelectedProductEntry = (product: SelectedProduct): SelectedProduct => {
+  const toNumber = (value: unknown): number | undefined => {
+    if (value === null || value === undefined || value === '') {
+      return undefined;
+    }
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const resolvedPrice = toNumber(product.price) ?? toNumber(product.basePrice) ?? 0;
+  const hasLinkedDetails = Array.isArray(product.linkedSaleDetails) && product.linkedSaleDetails.length > 0;
+  const resolvedBasePrice = hasLinkedDetails
+    ? (toNumber(product.basePrice) ?? resolvedPrice)
+    : resolvedPrice;
+
+  return {
+    ...product,
+    price: resolvedPrice,
+    basePrice: resolvedBasePrice,
+  };
+};
+
 const distributeAmountProportionally = (total: number, weights: number[]): number[] => {
   const normalizedTotal = Number(total.toFixed(2));
   if (weights.length === 0) {
@@ -592,7 +614,7 @@ const AddProductSell: React.FC = () => {
             hasExplicitDiscount,
           } = transformSalesToSelectedProducts(relatedSales);
 
-          setSelectedProducts(products);
+          setSelectedProducts(products.map(normalizeSelectedProductEntry));
           setProductsOriginalTotal(Number(originalTotal.toFixed(2)));
           setOrderDiscountAmount(hasExplicitDiscount ? Number(totalDiscount.toFixed(2)) : 0);
           setFinalPayableAmount(Number(totalFinal.toFixed(2)));
@@ -639,11 +661,12 @@ const AddProductSell: React.FC = () => {
       let initialProducts: SelectedProduct[] = [];
       if (selectedProductsData) {
         try {
-          initialProducts = JSON.parse(selectedProductsData);
-          initialProducts = initialProducts.map(p => ({
-            ...p,
-            basePrice: p.basePrice ?? p.price,
-          }));
+          initialProducts = (JSON.parse(selectedProductsData) as SelectedProduct[]).map(p =>
+            normalizeSelectedProductEntry({
+              ...p,
+              basePrice: p.basePrice ?? p.price,
+            }),
+          );
           setSelectedProducts(initialProducts);
         }
         catch (e) { console.error("解析 selectedProducts 失敗", e); }
