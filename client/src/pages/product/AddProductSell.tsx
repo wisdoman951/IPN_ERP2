@@ -468,29 +468,7 @@ const computeProductOriginalValue = (product: SelectedProduct): number => {
   return derivedFromBase;
 };
 
-const normalizeSelectedProductEntry = (product: SelectedProduct): SelectedProduct => {
-  const toNumber = (value: unknown): number | undefined => {
-    if (value === null || value === undefined || value === '') {
-      return undefined;
-    }
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : undefined;
-  };
-
-  const resolvedPrice = toNumber(product.price) ?? toNumber(product.basePrice) ?? 0;
-  const hasLinkedDetails = Array.isArray(product.linkedSaleDetails) && product.linkedSaleDetails.length > 0;
-  const resolvedBasePrice = hasLinkedDetails
-    ? (toNumber(product.basePrice) ?? resolvedPrice)
-    : resolvedPrice;
-
-  return {
-    ...product,
-    price: resolvedPrice,
-    basePrice: resolvedBasePrice,
-  };
-};
-
-const normalizeSelectedProductEntry = (product: SelectedProduct): SelectedProduct => {
+const normalizeSelectedProduct = (product: SelectedProduct): SelectedProduct => {
   const toNumber = (value: unknown): number | undefined => {
     if (value === null || value === undefined || value === '') {
       return undefined;
@@ -646,7 +624,7 @@ const AddProductSell: React.FC = () => {
             hasExplicitDiscount,
           } = transformSalesToSelectedProducts(relatedSales);
 
-          setSelectedProducts(products.map(normalizeSelectedProductEntry));
+          setSelectedProducts(products.map(normalizeSelectedProduct));
           setProductsOriginalTotal(Number(originalTotal.toFixed(2)));
           setOrderDiscountAmount(hasExplicitDiscount ? Number(totalDiscount.toFixed(2)) : 0);
           setFinalPayableAmount(Number(totalFinal.toFixed(2)));
@@ -694,7 +672,7 @@ const AddProductSell: React.FC = () => {
       if (selectedProductsData) {
         try {
           initialProducts = (JSON.parse(selectedProductsData) as SelectedProduct[]).map(p =>
-            normalizeSelectedProductEntry({
+            normalizeSelectedProduct({
               ...p,
               basePrice: p.basePrice ?? p.price,
             }),
