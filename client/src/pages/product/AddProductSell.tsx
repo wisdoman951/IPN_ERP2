@@ -7,12 +7,23 @@ import MemberColumn from "../../components/MemberColumn";
 import { MemberData } from "../../types/medicalTypes";
 import type { MemberIdentity } from "../../types/memberIdentity";
 import { normalizeMemberIdentity } from "../../utils/memberIdentity";
-import { addProductSell, ProductSellData, getProductSellById, updateProductSell, ProductSell } from "../../services/ProductSellService";
+import { addProductSell, ProductSellData, getProductSellById, getProductSellsByOrderReference, updateProductSell, ProductSell } from "../../services/ProductSellService";
 import { getStoreId } from "../../services/LoginService";
 import { fetchAllStores, Store } from "../../services/StoreService";
 import { getStaffMembers, StaffMember } from "../../services/TherapyDropdownService";
 import { SalesOrderItemData } from "../../services/SalesOrderService";
 import { getUserRole, getStoreName } from "../../utils/authUtils";
+
+interface LinkedSaleDetail {
+  product_sell_id: number;
+  product_id?: number;
+  bundle_id?: number;
+  unit_price: number;
+  quantity: number;
+  discount_amount: number;
+  final_price: number;
+  originalValue: number;
+}
 
 interface SelectedProduct {
   type?: 'product' | 'bundle';
@@ -26,7 +37,396 @@ interface SelectedProduct {
   inventory_id?: number;
   basePrice?: number;
   price_tiers?: Partial<Record<MemberIdentity, number>>;
+  product_sell_id?: number;
+  linkedSaleIds?: number[];
+  linkedSaleDetails?: LinkedSaleDetail[];
+  bundleNoteTags?: string[];
+  originalValue?: number;
+  originalDiscount?: number;
+  originalFinalValue?: number;
+  order_reference?: string | null;
 }
+
+interface BundleMetadata {
+  id?: number;
+  quantity?: number;
+  total?: number;
+  name?: string;
+}
+
+const normalizeNumber = (value: unknown): number => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+};
+
+const computeSaleFinalTotal = (sale: ProductSell): number => {
+  const explicitFinal = normalizeNumber(sale.final_price);
+  if (explicitFinal > 0) {
+    return explicitFinal;
+  }
+
+  const unitPrice = normalizeNumber(sale.unit_price);
+  const quantity = normalizeNumber(sale.quantity);
+  const discount = normalizeNumber(sale.discount_amount);
+  const fallback = unitPrice * quantity;
+  const derived = fallback - discount;
+
+  if (derived > 0) {
+    return derived;
+  }
+
+  return fallback > 0 ? fallback : 0;
+};
+
+const computeSaleOriginalTotal = (sale: ProductSell, finalTotal: number): number => {
+  const unitPrice = normalizeNumber(sale.unit_price);
+  const quantity = normalizeNumber(sale.quantity);
+  const discount = normalizeNumber(sale.discount_amount);
+  const derived = finalTotal + discount;
+  if (unitPrice > 0 && quantity > 0) {
+    const candidateFromUnit = unitPrice * quantity;
+    const candidateFromDiscount = derived > 0 ? derived : finalTotal;
+    if (candidateFromDiscount > 0 && Math.abs(candidateFromUnit - candidateFromDiscount) > 0.5) {
+      return candidateFromDiscount;
+    }
+    return candidateFromUnit;
+  }
+
+  return derived > 0 ? derived : finalTotal;
+};
+
+const extractBundleMetadata = (note?: string | null): BundleMetadata | null => {
+  if (!note) {
+    return null;
+  }
+
+  const metaMatch = note.match(/\[\[bundle_meta\s+({.*?})\]\]/i);
+  if (metaMatch) {
+    try {
+      const parsed = JSON.parse(metaMatch[1]);
+      if (parsed && typeof parsed === 'object') {
+        const metadata: BundleMetadata = {};
+        if (parsed.id !== undefined) {
+          const id = Number(parsed.id);
+          if (Number.isFinite(id)) {
+            metadata.id = id;
+          }
+        }
+        const quantityValue = parsed.qty ?? parsed.quantity;
+        if (quantityValue !== undefined) {
+          const quantity = Number(quantityValue);
+          if (Number.isFinite(quantity)) {
+            metadata.quantity = quantity;
+          }
+        }
+        const totalValue = parsed.total ?? parsed.price;
+        if (totalValue !== undefined) {
+          const total = Number(totalValue);
+          if (Number.isFinite(total)) {
+            metadata.total = total;
+          }
+        }
+        if (typeof parsed.name === 'string' && parsed.name.trim().length > 0) {
+          metadata.name = parsed.name.trim();
+        }
+        if (Object.keys(metadata).length > 0) {
+          return metadata;
+        }
+      }
+    } catch (error) {
+      console.warn('解析 bundle metadata 失敗', error);
+    }
+  }
+
+  const legacyMatch = note.match(/\[bundle:([^\]]+)\]/i);
+  if (!legacyMatch) {
+    return null;
+  }
+
+  const segments = legacyMatch[1].split('|').map(segment => segment.trim());
+  const metadata: BundleMetadata = {};
+  if (segments[0]) {
+    const id = Number(segments[0]);
+    if (Number.isFinite(id)) {
+      metadata.id = id;
+    }
+  }
+  segments.slice(1).forEach(segment => {
+    const [rawKey, rawValue] = segment.split(':');
+    if (!rawKey || rawValue === undefined) {
+      return;
+    }
+    const key = rawKey.trim().toLowerCase();
+    const value = rawValue.trim();
+    if (!value) {
+      return;
+    }
+    if (key === 'qty' || key === 'quantity') {
+      const quantity = Number(value);
+      if (Number.isFinite(quantity)) {
+        metadata.quantity = quantity;
+      }
+    } else if (key === 'total' || key === 'price') {
+      const total = Number(value.replace(/,/g, ''));
+      if (Number.isFinite(total)) {
+        metadata.total = total;
+      }
+    } else if (key === 'name') {
+      metadata.name = value;
+    }
+  });
+
+  return Object.keys(metadata).length > 0 ? metadata : null;
+};
+
+const extractBundleTags = (note?: string | null): string[] => {
+  if (!note) {
+    return [];
+  }
+
+  const tags: string[] = [];
+  const metaMatches = note.match(/\[\[bundle_meta\s+({.*?})\]\]/gi);
+  if (metaMatches) {
+    tags.push(...metaMatches);
+  }
+  const legacyMatches = note.match(/\[bundle:[^\]]+\]/gi);
+  if (legacyMatches) {
+    tags.push(...legacyMatches);
+  }
+  return tags;
+};
+
+const cleanBundleNote = (note?: string | null): string => {
+  if (!note) {
+    return '';
+  }
+  return note
+    .replace(/\[\[bundle_meta\s+({.*?})\]\]/gi, '')
+    .replace(/\[bundle:[^\]]*\]/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const buildBundleGroupKey = (sale: ProductSell, metadata: BundleMetadata, cleanNote: string): string => {
+  const parts = [
+    sale.order_reference ? `order:${sale.order_reference}` : '',
+    metadata.id !== undefined ? `id:${metadata.id}` : '',
+    metadata.name ? `name:${metadata.name}` : '',
+    metadata.quantity !== undefined ? `qty:${metadata.quantity}` : '',
+    cleanNote ? `note:${cleanNote}` : '',
+  ].filter(Boolean);
+  if (parts.length === 0) {
+    parts.push(`sale:${sale.product_sell_id}`);
+  }
+  return parts.join('|');
+};
+
+const transformSalesToSelectedProducts = (sales: ProductSell[]): {
+  products: SelectedProduct[];
+  originalTotal: number;
+  totalDiscount: number;
+  totalFinal: number;
+  cleanedNote: string;
+  hasExplicitDiscount: boolean;
+} => {
+  if (sales.length === 0) {
+    return { products: [], originalTotal: 0, totalDiscount: 0, totalFinal: 0, cleanedNote: '', hasExplicitDiscount: false };
+  }
+
+  const saleEntries = sales.map(sale => ({
+    sale,
+    metadata: extractBundleMetadata(sale.note),
+    cleanNote: cleanBundleNote(sale.note),
+    tags: extractBundleTags(sale.note),
+  }));
+
+  const bundleGroups = new Map<string, { metadata: BundleMetadata; cleanNote: string; tags: string[]; items: ProductSell[] }>();
+  saleEntries.forEach(({ sale, metadata, cleanNote, tags }) => {
+    if (!metadata) {
+      return;
+    }
+    const key = buildBundleGroupKey(sale, metadata, cleanNote);
+    const existing = bundleGroups.get(key);
+    if (existing) {
+      existing.items.push(sale);
+    } else {
+      bundleGroups.set(key, { metadata, cleanNote, tags, items: [sale] });
+    }
+  });
+
+  const handledBundleKeys = new Set<string>();
+  const builtProducts: SelectedProduct[] = [];
+
+  saleEntries.forEach(({ sale, metadata, cleanNote, tags }) => {
+    if (metadata) {
+      const key = buildBundleGroupKey(sale, metadata, cleanNote);
+      if (handledBundleKeys.has(key)) {
+        return;
+      }
+      handledBundleKeys.add(key);
+      const group = bundleGroups.get(key);
+      if (!group) {
+        return;
+      }
+      const bundleQuantityCandidate = group.metadata.quantity;
+      const inferredQuantity = bundleQuantityCandidate && bundleQuantityCandidate > 0
+        ? bundleQuantityCandidate
+        : normalizeNumber(group.items[0]?.quantity);
+      const bundleQuantity = inferredQuantity > 0 ? inferredQuantity : 1;
+      const groupFinalFromMetadata = Number.isFinite(Number(group.metadata.total))
+        ? Number(group.metadata.total)
+        : undefined;
+      const totalFinalForGroup = groupFinalFromMetadata !== undefined
+        ? groupFinalFromMetadata
+        : group.items.reduce((sum, item) => sum + computeSaleFinalTotal(item), 0);
+      const totalOriginalForGroup = group.items.reduce((sum, item) => {
+        const itemFinal = computeSaleFinalTotal(item);
+        return sum + computeSaleOriginalTotal(item, itemFinal);
+      }, 0);
+      const linkedDetails = group.items
+        .filter(item => typeof item.product_sell_id === 'number')
+        .map(item => {
+          const unitPrice = normalizeNumber(item.unit_price);
+          const quantity = normalizeNumber(item.quantity);
+          const originalValue = Number((unitPrice * quantity).toFixed(2));
+          return {
+            product_sell_id: item.product_sell_id!,
+            product_id: item.product_id ?? undefined,
+            bundle_id: item.bundle_id ?? undefined,
+            unit_price: unitPrice,
+            quantity,
+            discount_amount: normalizeNumber(item.discount_amount),
+            final_price: computeSaleFinalTotal(item),
+            originalValue,
+          } as LinkedSaleDetail;
+        });
+      const detailDiscountTotal = linkedDetails.reduce((sum, detail) => {
+        const discount = normalizeNumber(detail.discount_amount);
+        return sum + (discount > 0 ? discount : 0);
+      }, 0);
+      const pricePerBundleFinal = bundleQuantity > 0
+        ? totalFinalForGroup / bundleQuantity
+        : totalFinalForGroup;
+      const pricePerBundleOriginal = bundleQuantity > 0
+        ? totalOriginalForGroup / bundleQuantity
+        : totalOriginalForGroup;
+      const roundedFinalPrice = Number(pricePerBundleFinal.toFixed(2));
+      const roundedBasePrice = Number(pricePerBundleOriginal.toFixed(2));
+      const contentParts = group.items
+        .map(item => {
+          const quantity = bundleQuantity > 0
+            ? normalizeNumber(item.quantity) / bundleQuantity
+            : normalizeNumber(item.quantity);
+          const roundedQuantity = Math.abs(quantity - Math.round(quantity)) < 1e-6
+            ? Math.round(quantity)
+            : Number(quantity.toFixed(2));
+          const name = item.product_name || '';
+          return name ? `${name} x${roundedQuantity}` : '';
+        })
+        .filter(part => part.length > 0);
+      const linkedIds = group.items
+        .map(item => item.product_sell_id)
+        .filter((id): id is number => typeof id === 'number');
+
+      builtProducts.push({
+        type: 'bundle',
+        bundle_id: typeof group.metadata.id === 'number' && Number.isFinite(group.metadata.id)
+          ? group.metadata.id
+          : undefined,
+        name: group.metadata.name || group.cleanNote || sale.product_name || '產品組合',
+        content: contentParts.length > 0 ? contentParts.join(', ') : (group.cleanNote || undefined),
+        price: roundedFinalPrice,
+        quantity: bundleQuantity,
+        basePrice: roundedBasePrice,
+        product_sell_id: linkedIds[0],
+        linkedSaleIds: linkedIds.length > 0 ? linkedIds : undefined,
+        linkedSaleDetails: linkedDetails,
+        bundleNoteTags: group.tags,
+        originalValue: Number(totalOriginalForGroup.toFixed(2)),
+        originalDiscount: Number(detailDiscountTotal.toFixed(2)),
+        originalFinalValue: Number(totalFinalForGroup.toFixed(2)),
+        order_reference: sale.order_reference ?? null,
+      });
+      return;
+    }
+
+    const saleFinalTotal = computeSaleFinalTotal(sale);
+    const saleOriginalTotal = computeSaleOriginalTotal(sale, saleFinalTotal);
+    const quantity = normalizeNumber(sale.quantity);
+    const resolvedQuantity = quantity > 0 ? quantity : 1;
+    const pricePerUnitFinal = resolvedQuantity > 0
+      ? saleFinalTotal / resolvedQuantity
+      : saleFinalTotal;
+    const pricePerUnitOriginal = resolvedQuantity > 0
+      ? saleOriginalTotal / resolvedQuantity
+      : saleOriginalTotal;
+    const detailOriginalValue = Number(saleOriginalTotal.toFixed(2));
+    builtProducts.push({
+      type: 'product',
+      product_id: sale.product_id ?? undefined,
+      code: sale.product_code ?? undefined,
+      name: sale.product_name || '',
+      price: Number(pricePerUnitFinal.toFixed(2)),
+      quantity: resolvedQuantity,
+      basePrice: Number(pricePerUnitOriginal.toFixed(2)),
+      product_sell_id: sale.product_sell_id,
+      linkedSaleIds: sale.product_sell_id ? [sale.product_sell_id] : undefined,
+      linkedSaleDetails: typeof sale.product_sell_id === 'number'
+        ? [{
+          product_sell_id: sale.product_sell_id,
+          product_id: sale.product_id ?? undefined,
+          bundle_id: sale.bundle_id ?? undefined,
+          unit_price: normalizeNumber(sale.unit_price),
+          quantity: resolvedQuantity,
+          discount_amount: normalizeNumber(sale.discount_amount),
+          final_price: saleFinalTotal,
+          originalValue: detailOriginalValue,
+        }]
+        : undefined,
+      bundleNoteTags: extractBundleTags(sale.note),
+      originalValue: detailOriginalValue,
+      originalDiscount: Number(normalizeNumber(sale.discount_amount).toFixed(2)),
+      originalFinalValue: Number(saleFinalTotal.toFixed(2)),
+      order_reference: sale.order_reference ?? null,
+    });
+  });
+
+  const totalFinal = builtProducts.reduce((sum, product) => {
+    return sum + (product.price || 0) * (product.quantity || 0);
+  }, 0);
+  const explicitDiscountTotal = saleEntries.reduce((sum, { sale }) => {
+    const discountAmount = normalizeNumber(sale.discount_amount);
+    return sum + (discountAmount > 0 ? discountAmount : 0);
+  }, 0);
+  const hasExplicitDiscount = explicitDiscountTotal > 0;
+  const products = hasExplicitDiscount
+    ? builtProducts
+    : builtProducts.map(product => ({
+      ...product,
+      basePrice: product.basePrice ?? product.price,
+      originalValue: product.originalValue ?? Number(((product.basePrice ?? product.price ?? 0) * (product.quantity || 0)).toFixed(2)),
+      originalDiscount: 0,
+      originalFinalValue: Number((((product.basePrice ?? product.price ?? 0) * (product.quantity || 0))).toFixed(2)),
+    }));
+  const originalTotal = products.reduce((sum, product) => {
+    const base = product.basePrice ?? product.price ?? 0;
+    return sum + base * (product.quantity || 0);
+  }, 0);
+  const derivedDiscount = originalTotal - totalFinal;
+  const resolvedDiscount = hasExplicitDiscount
+    ? explicitDiscountTotal
+    : (derivedDiscount > 0 ? derivedDiscount : 0);
+  const cleanedNote = cleanBundleNote(saleEntries[0]?.sale.note ?? '') || (saleEntries[0]?.sale.note ?? '');
+
+  return {
+    products,
+    originalTotal: Number(originalTotal.toFixed(2)),
+    totalDiscount: Number(resolvedDiscount.toFixed(2)),
+    totalFinal: Number(totalFinal.toFixed(2)),
+    cleanedNote,
+    hasExplicitDiscount,
+  };
+};
 
 const paymentMethodDisplayMap: { [key: string]: string } = {
   "現金": "Cash",
@@ -40,6 +440,50 @@ const paymentMethodDisplayMap: { [key: string]: string } = {
 const paymentMethodValueMap: { [key: string]: string } = Object.fromEntries(
   Object.entries(paymentMethodDisplayMap).map(([key, value]) => [value, key])
 );
+
+const computeProductOriginalValue = (product: SelectedProduct): number => {
+  if (product.linkedSaleDetails && product.linkedSaleDetails.length > 0) {
+    const total = product.linkedSaleDetails.reduce((sum, detail) => {
+      const value = Number.isFinite(detail.originalValue)
+        ? detail.originalValue
+        : Number((detail.unit_price * detail.quantity).toFixed(2));
+      return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+    if (total > 0) {
+      return Number(total.toFixed(2));
+    }
+  }
+  const base = product.basePrice ?? product.price ?? 0;
+  const quantity = product.quantity ?? 0;
+  return Number((base * quantity).toFixed(2));
+};
+
+const distributeAmountProportionally = (total: number, weights: number[]): number[] => {
+  const normalizedTotal = Number(total.toFixed(2));
+  if (weights.length === 0) {
+    return [];
+  }
+  const sanitizedWeights = weights.map(weight => (Number.isFinite(weight) && weight > 0 ? weight : 0));
+  const weightsSum = sanitizedWeights.reduce((sum, weight) => sum + weight, 0);
+  if (!weightsSum || normalizedTotal === 0) {
+    return new Array(weights.length).fill(0);
+  }
+  const rawShares = sanitizedWeights.map(weight => (weight / weightsSum) * normalizedTotal);
+  const roundedShares = rawShares.map(share => Number(share.toFixed(2)));
+  let remainder = Number((normalizedTotal - roundedShares.reduce((sum, share) => sum + share, 0)).toFixed(2));
+  for (let index = roundedShares.length - 1; Math.abs(remainder) >= 0.01 && index >= 0; index -= 1) {
+    const adjustment = remainder > 0 ? 0.01 : -0.01;
+    roundedShares[index] = Number((roundedShares[index] + adjustment).toFixed(2));
+    remainder = Number((remainder - adjustment).toFixed(2));
+  }
+  return roundedShares;
+};
+
+const buildNoteWithTags = (baseNote: string, tags?: string[]): string => {
+  const trimmedNote = (baseNote || '').trim();
+  const uniqueTags = Array.from(new Set((tags || []).map(tag => tag?.trim()).filter(Boolean)));
+  return [trimmedNote, ...uniqueTags].filter(Boolean).join(' ').trim();
+};
 
 const AddProductSell: React.FC = () => {
   const userRole = getUserRole();
@@ -76,6 +520,11 @@ const AddProductSell: React.FC = () => {
   const [selectedMember, setSelectedMember] = useState<MemberData | null>(null);
   const [memberIdentity, setMemberIdentity] = useState<MemberIdentity | null>(null);
   const [orderReference, setOrderReference] = useState<string | null>(null);
+  const [initialOrderMetrics, setInitialOrderMetrics] = useState<{
+    originalTotal: number;
+    discountTotal: number;
+    finalTotal: number;
+  } | null>(null);
 
   const generateOrderReference = () => {
     const now = new Date();
@@ -131,36 +580,52 @@ const AddProductSell: React.FC = () => {
       if (isEditMode && sellId) {
         try {
           const saleData: ProductSell = await getProductSellById(parseInt(sellId));
-          setMemberCode(saleData.member_code || "");
-          setMemberId(saleData.member_id.toString());
-          setMemberName(saleData.member_name || "");
-          setPurchaseDate(saleData.date ? new Date(saleData.date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0]);
+          const relatedSales = saleData.order_reference
+            ? await getProductSellsByOrderReference(saleData.order_reference)
+            : [saleData];
+          const {
+            products,
+            originalTotal,
+            totalDiscount,
+            totalFinal,
+            cleanedNote,
+            hasExplicitDiscount,
+          } = transformSalesToSelectedProducts(relatedSales);
 
-          const product: SelectedProduct = {
-            type: saleData.bundle_id ? 'bundle' : 'product',
-            product_id: saleData.product_id || undefined,
-            bundle_id: saleData.bundle_id || undefined,
-            code: saleData.product_code || '',
-            name: saleData.product_name || "",
-            price: saleData.unit_price || 0,
-            quantity: saleData.quantity || 0,
-          };
-          setSelectedProducts([product]);
-          const originalTotal = (saleData.unit_price || 0) * (saleData.quantity || 0);
-          setProductsOriginalTotal(originalTotal);
-          setOrderDiscountAmount(saleData.discount_amount || 0);
-          setFinalPayableAmount(saleData.final_price ?? originalTotal - (saleData.discount_amount || 0));
-          setPaymentMethod(paymentMethodValueMap[saleData.payment_method || 'Cash'] || paymentMethodOptions[0]);
+          setSelectedProducts(products);
+          setProductsOriginalTotal(Number(originalTotal.toFixed(2)));
+          setOrderDiscountAmount(hasExplicitDiscount ? Number(totalDiscount.toFixed(2)) : 0);
+          setFinalPayableAmount(Number(totalFinal.toFixed(2)));
+          setInitialOrderMetrics({
+            originalTotal: Number(originalTotal.toFixed(2)),
+            discountTotal: hasExplicitDiscount ? Number(totalDiscount.toFixed(2)) : 0,
+            finalTotal: Number(totalFinal.toFixed(2)),
+          });
+
+          setMemberCode(saleData.member_code || "");
+          setMemberId(saleData.member_id ? saleData.member_id.toString() : "");
+          setMemberName(saleData.member_name || "");
+          setPurchaseDate(
+            saleData.date
+              ? new Date(saleData.date).toISOString().split("T")[0]
+              : new Date().toISOString().split("T")[0]
+          );
+
+          const resolvedPayment = paymentMethodValueMap[saleData.payment_method || 'Cash'] || paymentMethodOptions[0];
+          setPaymentMethod(resolvedPayment);
+          setTransferCode(saleData.transfer_code || "");
+          setCardNumber(saleData.card_number || "");
+
           setSaleCategory(
             saleCategoryOptions.includes(saleData.sale_category || '')
               ? saleData.sale_category!
               : saleCategoryOptions[0]
           );
           setSelectedStaffId(saleData.staff_id ? saleData.staff_id.toString() : '');
-          setNote(saleData.note || '');
+          setNote(cleanedNote);
           if (saleData.store_id) setStoreId(saleData.store_id.toString());
           if (saleData.store_name) setSelectedStore(saleData.store_name);
-          if (saleData.order_reference) setOrderReference(saleData.order_reference);
+          setOrderReference(saleData.order_reference ?? (products[0]?.order_reference ?? null));
         } catch (err) {
           console.error("載入銷售資料失敗：", err);
           setError("載入銷售資料失敗");
@@ -185,7 +650,8 @@ const AddProductSell: React.FC = () => {
       }
       let currentTotalFromProds = 0;
       initialProducts.forEach(p => {
-        currentTotalFromProds += (p.price || 0) * (p.quantity || 0);
+        const base = p.basePrice ?? p.price ?? 0;
+        currentTotalFromProds += base * (p.quantity || 0);
       });
       setProductsOriginalTotal(currentTotalFromProds);
 
@@ -223,12 +689,16 @@ const AddProductSell: React.FC = () => {
         } catch (e) { console.error("解析 productSellFormState 失敗", e); }
       }
       setFinalPayableAmount(currentTotalFromProds - currentDiscAmount);
+      setInitialOrderMetrics(null);
     };
     init();
   }, [isEditMode, sellId]);
 
   useEffect(() => {
-    const newTotal = selectedProducts.reduce((sum, p) => sum + (p.price || 0) * (p.quantity || 0), 0);
+    const newTotal = selectedProducts.reduce((sum, p) => {
+      const base = p.basePrice ?? p.price ?? 0;
+      return sum + base * (p.quantity || 0);
+    }, 0);
     setProductsOriginalTotal(newTotal);
   }, [selectedProducts]);
 
@@ -311,78 +781,181 @@ const AddProductSell: React.FC = () => {
         setOrderReference(currentOrderReference);
       }
       const paymentMethodInEnglish = paymentMethodDisplayMap[paymentMethod] || paymentMethod;
+      const parsedMemberId = parseInt(memberId);
+      const parsedStoreId = parseInt(storeId);
+      const parsedStaffId = selectedStaffId ? parseInt(selectedStaffId) : undefined;
+
+      const productOriginalValues = selectedProducts.map(product => computeProductOriginalValue(product));
+      const totalOriginalValue = Number(productOriginalValues.reduce((sum, value) => sum + value, 0).toFixed(2));
+      const normalizedDiscount = Number(orderDiscountAmount.toFixed(2));
+      const totalFinalValue = Number((totalOriginalValue - normalizedDiscount).toFixed(2));
+
+      const productDiscountAllocations = distributeAmountProportionally(normalizedDiscount, productOriginalValues);
+      const productFinalAllocations = productOriginalValues.map((value, index) => {
+        const discountShare = productDiscountAllocations[index] ?? 0;
+        return Number((value - discountShare).toFixed(2));
+      });
+      const computedFinalSum = Number(productFinalAllocations.reduce((sum, value) => sum + value, 0).toFixed(2));
+      const finalDelta = Number((totalFinalValue - computedFinalSum).toFixed(2));
+      if (Math.abs(finalDelta) >= 0.01 && productFinalAllocations.length > 0) {
+        const lastIndex = productFinalAllocations.length - 1;
+        productFinalAllocations[lastIndex] = Number((productFinalAllocations[lastIndex] + finalDelta).toFixed(2));
+        productDiscountAllocations[lastIndex] = Number((productOriginalValues[lastIndex] - productFinalAllocations[lastIndex]).toFixed(2));
+      }
 
       if (isEditMode && sellId) {
-        const product = selectedProducts[0];
-        let itemFinalPrice = product.price * product.quantity;
-        let itemDiscountAmount = orderDiscountAmount;
-        if (productsOriginalTotal > 0 && orderDiscountAmount > 0) {
-          itemFinalPrice = productsOriginalTotal - orderDiscountAmount;
-        }
+        const hasNewProducts = selectedProducts.some(product => !product.linkedSaleDetails || product.linkedSaleDetails.length === 0);
+        const discountUnchanged = Boolean(
+          initialOrderMetrics &&
+          !hasNewProducts &&
+          Math.abs((initialOrderMetrics.discountTotal ?? 0) - normalizedDiscount) < 0.01 &&
+          Math.abs((initialOrderMetrics.originalTotal ?? 0) - totalOriginalValue) < 0.01
+        );
 
-        const sellData: ProductSellData = {
-          member_id: parseInt(memberId),
-          store_id: parseInt(storeId),
-          staff_id: selectedStaffId ? parseInt(selectedStaffId) : undefined,
-          date: purchaseDate,
-          payment_method: paymentMethodInEnglish,
-          transfer_code: paymentMethod === "轉帳" ? transferCode : undefined,
-          card_number: paymentMethod === "信用卡" ? cardNumber : undefined,
-          sale_category: saleCategory,
-          quantity: product.quantity,
-          note: note,
-          unit_price: product.price,
-          discount_amount: itemDiscountAmount,
-          final_price: itemFinalPrice,
-          order_reference: currentOrderReference,
-        };
+        const updateOperations: Promise<unknown>[] = [];
+        const creationOperations: Promise<unknown>[] = [];
 
-        if (product.product_id) {
-          sellData.product_id = product.product_id;
-        } else if (product.bundle_id) {
-          sellData.bundle_id = product.bundle_id;
-        }
+        selectedProducts.forEach((product, index) => {
+          const noteWithTags = buildNoteWithTags(note, product.bundleNoteTags);
+          const productDiscountShare = productDiscountAllocations[index] ?? 0;
+          const productFinalShare = productFinalAllocations[index] ?? 0;
+          if (product.linkedSaleDetails && product.linkedSaleDetails.length > 0) {
+            if (discountUnchanged) {
+              product.linkedSaleDetails.forEach(detail => {
+                const payload: ProductSellData = {
+                  member_id: parsedMemberId,
+                  store_id: parsedStoreId,
+                  staff_id: parsedStaffId,
+                  date: purchaseDate,
+                  payment_method: paymentMethodInEnglish,
+                  transfer_code: paymentMethod === "轉帳" ? transferCode : undefined,
+                  card_number: paymentMethod === "信用卡" ? cardNumber : undefined,
+                  sale_category: saleCategory,
+                  quantity: detail.quantity,
+                  note: noteWithTags,
+                  unit_price: detail.unit_price,
+                  discount_amount: Number(normalizeNumber(detail.discount_amount).toFixed(2)),
+                  final_price: Number(normalizeNumber(detail.final_price).toFixed(2)),
+                  order_reference: currentOrderReference,
+                };
+                if (detail.product_id) {
+                  payload.product_id = detail.product_id;
+                }
+                if (detail.bundle_id) {
+                  payload.bundle_id = detail.bundle_id;
+                }
+                updateOperations.push(updateProductSell(detail.product_sell_id, payload));
+              });
+              return;
+            }
 
-        await updateProductSell(parseInt(sellId), sellData);
-      } else {
-        for (const product of selectedProducts) {
-          let itemFinalPrice = product.price * product.quantity;
-          let itemDiscountAmount = 0;
-          if (productsOriginalTotal > 0 && orderDiscountAmount > 0 && selectedProducts.length > 0) {
-              const productOriginalValue = product.price * product.quantity;
-              const proportion = productOriginalValue / productsOriginalTotal;
-              itemDiscountAmount = parseFloat((orderDiscountAmount * proportion).toFixed(2));
-              itemFinalPrice = parseFloat((productOriginalValue - itemDiscountAmount).toFixed(2));
-          } else if (productsOriginalTotal === 0 && orderDiscountAmount > 0 && selectedProducts.length === 1 && product.quantity > 0) {
-              itemDiscountAmount = orderDiscountAmount / product.quantity;
-              itemFinalPrice = (product.price * product.quantity) - orderDiscountAmount;
+            const detailOriginals = product.linkedSaleDetails.map(detail => {
+              const value = Number.isFinite(detail.originalValue)
+                ? detail.originalValue
+                : Number((detail.unit_price * detail.quantity).toFixed(2));
+              return Number.isFinite(value) ? value : 0;
+            });
+            const detailOriginalTotal = detailOriginals.reduce((sum, value) => sum + value, 0);
+            const detailDiscounts = detailOriginalTotal > 0
+              ? distributeAmountProportionally(productDiscountShare, detailOriginals)
+              : new Array(product.linkedSaleDetails.length).fill(0);
+            const detailFinals = detailOriginals.map((value, detailIndex) => {
+              const discountValue = detailDiscounts[detailIndex] ?? 0;
+              return Number((value - discountValue).toFixed(2));
+            });
+            const detailFinalSum = Number(detailFinals.reduce((sum, value) => sum + value, 0).toFixed(2));
+            const detailDelta = Number((productFinalShare - detailFinalSum).toFixed(2));
+            if (Math.abs(detailDelta) >= 0.01 && detailFinals.length > 0) {
+              const lastDetail = detailFinals.length - 1;
+              detailFinals[lastDetail] = Number((detailFinals[lastDetail] + detailDelta).toFixed(2));
+              detailDiscounts[lastDetail] = Number((detailOriginals[lastDetail] - detailFinals[lastDetail]).toFixed(2));
+            }
+
+            product.linkedSaleDetails.forEach((detail, detailIndex) => {
+              const payload: ProductSellData = {
+                member_id: parsedMemberId,
+                store_id: parsedStoreId,
+                staff_id: parsedStaffId,
+                date: purchaseDate,
+                payment_method: paymentMethodInEnglish,
+                transfer_code: paymentMethod === "轉帳" ? transferCode : undefined,
+                card_number: paymentMethod === "信用卡" ? cardNumber : undefined,
+                sale_category: saleCategory,
+                quantity: detail.quantity,
+                note: noteWithTags,
+                unit_price: detail.unit_price,
+                discount_amount: Number((detailDiscounts[detailIndex] ?? 0).toFixed(2)),
+                final_price: Number((detailFinals[detailIndex] ?? 0).toFixed(2)),
+                order_reference: currentOrderReference,
+              };
+              if (detail.product_id) {
+                payload.product_id = detail.product_id;
+              }
+              if (detail.bundle_id) {
+                payload.bundle_id = detail.bundle_id;
+              }
+              updateOperations.push(updateProductSell(detail.product_sell_id, payload));
+            });
+          } else {
+            const quantity = product.quantity;
+            const unitBasePrice = product.basePrice ?? product.price ?? 0;
+            const discountAmount = Number((productDiscountShare).toFixed(2));
+            const finalAmount = Number((productFinalShare).toFixed(2));
+            const payload: ProductSellData = {
+              member_id: parsedMemberId,
+              store_id: parsedStoreId,
+              staff_id: parsedStaffId,
+              date: purchaseDate,
+              payment_method: paymentMethodInEnglish,
+              transfer_code: paymentMethod === "轉帳" ? transferCode : undefined,
+              card_number: paymentMethod === "信用卡" ? cardNumber : undefined,
+              sale_category: saleCategory,
+              quantity: quantity,
+              note: note,
+              unit_price: unitBasePrice,
+              discount_amount: discountAmount,
+              final_price: finalAmount,
+              order_reference: currentOrderReference,
+            };
+            if (product.product_id) {
+              payload.product_id = product.product_id;
+            } else if (product.bundle_id) {
+              payload.bundle_id = product.bundle_id;
+            }
+            creationOperations.push(addProductSell(payload));
           }
+        });
 
-          const sellData: ProductSellData = {
-            member_id: parseInt(memberId),
-            store_id: parseInt(storeId),
-            staff_id: selectedStaffId ? parseInt(selectedStaffId) : undefined,
+        await Promise.all([...updateOperations, ...creationOperations]);
+      } else {
+        await Promise.all(selectedProducts.map((product, index) => {
+          const quantity = product.quantity;
+          const unitBasePrice = product.basePrice ?? product.price ?? 0;
+          const discountAmount = Number((productDiscountAllocations[index] ?? 0).toFixed(2));
+          const finalAmount = Number((productFinalAllocations[index] ?? 0).toFixed(2));
+          const payload: ProductSellData = {
+            member_id: parsedMemberId,
+            store_id: parsedStoreId,
+            staff_id: parsedStaffId,
             date: purchaseDate,
             payment_method: paymentMethodInEnglish,
             transfer_code: paymentMethod === "轉帳" ? transferCode : undefined,
             card_number: paymentMethod === "信用卡" ? cardNumber : undefined,
             sale_category: saleCategory,
-            quantity: product.quantity,
+            quantity: quantity,
             note: note,
-            unit_price: product.price,
-            discount_amount: itemDiscountAmount,
-            final_price: itemFinalPrice,
+            unit_price: unitBasePrice,
+            discount_amount: discountAmount,
+            final_price: finalAmount,
             order_reference: currentOrderReference,
           };
-
           if (product.product_id) {
-            sellData.product_id = product.product_id;
+            payload.product_id = product.product_id;
           } else if (product.bundle_id) {
-            sellData.bundle_id = product.bundle_id;
+            payload.bundle_id = product.bundle_id;
           }
-
-          await addProductSell(sellData);
-        }
+          return addProductSell(payload);
+        }));
       }
 
       // 只在送出成功時清除
