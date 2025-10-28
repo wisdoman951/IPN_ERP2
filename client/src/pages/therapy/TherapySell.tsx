@@ -37,6 +37,10 @@ export interface TherapySellRow { // 更改 interface 名稱以避免與組件�
     store_id?: number;
 }
 
+type DisplayTherapySellRow = TherapySellRow & {
+    therapy_sell_ids: number[];
+};
+
 // --- 新增/修改映射表 ---
 // (假設 therapy_sell 表的 payment_method 和 sale_category 的 ENUM 已改為英文)
 const therapyPaymentMethodValueToDisplayMap: { [key: string]: string } = {
@@ -68,6 +72,7 @@ const TherapySell: React.FC = () => {
     const [sales, setSales] = useState<TherapySellRow[]>([]);
     const [searchKeyword, setSearchKeyword] = useState("");
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
+    const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
@@ -212,7 +217,127 @@ const TherapySell: React.FC = () => {
         }
         return sale.Note || "-";
     };
+
+    const cleanBundleTags = (note?: string | null) =>
+        (note ?? "")
+            .replace(/\[\[bundle_meta\s+({.*?})\]\]/gi, "")
+            .replace(/\[bundle:[^\]]*\]/gi, "")
+            .trim();
+
+    const resolvePriceValue = (sale: TherapySellRow): number | undefined => {
+        if (sale.Price !== undefined && sale.Price !== null) {
+            const price = Number(sale.Price);
+            if (Number.isFinite(price)) {
+                return price;
+            }
+        }
+        if (sale.UnitPrice !== undefined && sale.Sessions !== undefined) {
+            const unit = Number(sale.UnitPrice);
+            const sessions = Number(sale.Sessions);
+            if (Number.isFinite(unit) && Number.isFinite(sessions)) {
+                return unit * sessions;
+            }
+        }
+        return undefined;
+    };
+
+    const buildGroupKey = (sale: TherapySellRow) => {
+        const staffKey = sale.Staff_ID ?? sale.StaffName ?? "";
+        const storeKey = sale.store_id ?? sale.store_name ?? "";
+        return [
+            sale.Member_ID ?? "",
+            storeKey ?? "",
+            staffKey ?? "",
+            sale.PurchaseDate ?? "",
+            sale.PaymentMethod ?? "",
+            sale.SaleCategory ?? "",
+            cleanBundleTags(sale.Note)
+        ].join("|");
+    };
     
+
+    const aggregatedSales: DisplayTherapySellRow[] = useMemo(() => {
+        const groupMap = new Map<string, TherapySellRow[]>();
+        sales.forEach((sale) => {
+            const key = buildGroupKey(sale);
+            const existing = groupMap.get(key);
+            if (existing) {
+                existing.push(sale);
+            } else {
+                groupMap.set(key, [sale]);
+            }
+        });
+
+        return Array.from(groupMap.values()).map((items) => {
+            const sortedItems = [...items].sort((a, b) => a.Order_ID - b.Order_ID);
+            const base: DisplayTherapySellRow = {
+                ...sortedItems[0],
+                therapy_sell_ids: sortedItems.map((item) => item.Order_ID),
+            };
+
+            let totalSessions = 0;
+            let aggregatedPrice: number | undefined;
+            const nameQuantityMap = new Map<string, number>();
+            const noteSet = new Set<string>();
+
+            sortedItems.forEach((item) => {
+                const sessions = Number(item.Sessions || 0);
+                totalSessions += sessions;
+
+                const displayName = getDisplayName(item);
+                if (displayName && displayName !== "-") {
+                    nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + sessions);
+                }
+
+                const displayNote = getNote(item);
+                if (displayNote && displayNote !== "-") {
+                    displayNote
+                        .split("\n")
+                        .map((line) => line.trim())
+                        .filter((line) => line.length > 0)
+                        .forEach((line) => noteSet.add(line));
+                }
+
+                const priceValue = resolvePriceValue(item);
+                if (priceValue !== undefined) {
+                    aggregatedPrice = (aggregatedPrice ?? 0) + priceValue;
+                }
+            });
+
+            base.Sessions = totalSessions;
+            if (aggregatedPrice !== undefined) {
+                base.Price = aggregatedPrice;
+            } else {
+                base.Price = undefined;
+            }
+
+            if (nameQuantityMap.size > 0) {
+                const nameLines = Array.from(nameQuantityMap.entries())
+                    .map(([name, qty]) => {
+                        if (!name) {
+                            return "";
+                        }
+                        if (!qty || Math.abs(qty) < 1e-6) {
+                            return name;
+                        }
+                        const rounded = Math.abs(qty - Math.round(qty)) < 1e-6 ? Math.round(qty) : Number(qty.toFixed(2));
+                        return `${name} x${rounded}`;
+                    })
+                    .filter((line) => line.length > 0);
+                if (nameLines.length > 0) {
+                    base.PackageName = nameLines.join("\n");
+                }
+            }
+
+            if (noteSet.size > 0) {
+                base.Note = Array.from(noteSet).join("\n");
+            }
+
+            return base;
+        });
+    }, [sales, bundleMap]);
+
+    const getRowKey = (sale: DisplayTherapySellRow) => sale.therapy_sell_ids.join(":");
 
     const handleDelete = async () => {
         if (selectedItems.length === 0) {
@@ -235,6 +360,7 @@ const TherapySell: React.FC = () => {
                 alert("刪除成功！");
                 fetchSales(); // 重新獲取數據
                 setSelectedItems([]);
+                setSelectedRowKeys([]);
             } catch (error: any) {
                 console.error("刪除療程銷售失敗:", error);
                 const message = error.message || "刪除失敗，請重試";
@@ -248,23 +374,51 @@ const TherapySell: React.FC = () => {
         }
     };
 
-    const handleCheckboxChange = (id: number) => {
-        setSelectedItems(prev => 
-            prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
-        );
+    const handleRowSelection = (rowKey: string, ids: number[], checked: boolean) => {
+        setSelectedRowKeys((prev) => {
+            if (checked) {
+                return prev.includes(rowKey) ? prev : [...prev, rowKey];
+            }
+            return prev.filter((key) => key !== rowKey);
+        });
+
+        setSelectedItems((prev) => {
+            if (checked) {
+                const set = new Set(prev);
+                ids.forEach((id) => set.add(id));
+                return Array.from(set);
+            }
+            return prev.filter((id) => !ids.includes(id));
+        });
     };
 
     // 表格頭部 - 依照 Figma 修改
     const sortedSales = useMemo(
         () =>
             sortByStoreAndMemberCode(
-                sales,
+                aggregatedSales,
                 (sale) => sale.store_name ?? sale.store_id ?? "",
                 (sale) => sale.MemberCode ?? "",
                 (sale) => sale.Order_ID
             ),
-        [sales]
+        [aggregatedSales]
     );
+
+    useEffect(() => {
+        setSelectedRowKeys((prev) => {
+            if (prev.length === 0) {
+                return prev;
+            }
+            const validKeys = new Set(sortedSales.map(getRowKey));
+            const filtered = prev.filter((key) => validKeys.has(key));
+            return filtered.length === prev.length ? prev : filtered;
+        });
+    }, [sortedSales]);
+
+    useEffect(() => {
+        const validIds = new Set(sales.map((sale) => sale.Order_ID));
+        setSelectedItems((prev) => prev.filter((id) => validIds.has(id)));
+    }, [sales]);
 
     const tableHeader = (
         <tr>
@@ -291,35 +445,42 @@ const TherapySell: React.FC = () => {
             </td>
         </tr>
     ) : sortedSales.length > 0 ? (
-        sortedSales.map((sale) => (
-            <tr key={sale.Order_ID}>
-                <td className="text-center align-middle">
-                    <Form.Check
-                        type="checkbox"
-                        checked={selectedItems.includes(sale.Order_ID)}
-                        onChange={() => handleCheckboxChange(sale.Order_ID)}
-                    />
-                </td>
-                <td className="align-middle">{sale.store_name ?? '-'}</td>
-                <td className="align-middle">{sale.MemberCode || "-"}</td>
-                <td className="align-middle">{sale.MemberName || "-"}</td>
-                <td className="align-middle">{formatDateToYYYYMMDD(sale.PurchaseDate) || "-"}</td>
-                <td className="align-middle">{getDisplayName(sale)}</td>
-                <td className="text-center align-middle">{sale.Sessions || "-"}</td>
-                <td className="text-end align-middle">{formatCurrency(sale.Price) || "-"}</td>
-                <td className="align-middle">
-                    {therapyPaymentMethodValueToDisplayMap[sale.PaymentMethod] || sale.PaymentMethod}
-                </td>
-                <td className="align-middle">{sale.StaffName || "-"}</td>
-                <td className="align-middle">
-                    {(() => {
-                        const cat = (sale as any).SaleCategory ?? (sale as any).sale_category;
-                        return therapySaleCategoryValueToDisplayMap[cat] || cat || "-";
-                    })()}
-                </td>
-                <td className="align-middle" style={{ maxWidth: '150px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
-            </tr>
-        ))
+        sortedSales.map((sale) => {
+            const relatedIds = sale.therapy_sell_ids && sale.therapy_sell_ids.length > 0
+                ? sale.therapy_sell_ids
+                : [sale.Order_ID];
+            const rowKey = getRowKey(sale);
+            const isChecked = relatedIds.every((id) => selectedItems.includes(id));
+            return (
+                <tr key={rowKey}>
+                    <td className="text-center align-middle">
+                        <Form.Check
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => handleRowSelection(rowKey, relatedIds, e.target.checked)}
+                        />
+                    </td>
+                    <td className="align-middle">{sale.store_name ?? '-'}</td>
+                    <td className="align-middle">{sale.MemberCode || "-"}</td>
+                    <td className="align-middle">{sale.MemberName || "-"}</td>
+                    <td className="align-middle">{formatDateToYYYYMMDD(sale.PurchaseDate) || "-"}</td>
+                    <td className="align-middle">{getDisplayName(sale)}</td>
+                    <td className="text-center align-middle">{sale.Sessions || "-"}</td>
+                    <td className="text-end align-middle">{formatCurrency(sale.Price) || "-"}</td>
+                    <td className="align-middle">
+                        {therapyPaymentMethodValueToDisplayMap[sale.PaymentMethod] || sale.PaymentMethod}
+                    </td>
+                    <td className="align-middle">{sale.StaffName || "-"}</td>
+                    <td className="align-middle">
+                        {(() => {
+                            const cat = (sale as any).SaleCategory ?? (sale as any).sale_category;
+                            return therapySaleCategoryValueToDisplayMap[cat] || cat || "-";
+                        })()}
+                    </td>
+                    <td className="align-middle" style={{ maxWidth: '150px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
+                </tr>
+            );
+        })
     ) : (
         <tr>
             <td colSpan={12} className="text-center text-muted py-5">尚無資料</td> {/* 更新 colSpan */}
