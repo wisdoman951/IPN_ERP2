@@ -334,17 +334,17 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                 if bundle_id:
                     bundle_qty = int(data_item.get("amount", 1))
                     cursor.execute(
+                        "SELECT name FROM therapy_bundles WHERE bundle_id = %s",
+                        (bundle_id,)
+                    )
+                    bundle_row = cursor.fetchone()
+                    bundle_name = bundle_row.get("name") if bundle_row else None
+                    cursor.execute(
                         "SELECT item_id, quantity FROM therapy_bundle_items WHERE bundle_id = %s",
                         (bundle_id,)
                     )
                     bundle_items = cursor.fetchall()
                     if not bundle_items:
-                        cursor.execute(
-                            "SELECT name FROM therapy_bundles WHERE bundle_id = %s",
-                            (bundle_id,),
-                        )
-                        bundle_row = cursor.fetchone()
-                        bundle_name = bundle_row.get("name") if bundle_row else None
                         empty_bundle_values = {
                             "therapy_id": None,
                             "therapy_name": bundle_name or data_item.get("therapy_name") or data_item.get("therapyName"),
@@ -385,7 +385,11 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                         cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
                         price_row = cursor.fetchone()
                         if not price_row or price_row.get("status") != 'PUBLISHED':
-                            raise ValueError("品項已下架")
+                            bundle_label = bundle_name or str(bundle_id)
+                            item_label = price_row.get("name") if price_row else None
+                            if not item_label:
+                                item_label = str(item_values.get("therapy_id"))
+                            raise ValueError(f"組合{bundle_label}之品項{item_label}已下架")
                         unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
                         item_values["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
                         item_values["discount"] = float(item_values.get("discount") or 0)
@@ -416,7 +420,10 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                 cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (values_dict["therapy_id"],))
                 price_row = cursor.fetchone()
                 if not price_row or price_row.get("status") != 'PUBLISHED':
-                    raise ValueError("品項已下架")
+                    item_label = price_row.get("name") if price_row else None
+                    if not item_label:
+                        item_label = str(values_dict.get("therapy_id"))
+                    raise ValueError(f"品項{item_label}已下架")
                 unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
                 values_dict["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
                 values_dict["discount"] = float(values_dict.get("discount") or 0)
@@ -466,7 +473,8 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
         if conn: conn.rollback()
         tb_str = traceback.format_exc()
         logging.error(f"--- [MODEL] VALUE ERROR in insert_many_therapy_sells ---\n{tb_str}")
-        return {"success": False, "error": f"數值錯誤: {str(ve)}", "traceback": tb_str}
+        error_message = str(ve) or "數值錯誤"
+        return {"success": False, "error": error_message, "traceback": tb_str}
     except Exception as e: # 捕獲所有其他未預期錯誤
         if conn: conn.rollback()
         tb_str = traceback.format_exc()
