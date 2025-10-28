@@ -286,14 +286,13 @@ const AddTherapySell: React.FC = () => {
     try {
       if (therapyPackages.length === 0) {
         setError('請選擇至少一項療程');
-        setLoading(false);
         return false;
       }
       if (isEditMode && therapyPackages.length !== 1) {
         setError('修改模式不支援新增多個療程品項，請使用新增功能');
-        setLoading(false);
         return false;
       }
+
       const storeId = localStorage.getItem('store_id');
       const paymentMethod = paymentMethodDisplayMap[formData.paymentMethod] || formData.paymentMethod;
       const saleCategoryMap: { [key: string]: string } = {
@@ -305,6 +304,37 @@ const AddTherapySell: React.FC = () => {
         '暫借': 'Ticket',
         '票卷': 'Ticket',
       };
+
+      const buildCommonPayload = (pkg: SelectedTherapyPackageUIData, itemDiscount: number, itemFinalPrice: number) => ({
+        memberId: Number(formData.memberId),
+        therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
+        bundle_id: pkg.type === 'bundle' ? pkg.bundle_id : undefined,
+        staffId: Number(formData.staffId),
+        purchaseDate: formData.date,
+        amount: Number(pkg.userSessions),
+        storeId: storeId ? Number(storeId) : undefined,
+        paymentMethod,
+        saleCategory: saleCategoryMap[formData.saleCategory] || formData.saleCategory,
+        transferCode: formData.paymentMethod === '轉帳' ? formData.transferCode : undefined,
+        cardNumber: formData.paymentMethod === '信用卡' ? formData.cardNumber : undefined,
+        discount: itemDiscount,
+        finalPrice: itemFinalPrice,
+        note: formData.note,
+      });
+
+      const resolveErrorMessage = (
+        result: { error?: unknown; message?: unknown } | null | undefined,
+        fallback: string,
+      ) => {
+        if (result?.error && typeof result.error === 'string' && result.error.trim().length > 0) {
+          return result.error;
+        }
+        if (result?.message && typeof result.message === 'string' && result.message.trim().length > 0) {
+          return result.message;
+        }
+        return fallback;
+      };
+
       if (isEditMode && editSale) {
         const pkg = therapyPackages[0];
         const itemTotal = (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0);
@@ -313,23 +343,12 @@ const AddTherapySell: React.FC = () => {
           itemDiscount = parseFloat((formData.discountAmount).toFixed(2));
         }
         const itemFinalPrice = itemTotal - itemDiscount;
-        const payload = {
-          memberId: Number(formData.memberId),
-          therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
-          bundle_id: pkg.type === 'bundle' ? pkg.bundle_id : undefined,
-          staffId: Number(formData.staffId),
-          purchaseDate: formData.date,
-          amount: Number(pkg.userSessions),
-          storeId: storeId ? Number(storeId) : undefined,
-          paymentMethod,
-          saleCategory: saleCategoryMap[formData.saleCategory] || formData.saleCategory,
-          transferCode: formData.paymentMethod === '轉帳' ? formData.transferCode : undefined,
-          cardNumber: formData.paymentMethod === '信用卡' ? formData.cardNumber : undefined,
-          discount: itemDiscount,
-          finalPrice: itemFinalPrice,
-          note: formData.note,
-        };
-        await updateTherapySell(editSale.Order_ID, payload);
+        const payload = buildCommonPayload(pkg, itemDiscount, itemFinalPrice);
+        const updateResult = await updateTherapySell(editSale.Order_ID, payload);
+        if (!updateResult?.success) {
+          setError(resolveErrorMessage(updateResult, '修改失敗，請檢查所有欄位。'));
+          return false;
+        }
       } else {
         const payloads = therapyPackages.map(pkg => {
           const itemTotal = (pkg.TherapyPrice || 0) * (Number(pkg.userSessions) || 0);
@@ -339,31 +358,26 @@ const AddTherapySell: React.FC = () => {
             itemDiscount = parseFloat((formData.discountAmount * proportion).toFixed(2));
           }
           const itemFinalPrice = itemTotal - itemDiscount;
-          return {
-            memberId: Number(formData.memberId),
-            therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
-            bundle_id: pkg.type === 'bundle' ? pkg.bundle_id : undefined,
-            staffId: Number(formData.staffId),
-            purchaseDate: formData.date,
-            amount: Number(pkg.userSessions),
-            storeId: storeId ? Number(storeId) : undefined,
-            paymentMethod,
-            saleCategory: saleCategoryMap[formData.saleCategory] || formData.saleCategory,
-            transferCode: formData.paymentMethod === '轉帳' ? formData.transferCode : undefined,
-            cardNumber: formData.paymentMethod === '信用卡' ? formData.cardNumber : undefined,
-            discount: itemDiscount,
-            finalPrice: itemFinalPrice,
-            note: formData.note,
-          };
+          return buildCommonPayload(pkg, itemDiscount, itemFinalPrice);
         });
-        await addTherapySell(payloads);
+        const createResult = await addTherapySell(payloads);
+        if (!createResult?.success) {
+          setError(resolveErrorMessage(createResult, '新增失敗，請檢查所有欄位。'));
+          return false;
+        }
       }
+
       localStorage.removeItem('addTherapySellFormState');
       localStorage.removeItem('selectedTherapyPackages');
       localStorage.removeItem('selectedTherapyPackagesWithSessions');
       return true;
-    } catch (err) {
-      setError(isEditMode ? '修改失敗，請檢查所有欄位。' : '新增失敗，請檢查所有欄位。');
+    } catch (err: any) {
+      const apiMessage = err?.response?.data?.error || err?.response?.data?.message;
+      const fallback = isEditMode ? '修改失敗，請檢查所有欄位。' : '新增失敗，請檢查所有欄位。';
+      const resolvedError = typeof apiMessage === 'string' && apiMessage.trim().length > 0
+        ? apiMessage
+        : (typeof err?.message === 'string' && err.message.trim().length > 0 ? err.message : fallback);
+      setError(resolvedError);
       console.error(err);
       return false;
     } finally {
