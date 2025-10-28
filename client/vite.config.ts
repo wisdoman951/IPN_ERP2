@@ -16,7 +16,7 @@ server: {
       secure: false
     }
   },
-  allowedHosts: ['25d4-218-35-167-89.ngrok-free.app'],
+  allowedHosts: ['.trycloudflare.com'],
   cors: true
 }
 
