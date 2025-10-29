@@ -30,6 +30,16 @@ interface DropdownItem {
   price?: number;
 }
 
+const renderMultilineText = (text: string) => {
+  const lines = text.split(/\r?\n/);
+  return lines.map((line, index) => (
+    <React.Fragment key={`${line}-${index}`}>
+      {line}
+      {index < lines.length - 1 && <br />}
+    </React.Fragment>
+  ));
+};
+
 const AddTherapySell: React.FC = () => {
   const navigate = useNavigate();
   const userRole = getUserRole();
@@ -435,7 +445,7 @@ const AddTherapySell: React.FC = () => {
               {isEditMode ? '修改療程銷售' : '新增療程銷售'}
             </Card.Header>
             <Card.Body>
-              {error && <Alert variant="danger">{error}</Alert>}
+              {error && <Alert variant="danger">{renderMultilineText(error)}</Alert>}
               <Form onSubmit={handleSubmit}>
                 <Row className="g-4">
                   <Col>
