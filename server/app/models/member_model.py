@@ -42,16 +42,21 @@ def _normalize_identity_type(cursor, identity_type_value: str) -> str:
     if not _check_identity_type_table(cursor):
         return identity_type_value or "一般會員"
 
+    query = [
+        "SELECT identity_type_code",
+        "FROM member_identity_type",
+        "WHERE identity_type_code = %s",
+    ]
+    params = [identity_type_value]
+
+    if IDENTITY_TYPE_NAME_COLUMN_EXISTS:
+        query.append("   OR identity_type_name = %s")
+        params.append(identity_type_value)
+
+    query.append("LIMIT 1")
+
     try:
-        cursor.execute(
-            """
-            SELECT identity_type_code
-            FROM member_identity_type
-            WHERE identity_type_code = %s OR identity_type_name = %s
-            LIMIT 1
-            """,
-            (identity_type_value, identity_type_value),
-        )
+        cursor.execute("\n".join(query), tuple(params))
     except pymysql.err.ProgrammingError:
         return identity_type_value or "一般會員"
     row = cursor.fetchone()
