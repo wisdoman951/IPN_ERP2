@@ -5,11 +5,81 @@ from app.config import DB_CONFIG
 import re
 import traceback
 
+
+IDENTITY_TYPE_TABLE_EXISTS = None
+IDENTITY_TYPE_NAME_COLUMN_EXISTS = None
+
 def connect_to_db():
     """確保返回的資料是字典格式，方便操作"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
 
 # --- 修改後的核心函式 ---
+def _check_identity_type_table(cursor) -> bool:
+    """Return True if the member_identity_type lookup table exists."""
+    global IDENTITY_TYPE_TABLE_EXISTS, IDENTITY_TYPE_NAME_COLUMN_EXISTS
+    if IDENTITY_TYPE_TABLE_EXISTS is None:
+        try:
+            cursor.execute("SHOW TABLES LIKE 'member_identity_type'")
+            IDENTITY_TYPE_TABLE_EXISTS = cursor.fetchone() is not None
+        except Exception:
+            IDENTITY_TYPE_TABLE_EXISTS = False
+
+    if IDENTITY_TYPE_TABLE_EXISTS and IDENTITY_TYPE_NAME_COLUMN_EXISTS is None:
+        try:
+            cursor.execute("SHOW COLUMNS FROM member_identity_type LIKE 'identity_type_name'")
+            IDENTITY_TYPE_NAME_COLUMN_EXISTS = cursor.fetchone() is not None
+        except Exception:
+            IDENTITY_TYPE_NAME_COLUMN_EXISTS = False
+
+    return IDENTITY_TYPE_TABLE_EXISTS
+
+
+def _normalize_identity_type(cursor, identity_type_value: str) -> str:
+    """Resolve the identity type to the correct code used by the database."""
+    if identity_type_value in (None, ""):
+        return identity_type_value
+
+    if not _check_identity_type_table(cursor):
+        return identity_type_value or "一般會員"
+
+    query = [
+        "SELECT identity_type_code",
+        "FROM member_identity_type",
+        "WHERE identity_type_code = %s",
+    ]
+    params = [identity_type_value]
+
+    if IDENTITY_TYPE_NAME_COLUMN_EXISTS:
+        query.append("   OR identity_type_name = %s")
+        params.append(identity_type_value)
+
+    query.append("LIMIT 1")
+
+    try:
+        cursor.execute("\n".join(query), tuple(params))
+    except pymysql.err.ProgrammingError:
+        return identity_type_value or "一般會員"
+    row = cursor.fetchone()
+    if row:
+        return row["identity_type_code"]
+
+    raise ValueError(f"未知的會員身份別: {identity_type_value}")
+
+
+def _get_identity_type_query_parts(cursor):
+    use_identity_table = _check_identity_type_table(cursor)
+    if not use_identity_table:
+        return "m.identity_type", ""
+
+    identity_column = (
+        "COALESCE(mit.identity_type_name, m.identity_type)"
+        if IDENTITY_TYPE_NAME_COLUMN_EXISTS
+        else "m.identity_type"
+    )
+    join_identity_table = " LEFT JOIN member_identity_type mit ON m.identity_type = mit.identity_type_code"
+    return identity_column, join_identity_table
+
+
 def create_member(data, store_id: int):
     """
     新增一位會員到資料庫。
@@ -23,7 +93,8 @@ def create_member(data, store_id: int):
             if blood_type_value == '':
                 blood_type_value = None
 
-            identity_type_value = data.get("identity_type") or "一般會員"
+            identity_type_value = data.get("identity_type") or data.get("identityType") or "一般會員"
+            identity_type_value = _normalize_identity_type(cursor, identity_type_value)
 
             sql = """
                 INSERT INTO member (
@@ -66,11 +137,13 @@ def get_all_members(store_level: str, store_id: int):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            base_sql = """
-                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+            identity_column, join_identity_table = _get_identity_type_query_parts(cursor)
+
+            base_sql = f"""
+                SELECT m.member_id, m.member_code, m.name, {identity_column} AS identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
                        m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
                 FROM member AS m
-                LEFT JOIN store AS s ON m.store_id = s.store_id
+                LEFT JOIN store AS s ON m.store_id = s.store_id{join_identity_table}
             """
             params = []
 
@@ -99,11 +172,13 @@ def search_members(keyword: str, store_level: str, store_id: int):
         with conn.cursor() as cursor:
             like_keyword = f"%{keyword}%"
 
-            base_sql = """
-                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+            identity_column, join_identity_table = _get_identity_type_query_parts(cursor)
+
+            base_sql = f"""
+                SELECT m.member_id, m.member_code, m.name, {identity_column} AS identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
                        m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
                 FROM member AS m
-                LEFT JOIN store AS s ON m.store_id = s.store_id
+                LEFT JOIN store AS s ON m.store_id = s.store_id{join_identity_table}
                 WHERE (m.name LIKE %s OR m.phone LIKE %s OR m.member_code LIKE %s)
             """
             params = [like_keyword, like_keyword, like_keyword]
@@ -178,7 +253,8 @@ def update_member(member_id, data):
             if blood_type_value == '':
                 blood_type_value = None
 
-            identity_type_value = data.get("identity_type") or "一般會員"
+            identity_type_value = data.get("identity_type") or data.get("identityType") or "一般會員"
+            identity_type_value = _normalize_identity_type(cursor, identity_type_value)
 
             cursor.execute("""
                 UPDATE member SET
@@ -199,13 +275,17 @@ def get_member_by_id(member_id: int):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            cursor.execute("""
-                SELECT m.member_id, m.member_code, m.name, m.identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+            identity_column, join_identity_table = _get_identity_type_query_parts(cursor)
+            cursor.execute(
+                f"""
+                SELECT m.member_id, m.member_code, m.name, {identity_column} AS identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
                        m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id, s.store_name
                 FROM member AS m
-                LEFT JOIN store AS s ON m.store_id = s.store_id
+                LEFT JOIN store AS s ON m.store_id = s.store_id{join_identity_table}
                 WHERE m.member_id = %s
-            """, (member_id,))
+            """,
+                (member_id,),
+            )
             result = cursor.fetchone()
         return result
     finally:
@@ -215,12 +295,13 @@ def get_member_by_code(member_code: str):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            identity_column, join_identity_table = _get_identity_type_query_parts(cursor)
             cursor.execute(
-                """
-                SELECT member_id, member_code, name, identity_type, birthday, address, phone, gender, blood_type,
-                       line_id, inferrer_id, occupation, note, store_id
-                FROM member
-                WHERE member_code = %s
+                f"""
+                SELECT m.member_id, m.member_code, m.name, {identity_column} AS identity_type, m.birthday, m.address, m.phone, m.gender, m.blood_type,
+                       m.line_id, m.inferrer_id, m.occupation, m.note, m.store_id
+                FROM member AS m{join_identity_table}
+                WHERE m.member_code = %s
                 """,
                 (member_code,),
             )
