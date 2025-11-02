@@ -67,6 +67,16 @@ const isAdmin = (() => {
 })();
 // --- 結束新增/修改映射表 ---
 
+const renderMultilineText = (text: string) => {
+    const lines = text.split(/\r?\n/);
+    return lines.map((line, index) => (
+        <React.Fragment key={`${line}-${index}`}>
+            {line}
+            {index < lines.length - 1 && <br />}
+        </React.Fragment>
+    ));
+};
+
 const TherapySell: React.FC = () => {
     const navigate = useNavigate();
     const [sales, setSales] = useState<TherapySellRow[]>([]);
@@ -511,7 +521,11 @@ const TherapySell: React.FC = () => {
                 </Row>
             </Container>
 
-            {error && (<Container><div className="alert alert-danger">{error}</div></Container>)}
+            {error && (
+                <Container>
+                    <div className="alert alert-danger">{renderMultilineText(error)}</div>
+                </Container>
+            )}
 
             <Container>
                 <ScrollableTable
