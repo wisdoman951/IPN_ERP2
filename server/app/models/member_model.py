@@ -8,6 +8,7 @@ import traceback
 
 IDENTITY_TYPE_TABLE_EXISTS = None
 IDENTITY_TYPE_NAME_COLUMN_EXISTS = None
+IDENTITY_TYPE_DISPLAY_NAME_COLUMN_EXISTS = None
 
 def connect_to_db():
     """確保返回的資料是字典格式，方便操作"""
@@ -16,7 +17,7 @@ def connect_to_db():
 # --- 修改後的核心函式 ---
 def _check_identity_type_table(cursor) -> bool:
     """Return True if the member_identity_type lookup table exists."""
-    global IDENTITY_TYPE_TABLE_EXISTS, IDENTITY_TYPE_NAME_COLUMN_EXISTS
+    global IDENTITY_TYPE_TABLE_EXISTS, IDENTITY_TYPE_NAME_COLUMN_EXISTS, IDENTITY_TYPE_DISPLAY_NAME_COLUMN_EXISTS
     if IDENTITY_TYPE_TABLE_EXISTS is None:
         try:
             cursor.execute("SHOW TABLES LIKE 'member_identity_type'")
@@ -30,6 +31,13 @@ def _check_identity_type_table(cursor) -> bool:
             IDENTITY_TYPE_NAME_COLUMN_EXISTS = cursor.fetchone() is not None
         except Exception:
             IDENTITY_TYPE_NAME_COLUMN_EXISTS = False
+
+    if IDENTITY_TYPE_TABLE_EXISTS and IDENTITY_TYPE_DISPLAY_NAME_COLUMN_EXISTS is None:
+        try:
+            cursor.execute("SHOW COLUMNS FROM member_identity_type LIKE 'display_name'")
+            IDENTITY_TYPE_DISPLAY_NAME_COLUMN_EXISTS = cursor.fetchone() is not None
+        except Exception:
+            IDENTITY_TYPE_DISPLAY_NAME_COLUMN_EXISTS = False
 
     return IDENTITY_TYPE_TABLE_EXISTS
 
@@ -53,6 +61,10 @@ def _normalize_identity_type(cursor, identity_type_value: str) -> str:
         query.append("   OR identity_type_name = %s")
         params.append(identity_type_value)
 
+    if IDENTITY_TYPE_DISPLAY_NAME_COLUMN_EXISTS:
+        query.append("   OR display_name = %s")
+        params.append(identity_type_value)
+
     query.append("LIMIT 1")
 
     try:
@@ -71,11 +83,12 @@ def _get_identity_type_query_parts(cursor):
     if not use_identity_table:
         return "m.identity_type", ""
 
-    identity_column = (
-        "COALESCE(mit.identity_type_name, m.identity_type)"
-        if IDENTITY_TYPE_NAME_COLUMN_EXISTS
-        else "m.identity_type"
-    )
+    if IDENTITY_TYPE_DISPLAY_NAME_COLUMN_EXISTS:
+        identity_column = "COALESCE(mit.display_name, m.identity_type)"
+    elif IDENTITY_TYPE_NAME_COLUMN_EXISTS:
+        identity_column = "COALESCE(mit.identity_type_name, m.identity_type)"
+    else:
+        identity_column = "m.identity_type"
     join_identity_table = " LEFT JOIN member_identity_type mit ON m.identity_type = mit.identity_type_code"
     return identity_column, join_identity_table
 
