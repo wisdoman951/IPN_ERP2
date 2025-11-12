@@ -61,6 +61,7 @@ export interface AddTherapySellPayload {
   discount?: number;       // 折扣百分比 (針對此療程項目，或整筆訂單的，需與後端協調)
   finalPrice?: number;     // 最終價格
   note?: string;
+  orderGroupKey?: string;
 }
 
 // 用於「獲取療程銷售列表」時，後端返回的單筆資料結構
@@ -84,6 +85,7 @@ export interface TherapySellRow {
     store_name?: string;
     store_id?: number;
     therapy_id?: number;
+    order_group_key?: string;
 }
 
 // 新增並導出 SelectedTherapyPackageUIData
@@ -106,7 +108,7 @@ interface ApiResponse<T> {
 // 獲取所有療程套餐 API
 export const getAllTherapyPackages = async (): Promise<ApiResponse<TherapyPackage[]>> => {
     try {
-        const response = await axios.get(`${API_URL}/packages`); // 使用 API_URL
+        const response = await axios.get(`${API_URL}/packages`, { headers: getAuthHeaders() }); // 使用 API_URL
         
         if (response.data && Array.isArray(response.data)) {
             const formattedData = response.data.map((item: any) => ({
@@ -151,7 +153,7 @@ export const getStaffMembers = async (storeId?: number): Promise<ApiResponse<Sta
             const resolvedStoreId = storeId ?? Number(localStorage.getItem('store_id'));
             params = resolvedStoreId ? { store_id: resolvedStoreId } : undefined;
         }
-        const response = await axios.get(`${API_URL}/staff`, { params });
+        const response = await axios.get(`${API_URL}/staff`, { params, headers: getAuthHeaders() });
 
         if (response.data && Array.isArray(response.data)) {
             const staffData = response.data.map((staff: any) => ({
@@ -182,7 +184,7 @@ export const getStaffMembers = async (storeId?: number): Promise<ApiResponse<Sta
 // 店鋪相關 API
 export const getAllStores = async (): Promise<ApiResponse<Store[]>> => {
     try {
-        const response = await axios.get(`${API_URL}/stores`); // 使用 API_URL
+        const response = await axios.get(`${API_URL}/stores`, { headers: getAuthHeaders() }); // 使用 API_URL
          if (response.data && Array.isArray(response.data)) {
             const formattedData = response.data.map((store: any) => ({
                 store_id: store.store_id, 
@@ -216,7 +218,7 @@ export const getAllTherapySells = async (storeId?: number, forceAll?: boolean): 
         if (!forceAll && !isAdmin && storeId !== undefined) {
             url += `?store_id=${storeId}`;
         }
-        const response = await axios.get(url);
+        const response = await axios.get(url, { headers: getAuthHeaders() });
         if (response.data && response.data.success && Array.isArray(response.data.data)) { // 假設後端返回 {success, data}
             return response.data as ApiResponse<TherapySellRow[]>;
         } else if (Array.isArray(response.data)) { // 如果直接返回陣列
@@ -236,7 +238,7 @@ export const searchTherapySells = async (keyword: string, storeId?: number): Pro
         if (storeId !== undefined) {
             params.store_id = storeId;
         }
-        const response = await axios.get(`${API_URL}/sales/search`, { params });
+        const response = await axios.get(`${API_URL}/sales/search`, { params, headers: getAuthHeaders() });
         if (response.data && response.data.success && Array.isArray(response.data.data)) {
             return response.data as ApiResponse<TherapySellRow[]>;
         } else if (Array.isArray(response.data)) {
@@ -251,10 +253,8 @@ export const searchTherapySells = async (keyword: string, storeId?: number): Pro
 };
 
 export const addTherapySell = async (salesDataList: AddTherapySellPayload[]): Promise<ApiResponse<any>> => {
-    console.log("response裡面到底放啥?",salesDataList);
     try {
-        const response = await axios.post(`${API_URL}/sales`, salesDataList);
-        console.log("response裡面到底放啥?",response);
+        const response = await axios.post(`${API_URL}/sales`, salesDataList, { headers: getAuthHeaders() });
 
         // 優先檢查 response.data 是否存在以及是否為物件
         if (response.data && typeof response.data === 'object') {
@@ -289,7 +289,7 @@ export const addTherapySell = async (salesDataList: AddTherapySellPayload[]): Pr
 };
 export const updateTherapySell = async (saleId: number, data: Partial<AddTherapySellPayload>): Promise<ApiResponse<any>> => { /* ... (保持不變) ... */ 
     try {
-        const response = await axios.put(`${API_URL}/sales/${saleId}`, data);
+        const response = await axios.put(`${API_URL}/sales/${saleId}`, data, { headers: getAuthHeaders() });
         if (response.data && typeof response.data === 'object') {
             return { success: response.data.success !== undefined ? response.data.success : true, data: response.data.data, message: response.data.message, error: response.data.error };
         }
@@ -302,7 +302,7 @@ export const updateTherapySell = async (saleId: number, data: Partial<AddTherapy
 
 export const deleteTherapySell = async (saleId: number): Promise<ApiResponse<any>> => { /* ... (保持不變) ... */
     try {
-        const response = await axios.delete(`${API_URL}/sales/${saleId}`);
+        const response = await axios.delete(`${API_URL}/sales/${saleId}`, { headers: getAuthHeaders() });
         if (response.data && typeof response.data === 'object') {
             return { success: response.data.success !== undefined ? response.data.success : true, data: response.data.data, message: response.data.message, error: response.data.error };
         }
@@ -319,7 +319,8 @@ export const deleteTherapySell = async (saleId: number): Promise<ApiResponse<any
 export const searchTherapyPackages = async (keyword: string) => {
     try {
         const response = await axios.get(`${API_URL}/packages/search`, {
-            params: { keyword }
+            params: { keyword },
+            headers: getAuthHeaders()
         });
         
         // 處理可能的欄位變更
@@ -360,7 +361,8 @@ export const exportTherapySells = async (storeId?: number) => {
         }
         
         const response = await axios.get(url, {
-            responseType: "blob"
+            responseType: "blob",
+            headers: getAuthHeaders()
         });
         return response.data;
     } catch (error) {

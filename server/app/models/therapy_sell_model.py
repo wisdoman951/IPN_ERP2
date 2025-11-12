@@ -5,6 +5,77 @@ from datetime import datetime
 import traceback
 import logging
 import json
+import re
+
+
+ORDER_META_PATTERN = re.compile(r"\[\[order_meta\s+({.*?})\]\]", re.IGNORECASE)
+BUNDLE_META_PATTERN = re.compile(r"\[\[bundle_meta\s+({.*?})\]\]", re.IGNORECASE)
+BUNDLE_TAG_PATTERN = re.compile(r"\[bundle:([^\]]+)\]", re.IGNORECASE)
+
+
+def _safe_float(value):
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _strip_metadata_from_note(note: str | None) -> str:
+    if not note:
+        return ""
+    cleaned = ORDER_META_PATTERN.sub("", note)
+    cleaned = BUNDLE_META_PATTERN.sub("", cleaned)
+    cleaned = BUNDLE_TAG_PATTERN.sub("", cleaned)
+    return cleaned.strip()
+
+
+def _build_note(note: str | None, order_group_key: str | None = None, bundle_id: int | None = None) -> str:
+    base_note = _strip_metadata_from_note(note)
+    parts: list[str] = []
+    if base_note:
+        parts.append(base_note)
+    if order_group_key:
+        try:
+            meta_json = json.dumps({"group": order_group_key}, ensure_ascii=False)
+        except (TypeError, ValueError):
+            meta_json = json.dumps({"group": str(order_group_key)}, ensure_ascii=False)
+        parts.append(f"[[order_meta {meta_json}]]")
+    if bundle_id:
+        parts.append(f"[bundle:{bundle_id}]")
+    return " ".join(part for part in parts if part).strip()
+
+
+def _extract_order_group_key(note: str | None) -> str | None:
+    if not note:
+        return None
+    match = ORDER_META_PATTERN.search(note)
+    if not match:
+        return None
+    try:
+        parsed = json.loads(match.group(1))
+        if isinstance(parsed, dict):
+            group = parsed.get("group")
+            if isinstance(group, str) and group.strip():
+                return group
+    except Exception:
+        return None
+    return None
+
+
+def _extract_bundle_id_from_note(note: str | None) -> int | None:
+    if not note:
+        return None
+    match = BUNDLE_TAG_PATTERN.search(note)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
 def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
@@ -210,7 +281,8 @@ def get_all_therapy_sells(store_id=None):
                     if isinstance(date_obj, datetime):
                         # 將日期格式化為西元年
                         record['PurchaseDate'] = f"{date_obj.year}/{date_obj.month:02d}/{date_obj.day:02d}"
-            
+                record['order_group_key'] = _extract_order_group_key(record.get('note') or record.get('Note'))
+
             return result
     except Exception as e:
         print(f"獲取療程銷售記錄錯誤: {e}")
@@ -278,13 +350,14 @@ def search_therapy_sells(keyword, store_id=None):
                 cursor.execute(query, (like, like, like))
                 
             result = cursor.fetchall()
-            
+
             # 轉換日期格式為西元年
             for record in result:
                 if record['PurchaseDate']:
                     date_obj = record['PurchaseDate']
                     record['PurchaseDate'] = f"{date_obj.year}/{date_obj.month:02d}/{date_obj.day:02d}"
-            
+                record['order_group_key'] = _extract_order_group_key(record.get('note') or record.get('Note'))
+
             return result
     except Exception as e:
         print(f"搜尋療程銷售記錄錯誤: {e}")
@@ -329,6 +402,14 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     logging.error(f"--- [MODEL] {error_msg} ---")
                     raise AttributeError(error_msg)
 
+                order_group_key = (
+                    data_item.get("order_group_key")
+                    or data_item.get("orderGroupKey")
+                    or data_item.get("order_group_id")
+                    or data_item.get("orderGroupId")
+                    or data_item.get("order_reference")
+                )
+
                 # 若為組合 (bundle)，需拆解為多筆療程紀錄
                 bundle_id = data_item.get("bundle_id")
                 if bundle_id:
@@ -357,7 +438,7 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "final_price": float(data_item.get("final_price") or data_item.get("finalPrice") or 0),
                             "payment_method": data_item.get("paymentMethod"),
                             "sale_category": data_item.get("saleCategory"),
-                            "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]"
+                            "note": _build_note(data_item.get("note"), order_group_key, bundle_id)
                         }
                         logging.debug(
                             f"--- [MODEL] Values for SQL for empty bundle {index + 1}: {empty_bundle_values}"
@@ -368,19 +449,22 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             f"--- [MODEL] Empty bundle inserted. ID: {cursor.lastrowid}"
                         )
                         continue
-                    total_qty = sum(item.get('quantity', 0) for item in bundle_items) or 1
+                    processed_items = []
+                    total_amount = 0
+                    base_total_sum = 0.0
+
                     for item in bundle_items:
+                        amount = int(item.get("quantity", 0)) * bundle_qty
                         item_values = {
                             "therapy_id": item.get("item_id"),
                             "member_id": data_item.get("memberId"),
                             "store_id": data_item.get("storeId"),
                             "staff_id": data_item.get("staffId"),
                             "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
-                            "amount": int(item.get("quantity", 0)) * bundle_qty,
-                            "discount": float(data_item.get("discount") or 0) * (item.get("quantity", 0) / total_qty),
+                            "amount": amount,
                             "payment_method": data_item.get("paymentMethod"),
                             "sale_category": data_item.get("saleCategory"),
-                            "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]",
+                            "note": _build_note(data_item.get("note"), order_group_key, bundle_id),
                         }
                         cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
                         price_row = cursor.fetchone()
@@ -390,14 +474,74 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             if not item_label:
                                 item_label = str(item_values.get("therapy_id"))
                             raise ValueError(f"組合{bundle_label}之品項{item_label}已下架")
+
                         unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
+                        base_total = unit_price * amount
                         item_values["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
-                        item_values["discount"] = float(item_values.get("discount") or 0)
-                        item_values["final_price"] = unit_price * item_values["amount"] - item_values["discount"]
-                        logging.debug(
-                            f"--- [MODEL] Values for SQL for bundle item {index + 1}: {item_values}"
+
+                        processed_items.append(
+                            {
+                                "values": item_values,
+                                "amount": amount,
+                                "unit_price": unit_price,
+                                "base_total": base_total,
+                            }
                         )
-                        cursor.execute(insert_query, item_values)
+                        total_amount += amount
+                        base_total_sum += base_total
+
+                    raw_bundle_discount = _safe_float(data_item.get("discount"))
+                    raw_bundle_final_price = _safe_float(data_item.get("finalPrice") or data_item.get("final_price"))
+
+                    bundle_final_total = raw_bundle_final_price
+                    if bundle_final_total is None:
+                        if raw_bundle_discount is not None and base_total_sum:
+                            bundle_final_total = base_total_sum - raw_bundle_discount
+                        else:
+                            bundle_final_total = base_total_sum
+                    bundle_final_total = max(bundle_final_total or 0.0, 0.0)
+
+                    bundle_discount_total = raw_bundle_discount
+                    if bundle_discount_total is None:
+                        bundle_discount_total = max(base_total_sum - bundle_final_total, 0.0)
+                    else:
+                        bundle_discount_total = max(bundle_discount_total, 0.0)
+
+                    allocated_final = 0.0
+                    allocated_discount = 0.0
+                    item_count = len(processed_items)
+
+                    for idx, processed in enumerate(processed_items):
+                        values_dict = processed["values"]
+                        base_total = processed["base_total"]
+                        amount = processed["amount"]
+
+                        if base_total_sum > 0:
+                            ratio = base_total / base_total_sum
+                        elif total_amount > 0:
+                            ratio = amount / total_amount
+                        else:
+                            ratio = 1.0 / item_count if item_count else 0.0
+
+                        if idx == item_count - 1:
+                            item_final_price = bundle_final_total - allocated_final
+                            item_discount = bundle_discount_total - allocated_discount
+                        else:
+                            item_final_price = round(bundle_final_total * ratio, 2)
+                            item_discount = round(bundle_discount_total * ratio, 2)
+                            allocated_final += item_final_price
+                            allocated_discount += item_discount
+
+                        item_final_price = max(round(item_final_price, 2), 0.0)
+                        item_discount = max(round(item_discount, 2), 0.0)
+
+                        values_dict["discount"] = item_discount
+                        values_dict["final_price"] = item_final_price
+
+                        logging.debug(
+                            f"--- [MODEL] Values for SQL for bundle item {index + 1}-{idx + 1}: {values_dict}"
+                        )
+                        cursor.execute(insert_query, values_dict)
                         created_ids.append(cursor.lastrowid)
                         logging.debug(
                             f"--- [MODEL] Bundle item inserted. ID: {cursor.lastrowid}"
@@ -413,9 +557,10 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
                     "amount": data_item.get("amount"),
                     "discount": float(data_item.get("discount") or 0),
+                    "final_price": float(data_item.get("final_price") or data_item.get("finalPrice") or 0),
                     "payment_method": data_item.get("paymentMethod"),
                     "sale_category": data_item.get("saleCategory"),
-                    "note": data_item.get("note", "")
+                    "note": _build_note(data_item.get("note"), order_group_key)
                 }
                 cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (values_dict["therapy_id"],))
                 price_row = cursor.fetchone()
@@ -426,8 +571,17 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     raise ValueError(f"品項{item_label}已下架")
                 unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
                 values_dict["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
-                values_dict["discount"] = float(values_dict.get("discount") or 0)
-                values_dict["final_price"] = unit_price * values_dict["amount"] - values_dict["discount"]
+                explicit_discount = _safe_float(data_item.get("discount"))
+                explicit_final = _safe_float(data_item.get("finalPrice") or data_item.get("final_price"))
+                if explicit_discount is not None:
+                    values_dict["discount"] = round(max(explicit_discount, 0.0), 2)
+                else:
+                    values_dict["discount"] = round(float(values_dict.get("discount") or 0), 2)
+
+                if explicit_final is not None:
+                    values_dict["final_price"] = round(max(explicit_final, 0.0), 2)
+                else:
+                    values_dict["final_price"] = round(unit_price * values_dict["amount"] - values_dict["discount"], 2)
                 logging.debug(f"--- [MODEL] Values for SQL for item {index + 1}: {values_dict}")
                 cursor.execute(insert_query, values_dict)
                 created_ids.append(cursor.lastrowid)
@@ -495,6 +649,18 @@ def update_therapy_sell(sale_id, data):
             if not existing_record:
                 return {"error": "找不到要更新的銷售記錄"}
 
+            existing_order_group_key = _extract_order_group_key(existing_record.get("note"))
+            incoming_order_group_key = (
+                data.get("order_group_key")
+                or data.get("orderGroupKey")
+                or data.get("order_group_id")
+                or data.get("orderGroupId")
+                or data.get("order_reference")
+                or existing_order_group_key
+            )
+            order_group_key = incoming_order_group_key or existing_order_group_key
+            bundle_tag_id = _extract_bundle_id_from_note(existing_record.get("note"))
+
             therapy_id = data.get("therapy_id") or existing_record.get("therapy_id")
             cursor.execute("SELECT status FROM therapy WHERE therapy_id = %s", (therapy_id,))
             status_row = cursor.fetchone()
@@ -517,7 +683,10 @@ def update_therapy_sell(sale_id, data):
 
             payment_method = data.get("paymentMethod", existing_record.get("payment_method"))
             sale_category = data.get("saleCategory", existing_record.get("sale_category"))
-            note = data.get("note", existing_record.get("note"))
+            raw_note = data.get("note")
+            if raw_note is None:
+                raw_note = existing_record.get("note")
+            note = _build_note(raw_note, order_group_key, bundle_tag_id)
 
             query = (
                 "UPDATE therapy_sell SET therapy_id=%s, member_id=%s, store_id=%s, staff_id=%s, "

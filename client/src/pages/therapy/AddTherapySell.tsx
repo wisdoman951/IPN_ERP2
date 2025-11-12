@@ -40,6 +40,37 @@ const renderMultilineText = (text: string) => {
   ));
 };
 
+const ORDER_META_REGEX = /\[\[order_meta\s+({.*?})\]\]/i;
+
+const extractOrderGroupKeyFromNote = (note?: string | null): string | null => {
+  if (!note) {
+    return null;
+  }
+  const match = note.match(ORDER_META_REGEX);
+  if (!match) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(match[1]);
+    if (parsed && typeof parsed === 'object' && typeof parsed.group === 'string') {
+      return parsed.group;
+    }
+  } catch (error) {
+    console.error('解析 order_meta 失敗', error);
+  }
+  return null;
+};
+
+const generateOrderGroupKey = (): string => {
+  const globalCrypto = (typeof globalThis !== 'undefined' && (globalThis as any).crypto)
+    ? (globalThis as any).crypto
+    : undefined;
+  if (globalCrypto && typeof globalCrypto.randomUUID === 'function') {
+    return globalCrypto.randomUUID();
+  }
+  return `ts-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const AddTherapySell: React.FC = () => {
   const navigate = useNavigate();
   const userRole = getUserRole();
@@ -240,7 +271,15 @@ const AddTherapySell: React.FC = () => {
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    let { value } = e.target;
+
+    if (name === 'cardNumber') {
+      value = value.replace(/\D/g, '').slice(0, 6);
+    } else if (name === 'transferCode') {
+      value = value.replace(/\D/g, '').slice(0, 5);
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: name === 'discountAmount' ? parseFloat(value) || 0 : value,
@@ -315,6 +354,10 @@ const AddTherapySell: React.FC = () => {
         '票卷': 'Ticket',
       };
 
+      const existingOrderGroupKey = editSale?.order_group_key
+        || extractOrderGroupKeyFromNote(editSale?.Note);
+      const orderGroupKey = existingOrderGroupKey || generateOrderGroupKey();
+
       const buildCommonPayload = (pkg: SelectedTherapyPackageUIData, itemDiscount: number, itemFinalPrice: number) => ({
         memberId: Number(formData.memberId),
         therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
@@ -330,6 +373,7 @@ const AddTherapySell: React.FC = () => {
         discount: itemDiscount,
         finalPrice: itemFinalPrice,
         note: formData.note,
+        orderGroupKey,
       });
 
       const resolveErrorMessage = (
@@ -525,9 +569,16 @@ const AddTherapySell: React.FC = () => {
 
                     {formData.paymentMethod === '信用卡' && (
                       <Form.Group className="mb-3" controlId="cardNumber">
-                        <Form.Label>卡號後五碼</Form.Label>
-                        <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\d*" value={formData.cardNumber}
-                          onChange={handleChange} placeholder="請輸入信用卡號後五碼" />
+                        <Form.Label>授權碼（6個數字）</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="cardNumber"
+                          maxLength={6}
+                          pattern="\d*"
+                          value={formData.cardNumber}
+                          onChange={handleChange}
+                          placeholder="請輸入授權碼 6 個數字"
+                        />
                       </Form.Group>
                     )}
                     {formData.paymentMethod === '轉帳' && (
