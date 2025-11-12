@@ -7,6 +7,7 @@
   margin-bottom: 15px;
   height: calc(100vh - 250px); /* 表格固定高度 */
   min-height: 300px; /* 最小高度 */
+  width: 100%;
 }
 
 /* 表格滾動容器 */
