@@ -466,14 +466,22 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "sale_category": data_item.get("saleCategory"),
                             "note": _build_note(data_item.get("note"), order_group_key, bundle_id),
                         }
-                        cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
+                        cursor.execute(
+                            "SELECT name, price, status FROM therapy WHERE therapy_id = %s",
+                            (item_values["therapy_id"],),
+                        )
                         price_row = cursor.fetchone()
-                        if not price_row or price_row.get("status") != 'PUBLISHED':
+                        if not price_row:
                             bundle_label = bundle_name or str(bundle_id)
-                            item_label = price_row.get("name") if price_row else None
-                            if not item_label:
-                                item_label = str(item_values.get("therapy_id"))
-                            raise ValueError(f"組合{bundle_label}之品項{item_label}已下架")
+                            item_label = str(item_values.get("therapy_id"))
+                            raise ValueError(f"組合{bundle_label}之品項{item_label}不存在")
+
+                        if price_row.get("status") != 'PUBLISHED':
+                            logging.warning(
+                                "--- [MODEL] Therapy %s in bundle %s is not published but will be processed.",
+                                price_row.get("name") or item_values.get("therapy_id"),
+                                bundle_name or bundle_id,
+                            )
 
                         unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
                         base_total = unit_price * amount
