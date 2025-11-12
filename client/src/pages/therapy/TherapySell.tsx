@@ -81,6 +81,7 @@ const renderMultilineText = (text: string) => {
 
 const ORDER_META_REGEX = /\[\[order_meta\s+({.*?})\]\]/i;
 const ORDER_META_GLOBAL_REGEX = /\[\[order_meta\s+({.*?})\]\]/gi;
+const BUNDLE_META_REGEX = /\[\[bundle_meta\s+({.*?})\]\]/i;
 const BUNDLE_META_GLOBAL_REGEX = /\[\[bundle_meta\s+({.*?})\]\]/gi;
 const BUNDLE_TAG_GLOBAL_REGEX = /\[bundle:[^\]]*\]/gi;
 
@@ -112,6 +113,92 @@ const extractOrderGroupKey = (note?: string | null) => {
     return null;
 };
 
+type BundleMetadata = {
+    qty?: number;
+    quantity?: number;
+    total?: number;
+    name?: string;
+};
+
+const coercePositiveNumber = (value: unknown): number | undefined => {
+    if (value === null || value === undefined) {
+        return undefined;
+    }
+    const numeric = typeof value === "number" ? value : Number(value);
+    return Number.isFinite(numeric) && numeric > 0 ? numeric : undefined;
+};
+
+const parseBundleMetadata = (note?: string | null): BundleMetadata | null => {
+    if (!note) {
+        return null;
+    }
+    const match = note.match(BUNDLE_META_REGEX);
+    if (!match) {
+        return null;
+    }
+    try {
+        const parsed = JSON.parse(match[1]);
+        if (parsed && typeof parsed === "object") {
+            return parsed as BundleMetadata;
+        }
+    } catch (error) {
+        console.error("解析 bundle_meta 失敗", error);
+    }
+    return null;
+};
+
+type ParsedLineQuantity = {
+    label: string;
+    quantity?: number;
+    hasQuantity: boolean;
+};
+
+const parseLineQuantity = (line: string): ParsedLineQuantity => {
+    const trimmed = line.trim();
+    if (trimmed.length === 0) {
+        return { label: "", quantity: undefined, hasQuantity: false };
+    }
+
+    const withoutParentheses = trimmed.replace(/\s*\(.*?\)\s*$/, "").trim();
+    const trailingQuantitiesMatch = withoutParentheses.match(/(?:\s*[xX×＊*]\s*(\d+(?:\.\d+)?))+$/);
+    if (!trailingQuantitiesMatch) {
+        return { label: withoutParentheses, quantity: undefined, hasQuantity: false };
+    }
+
+    const quantitySegment = trailingQuantitiesMatch[0];
+    const numericMatches = Array.from(quantitySegment.matchAll(/(\d+(?:\.\d+)?)/g));
+    const lastMatch = numericMatches[numericMatches.length - 1];
+    const quantity = lastMatch ? Number(lastMatch[1]) : undefined;
+    const labelCandidate = withoutParentheses.slice(0, withoutParentheses.length - quantitySegment.length).trim();
+
+    return {
+        label: labelCandidate.length > 0 ? labelCandidate : withoutParentheses,
+        quantity: Number.isFinite(quantity) ? quantity : undefined,
+        hasQuantity: Number.isFinite(quantity),
+    };
+};
+
+const computeBundleQuantityFromSessions = (
+    sessions: number,
+    components: { quantity?: number }[],
+): number | undefined => {
+    if (!Number.isFinite(sessions) || sessions <= 0) {
+        return undefined;
+    }
+    const perBundleTotal = components.reduce((sum, entry) => {
+        const componentQuantity = Number(entry.quantity);
+        if (Number.isFinite(componentQuantity) && componentQuantity > 0) {
+            return sum + componentQuantity;
+        }
+        return sum + 1;
+    }, 0);
+    if (!Number.isFinite(perBundleTotal) || perBundleTotal <= 0) {
+        return undefined;
+    }
+    const ratio = sessions / perBundleTotal;
+    return Number.isFinite(ratio) && ratio > 0 ? ratio : undefined;
+};
+
 const TherapySell: React.FC = () => {
     const navigate = useNavigate();
     const [sales, setSales] = useState<TherapySellRow[]>([]);
@@ -121,6 +208,7 @@ const TherapySell: React.FC = () => {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
+    const bundleContentsCache = useMemo(() => new Map<number, { label: string; quantity?: number }[]>(), [bundleMap]);
     const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
 
@@ -267,6 +355,29 @@ const TherapySell: React.FC = () => {
         return cleaned.length > 0 ? cleaned : "-";
     };
 
+    const getBundleComponentEntries = (bundleId: number) => {
+        const cached = bundleContentsCache.get(bundleId);
+        if (cached) {
+            return cached;
+        }
+        const bundleInfo = bundleMap[bundleId];
+        if (!bundleInfo) {
+            return [];
+        }
+        const entries = bundleInfo.contents
+            .split(/[,，\n]+/)
+            .map((part) => part.trim())
+            .filter((part) => part.length > 0)
+            .map((part) => parseLineQuantity(part))
+            .filter((parsed) => parsed.label.length > 0)
+            .map((parsed) => ({
+                label: parsed.label,
+                quantity: parsed.hasQuantity ? parsed.quantity : undefined,
+            }));
+        bundleContentsCache.set(bundleId, entries);
+        return entries;
+    };
+
     const resolvePriceValue = (sale: TherapySellRow): number | undefined => {
         if (sale.Price !== undefined && sale.Price !== null) {
             const price = Number(sale.Price);
@@ -340,24 +451,100 @@ const TherapySell: React.FC = () => {
             let totalSessions = 0;
             let aggregatedPrice: number | undefined;
             const nameQuantityMap = new Map<string, number>();
-            const noteSet = new Set<string>();
+            const noteAggregations = new Map<string, { totalQuantity?: number; occurrences: number }>();
+            const noteOrder: string[] = [];
+
+            const recordNoteLine = (label: string, quantity?: number) => {
+                const normalizedLabel = label.trim();
+                if (normalizedLabel.length === 0) {
+                    return;
+                }
+                let entry = noteAggregations.get(normalizedLabel);
+                if (!entry) {
+                    entry = {
+                        occurrences: 0,
+                        totalQuantity: quantity !== undefined ? quantity : undefined,
+                    };
+                    noteAggregations.set(normalizedLabel, entry);
+                    noteOrder.push(normalizedLabel);
+                }
+                entry.occurrences += 1;
+                if (quantity !== undefined) {
+                    entry.totalQuantity = (entry.totalQuantity ?? 0) + quantity;
+                }
+            };
 
             sortedItems.forEach((item) => {
-                const sessions = Number(item.Sessions || 0);
-                totalSessions += sessions;
+                const sessions = Number(item.Sessions ?? 0);
+                if (Number.isFinite(sessions)) {
+                    totalSessions += sessions;
+                }
+
+                const bundleId = extractBundleId(item.Note);
+                const bundleMetadata = parseBundleMetadata(item.Note);
+                const metadataQuantity = coercePositiveNumber(bundleMetadata?.qty ?? bundleMetadata?.quantity);
+                let effectiveBundleQuantity: number | undefined = metadataQuantity;
+                let componentEntries: { label: string; quantity?: number }[] = [];
+                let noteHandled = false;
+
+                if (bundleId) {
+                    componentEntries = getBundleComponentEntries(bundleId);
+                    if (componentEntries.length > 0) {
+                        if (effectiveBundleQuantity === undefined) {
+                            const computed = computeBundleQuantityFromSessions(sessions, componentEntries);
+                            if (computed !== undefined) {
+                                effectiveBundleQuantity = computed;
+                            }
+                        }
+                        if (effectiveBundleQuantity === undefined || !Number.isFinite(effectiveBundleQuantity) || effectiveBundleQuantity <= 0) {
+                            effectiveBundleQuantity = 1;
+                        }
+
+                        const quantityForComponents = effectiveBundleQuantity;
+                        componentEntries.forEach((component) => {
+                            const componentQuantity = Number(component.quantity);
+                            const perBundleQuantity = Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 1;
+                            const contribution = perBundleQuantity * quantityForComponents;
+                            if (Number.isFinite(contribution) && contribution > 0) {
+                                recordNoteLine(component.label, contribution);
+                            } else {
+                                recordNoteLine(component.label);
+                            }
+                        });
+                        noteHandled = componentEntries.length > 0;
+                    }
+                }
+
+                if (!noteHandled) {
+                    const displayNote = getNote(item);
+                    if (displayNote && displayNote !== "-") {
+                        displayNote
+                            .split("\n")
+                            .map((line) => line.trim())
+                            .filter((line) => line.length > 0)
+                            .forEach((line) => {
+                                const parsed = parseLineQuantity(line);
+                                if (parsed.hasQuantity && parsed.quantity !== undefined) {
+                                    recordNoteLine(parsed.label, parsed.quantity);
+                                } else {
+                                    recordNoteLine(parsed.label.length > 0 ? parsed.label : line);
+                                }
+                            });
+                    }
+                }
 
                 const displayName = getDisplayName(item);
                 if (displayName && displayName !== "-") {
-                    nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + sessions);
-                }
-
-                const displayNote = getNote(item);
-                if (displayNote && displayNote !== "-") {
-                    displayNote
-                        .split("\n")
-                        .map((line) => line.trim())
-                        .filter((line) => line.length > 0)
-                        .forEach((line) => noteSet.add(line));
+                    let quantityForName: number | undefined = sessions;
+                    if (bundleId && (componentEntries.length > 0 || effectiveBundleQuantity !== undefined)) {
+                        quantityForName = effectiveBundleQuantity;
+                    }
+                    const numericQuantity = Number(quantityForName);
+                    if (Number.isFinite(numericQuantity) && numericQuantity > 0) {
+                        nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + numericQuantity);
+                    } else if (!Number.isFinite(numericQuantity) || numericQuantity === 0) {
+                        nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + 1);
+                    }
                 }
 
                 const priceValue = resolvePriceValue(item);
@@ -392,8 +579,25 @@ const TherapySell: React.FC = () => {
                 }
             }
 
-            if (noteSet.size > 0) {
-                base.Note = Array.from(noteSet).join("\n");
+            if (noteOrder.length > 0) {
+                const aggregatedNoteLines = noteOrder.map((label) => {
+                    const entry = noteAggregations.get(label);
+                    if (!entry) {
+                        return label;
+                    }
+                    if (entry.totalQuantity !== undefined) {
+                        const rounded = Math.abs(entry.totalQuantity - Math.round(entry.totalQuantity)) < 1e-6
+                            ? Math.round(entry.totalQuantity)
+                            : Number(entry.totalQuantity.toFixed(2));
+                        return `${label} x${rounded}`;
+                    }
+                    if (entry.occurrences > 1) {
+                        return `${label} (x${entry.occurrences})`;
+                    }
+                    return label;
+                });
+
+                base.Note = aggregatedNoteLines.join("\n");
             } else if (typeof base.Note === "string" && base.Note.length > 0) {
                 base.Note = stripMetadataFromNote(base.Note);
             }
