@@ -1,5 +1,6 @@
 // .\src\hooks\usePureMedicalRecord.ts
 import { useState, useEffect, useCallback } from 'react';
+import axios from 'axios';
 import { downloadBlob } from '../utils/downloadBlob';
 import {
   fetchPureRecords, // <-- 改為 import fetchPureRecords
@@ -95,23 +96,40 @@ export const usePureMedicalRecord = (): UsePureMedicalRecordReturn => {
       return;
     }
 
-    if (window.confirm(`確定要刪除選取的 ${selectedIds.length} 筆資料嗎？`)) {
-      try {
-        setLoading(true);
-        await Promise.all(selectedIds.map(id => deletePureRecord(id)));
-        
-        // 刪除後重新整理資料
-        await fetchAndSetRecords();
-        setSelectedIds([]);
-        alert("刪除成功");
-      } catch (err) {
-        console.error("Error deleting pure medical records:", err);
-        setError("刪除淨化健康紀錄時發生錯誤");
-      } finally {
-        setLoading(false);
-      }
-    }
-  };
+    if (window.confirm(`確定要刪除選取的 ${selectedIds.length} 筆資料嗎？`)) {
+      try {
+        setLoading(true);
+        setError(null);
+        await Promise.all(selectedIds.map(id => deletePureRecord(id)));
+
+        // 刪除後重新整理資料
+        await fetchAndSetRecords();
+        setSelectedIds([]);
+        alert("刪除成功");
+      } catch (err) {
+        console.error("Error deleting pure medical records:", err);
+        if (axios.isAxiosError(err)) {
+          const status = err.response?.status;
+          const responseData = err.response?.data as { error?: string } | undefined;
+          const serverMessage = typeof responseData?.error === 'string' ? responseData.error : undefined;
+
+          if (status === 403 || serverMessage === '無操作權限') {
+            setError('無操作權限');
+            alert('無操作權限');
+          } else {
+            const fallbackMessage = serverMessage || '刪除淨化健康紀錄時發生錯誤';
+            setError(fallbackMessage);
+            alert(fallbackMessage);
+          }
+        } else {
+          setError("刪除淨化健康紀錄時發生錯誤");
+          alert("刪除淨化健康紀錄時發生錯誤");
+        }
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   /**
    * 處理匯出

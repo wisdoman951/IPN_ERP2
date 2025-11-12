@@ -27,7 +27,7 @@ const MedicalRecord: React.FC = () => {
         <tr>
             <th>勾選</th>
             <th>店別</th>
-            <th style={{ minWidth: '8ch' }}>會員編號</th>
+            <th style={{ minWidth: '10ch', whiteSpace: 'nowrap' }}>會員編號</th>
             <th>姓名</th>
             <th>身高</th>
             <th>體重</th>
