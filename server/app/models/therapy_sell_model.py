@@ -5,6 +5,12 @@ from datetime import datetime
 import traceback
 import logging
 import json
+import re
+
+
+ORDER_META_PATTERN = re.compile(r"\[\[order_meta\s+({.*?})\]\]", re.IGNORECASE)
+BUNDLE_META_PATTERN = re.compile(r"\[\[bundle_meta\s+({.*?})\]\]", re.IGNORECASE)
+BUNDLE_TAG_PATTERN = re.compile(r"\[bundle:([^\]]+)\]", re.IGNORECASE)
 
 
 def _safe_float(value):
@@ -14,6 +20,62 @@ def _safe_float(value):
         return float(value)
     except (TypeError, ValueError):
         return None
+
+
+def _strip_metadata_from_note(note: str | None) -> str:
+    if not note:
+        return ""
+    cleaned = ORDER_META_PATTERN.sub("", note)
+    cleaned = BUNDLE_META_PATTERN.sub("", cleaned)
+    cleaned = BUNDLE_TAG_PATTERN.sub("", cleaned)
+    return cleaned.strip()
+
+
+def _build_note(note: str | None, order_group_key: str | None = None, bundle_id: int | None = None) -> str:
+    base_note = _strip_metadata_from_note(note)
+    parts: list[str] = []
+    if base_note:
+        parts.append(base_note)
+    if order_group_key:
+        try:
+            meta_json = json.dumps({"group": order_group_key}, ensure_ascii=False)
+        except (TypeError, ValueError):
+            meta_json = json.dumps({"group": str(order_group_key)}, ensure_ascii=False)
+        parts.append(f"[[order_meta {meta_json}]]")
+    if bundle_id:
+        parts.append(f"[bundle:{bundle_id}]")
+    return " ".join(part for part in parts if part).strip()
+
+
+def _extract_order_group_key(note: str | None) -> str | None:
+    if not note:
+        return None
+    match = ORDER_META_PATTERN.search(note)
+    if not match:
+        return None
+    try:
+        parsed = json.loads(match.group(1))
+        if isinstance(parsed, dict):
+            group = parsed.get("group")
+            if isinstance(group, str) and group.strip():
+                return group
+    except Exception:
+        return None
+    return None
+
+
+def _extract_bundle_id_from_note(note: str | None) -> int | None:
+    if not note:
+        return None
+    match = BUNDLE_TAG_PATTERN.search(note)
+    if not match:
+        return None
+    try:
+        return int(match.group(1))
+    except (TypeError, ValueError):
+        return None
+
+
 def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
@@ -219,7 +281,8 @@ def get_all_therapy_sells(store_id=None):
                     if isinstance(date_obj, datetime):
                         # 將日期格式化為西元年
                         record['PurchaseDate'] = f"{date_obj.year}/{date_obj.month:02d}/{date_obj.day:02d}"
-            
+                record['order_group_key'] = _extract_order_group_key(record.get('note') or record.get('Note'))
+
             return result
     except Exception as e:
         print(f"獲取療程銷售記錄錯誤: {e}")
@@ -287,13 +350,14 @@ def search_therapy_sells(keyword, store_id=None):
                 cursor.execute(query, (like, like, like))
                 
             result = cursor.fetchall()
-            
+
             # 轉換日期格式為西元年
             for record in result:
                 if record['PurchaseDate']:
                     date_obj = record['PurchaseDate']
                     record['PurchaseDate'] = f"{date_obj.year}/{date_obj.month:02d}/{date_obj.day:02d}"
-            
+                record['order_group_key'] = _extract_order_group_key(record.get('note') or record.get('Note'))
+
             return result
     except Exception as e:
         print(f"搜尋療程銷售記錄錯誤: {e}")
@@ -338,6 +402,14 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     logging.error(f"--- [MODEL] {error_msg} ---")
                     raise AttributeError(error_msg)
 
+                order_group_key = (
+                    data_item.get("order_group_key")
+                    or data_item.get("orderGroupKey")
+                    or data_item.get("order_group_id")
+                    or data_item.get("orderGroupId")
+                    or data_item.get("order_reference")
+                )
+
                 # 若為組合 (bundle)，需拆解為多筆療程紀錄
                 bundle_id = data_item.get("bundle_id")
                 if bundle_id:
@@ -366,7 +438,7 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "final_price": float(data_item.get("final_price") or data_item.get("finalPrice") or 0),
                             "payment_method": data_item.get("paymentMethod"),
                             "sale_category": data_item.get("saleCategory"),
-                            "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]"
+                            "note": _build_note(data_item.get("note"), order_group_key, bundle_id)
                         }
                         logging.debug(
                             f"--- [MODEL] Values for SQL for empty bundle {index + 1}: {empty_bundle_values}"
@@ -392,7 +464,7 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             "amount": amount,
                             "payment_method": data_item.get("paymentMethod"),
                             "sale_category": data_item.get("saleCategory"),
-                            "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]",
+                            "note": _build_note(data_item.get("note"), order_group_key, bundle_id),
                         }
                         cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (item_values["therapy_id"],))
                         price_row = cursor.fetchone()
@@ -485,9 +557,10 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
                     "amount": data_item.get("amount"),
                     "discount": float(data_item.get("discount") or 0),
+                    "final_price": float(data_item.get("final_price") or data_item.get("finalPrice") or 0),
                     "payment_method": data_item.get("paymentMethod"),
                     "sale_category": data_item.get("saleCategory"),
-                    "note": data_item.get("note", "")
+                    "note": _build_note(data_item.get("note"), order_group_key)
                 }
                 cursor.execute("SELECT name, price, status FROM therapy WHERE therapy_id = %s", (values_dict["therapy_id"],))
                 price_row = cursor.fetchone()
@@ -576,6 +649,18 @@ def update_therapy_sell(sale_id, data):
             if not existing_record:
                 return {"error": "找不到要更新的銷售記錄"}
 
+            existing_order_group_key = _extract_order_group_key(existing_record.get("note"))
+            incoming_order_group_key = (
+                data.get("order_group_key")
+                or data.get("orderGroupKey")
+                or data.get("order_group_id")
+                or data.get("orderGroupId")
+                or data.get("order_reference")
+                or existing_order_group_key
+            )
+            order_group_key = incoming_order_group_key or existing_order_group_key
+            bundle_tag_id = _extract_bundle_id_from_note(existing_record.get("note"))
+
             therapy_id = data.get("therapy_id") or existing_record.get("therapy_id")
             cursor.execute("SELECT status FROM therapy WHERE therapy_id = %s", (therapy_id,))
             status_row = cursor.fetchone()
@@ -598,7 +683,10 @@ def update_therapy_sell(sale_id, data):
 
             payment_method = data.get("paymentMethod", existing_record.get("payment_method"))
             sale_category = data.get("saleCategory", existing_record.get("sale_category"))
-            note = data.get("note", existing_record.get("note"))
+            raw_note = data.get("note")
+            if raw_note is None:
+                raw_note = existing_record.get("note")
+            note = _build_note(raw_note, order_group_key, bundle_tag_id)
 
             query = (
                 "UPDATE therapy_sell SET therapy_id=%s, member_id=%s, store_id=%s, staff_id=%s, "

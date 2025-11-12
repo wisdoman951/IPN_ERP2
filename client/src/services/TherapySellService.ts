@@ -61,6 +61,7 @@ export interface AddTherapySellPayload {
   discount?: number;       // 折扣百分比 (針對此療程項目，或整筆訂單的，需與後端協調)
   finalPrice?: number;     // 最終價格
   note?: string;
+  orderGroupKey?: string;
 }
 
 // 用於「獲取療程銷售列表」時，後端返回的單筆資料結構
@@ -84,6 +85,7 @@ export interface TherapySellRow {
     store_name?: string;
     store_id?: number;
     therapy_id?: number;
+    order_group_key?: string;
 }
 
 // 新增並導出 SelectedTherapyPackageUIData

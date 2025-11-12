@@ -40,6 +40,37 @@ const renderMultilineText = (text: string) => {
   ));
 };
 
+const ORDER_META_REGEX = /\[\[order_meta\s+({.*?})\]\]/i;
+
+const extractOrderGroupKeyFromNote = (note?: string | null): string | null => {
+  if (!note) {
+    return null;
+  }
+  const match = note.match(ORDER_META_REGEX);
+  if (!match) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(match[1]);
+    if (parsed && typeof parsed === 'object' && typeof parsed.group === 'string') {
+      return parsed.group;
+    }
+  } catch (error) {
+    console.error('解析 order_meta 失敗', error);
+  }
+  return null;
+};
+
+const generateOrderGroupKey = (): string => {
+  const globalCrypto = (typeof globalThis !== 'undefined' && (globalThis as any).crypto)
+    ? (globalThis as any).crypto
+    : undefined;
+  if (globalCrypto && typeof globalCrypto.randomUUID === 'function') {
+    return globalCrypto.randomUUID();
+  }
+  return `ts-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+};
+
 const AddTherapySell: React.FC = () => {
   const navigate = useNavigate();
   const userRole = getUserRole();
@@ -323,6 +354,10 @@ const AddTherapySell: React.FC = () => {
         '票卷': 'Ticket',
       };
 
+      const existingOrderGroupKey = editSale?.order_group_key
+        || extractOrderGroupKeyFromNote(editSale?.Note);
+      const orderGroupKey = existingOrderGroupKey || generateOrderGroupKey();
+
       const buildCommonPayload = (pkg: SelectedTherapyPackageUIData, itemDiscount: number, itemFinalPrice: number) => ({
         memberId: Number(formData.memberId),
         therapy_id: pkg.type === 'bundle' ? undefined : pkg.therapy_id,
@@ -338,6 +373,7 @@ const AddTherapySell: React.FC = () => {
         discount: itemDiscount,
         finalPrice: itemFinalPrice,
         note: formData.note,
+        orderGroupKey,
       });
 
       const resolveErrorMessage = (

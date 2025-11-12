@@ -35,6 +35,7 @@ export interface TherapySellRow { // 更改 interface 名稱以避免與組件�
     therapy_id?: number;    // 對應的療程 ID
     store_name?: string;
     store_id?: number;
+    order_group_key?: string;
 }
 
 type DisplayTherapySellRow = TherapySellRow & {
@@ -76,6 +77,39 @@ const renderMultilineText = (text: string) => {
             {index < lines.length - 1 && <br />}
         </React.Fragment>
     ));
+};
+
+const ORDER_META_REGEX = /\[\[order_meta\s+({.*?})\]\]/i;
+const ORDER_META_GLOBAL_REGEX = /\[\[order_meta\s+({.*?})\]\]/gi;
+const BUNDLE_META_GLOBAL_REGEX = /\[\[bundle_meta\s+({.*?})\]\]/gi;
+const BUNDLE_TAG_GLOBAL_REGEX = /\[bundle:[^\]]*\]/gi;
+
+const stripMetadataFromNote = (note?: string | null) =>
+    (note ?? "")
+        .replace(ORDER_META_GLOBAL_REGEX, "")
+        .replace(BUNDLE_META_GLOBAL_REGEX, "")
+        .replace(BUNDLE_TAG_GLOBAL_REGEX, "")
+        .trim();
+
+const sanitizeNoteForGrouping = (note?: string | null) => stripMetadataFromNote(note).replace(/\s+/g, " ").trim();
+
+const extractOrderGroupKey = (note?: string | null) => {
+    if (!note) {
+        return null;
+    }
+    const match = note.match(ORDER_META_REGEX);
+    if (!match) {
+        return null;
+    }
+    try {
+        const parsed = JSON.parse(match[1]);
+        if (parsed && typeof parsed === "object" && typeof parsed.group === "string") {
+            return parsed.group;
+        }
+    } catch (error) {
+        console.error("解析 order_meta 失敗", error);
+    }
+    return null;
 };
 
 const TherapySell: React.FC = () => {
@@ -229,14 +263,9 @@ const TherapySell: React.FC = () => {
             }
             return "-";
         }
-        return sale.Note || "-";
+        const cleaned = stripMetadataFromNote(sale.Note);
+        return cleaned.length > 0 ? cleaned : "-";
     };
-
-    const cleanBundleTags = (note?: string | null) =>
-        (note ?? "")
-            .replace(/\[\[bundle_meta\s+({.*?})\]\]/gi, "")
-            .replace(/\[bundle:[^\]]*\]/gi, "")
-            .trim();
 
     const resolvePriceValue = (sale: TherapySellRow): number | undefined => {
         if (sale.Price !== undefined && sale.Price !== null) {
@@ -257,8 +286,9 @@ const TherapySell: React.FC = () => {
 
     const buildGroupKey = (sale: TherapySellRow) => {
         const storeKey = sale.store_id ?? sale.store_name ?? "";
-        if (sale.Order_ID) {
-            return `${storeKey}|order:${sale.Order_ID}`;
+        const orderGroupKey = sale.order_group_key ?? extractOrderGroupKey(sale.Note);
+        if (orderGroupKey) {
+            return `${storeKey}|orderGroup:${orderGroupKey}`;
         }
 
         const staffKey = (sale as any).Staff_ID ?? sale.StaffName ?? "";
@@ -269,15 +299,11 @@ const TherapySell: React.FC = () => {
             sale.PurchaseDate ?? "",
             sale.PaymentMethod ?? "",
             sale.SaleCategory ?? "",
-            cleanBundleTags(sale.Note)
+            sanitizeNoteForGrouping(sale.Note)
         ];
 
-        const bundleId = extractBundleId(sale.Note);
-        if (bundleId) {
-            return [...baseParts, `bundle:${bundleId}`].join("|");
-        }
-
-        return baseParts.join("|");
+        const composed = baseParts.join("|");
+        return composed.length > 0 ? composed : `${storeKey}|id:${sale.Order_ID}`;
     };
     
 
@@ -300,6 +326,16 @@ const TherapySell: React.FC = () => {
                 ...sortedItems[0],
                 therapy_sell_ids: uniqueIds,
             };
+
+            const resolvedOrderGroupKey = sortedItems.reduce<string | undefined>((acc, item) => {
+                if (acc && acc.length > 0) {
+                    return acc;
+                }
+                return item.order_group_key ?? extractOrderGroupKey(item.Note) ?? undefined;
+            }, base.order_group_key ?? undefined);
+            if (resolvedOrderGroupKey) {
+                base.order_group_key = resolvedOrderGroupKey;
+            }
 
             let totalSessions = 0;
             let aggregatedPrice: number | undefined;
@@ -358,6 +394,8 @@ const TherapySell: React.FC = () => {
 
             if (noteSet.size > 0) {
                 base.Note = Array.from(noteSet).join("\n");
+            } else if (typeof base.Note === "string" && base.Note.length > 0) {
+                base.Note = stripMetadataFromNote(base.Note);
             }
 
             return base;
