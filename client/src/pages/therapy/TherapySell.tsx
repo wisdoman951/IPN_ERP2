@@ -39,6 +39,7 @@ export interface TherapySellRow { // 更改 interface 名稱以避免與組件�
 
 type DisplayTherapySellRow = TherapySellRow & {
     therapy_sell_ids: number[];
+    purchaseItems?: { name: string; quantity: number }[];
 };
 
 // --- 新增/修改映射表 ---
@@ -255,12 +256,16 @@ const TherapySell: React.FC = () => {
     };
 
     const buildGroupKey = (sale: TherapySellRow) => {
-        const staffKey = sale.Staff_ID ?? sale.StaffName ?? "";
         const storeKey = sale.store_id ?? sale.store_name ?? "";
+        if (sale.Order_ID) {
+            return `${storeKey}|order:${sale.Order_ID}`;
+        }
+
+        const staffKey = (sale as any).Staff_ID ?? sale.StaffName ?? "";
         const baseParts = [
             sale.Member_ID ?? "",
-            storeKey ?? "",
-            staffKey ?? "",
+            storeKey,
+            staffKey,
             sale.PurchaseDate ?? "",
             sale.PaymentMethod ?? "",
             sale.SaleCategory ?? "",
@@ -272,7 +277,7 @@ const TherapySell: React.FC = () => {
             return [...baseParts, `bundle:${bundleId}`].join("|");
         }
 
-        return [...baseParts, `order:${sale.Order_ID}`].join("|");
+        return baseParts.join("|");
     };
     
 
@@ -290,9 +295,10 @@ const TherapySell: React.FC = () => {
 
         return Array.from(groupMap.values()).map((items) => {
             const sortedItems = [...items].sort((a, b) => a.Order_ID - b.Order_ID);
+            const uniqueIds = Array.from(new Set(sortedItems.map((item) => item.Order_ID)));
             const base: DisplayTherapySellRow = {
                 ...sortedItems[0],
-                therapy_sell_ids: sortedItems.map((item) => item.Order_ID),
+                therapy_sell_ids: uniqueIds,
             };
 
             let totalSessions = 0;
@@ -332,20 +338,21 @@ const TherapySell: React.FC = () => {
             }
 
             if (nameQuantityMap.size > 0) {
-                const nameLines = Array.from(nameQuantityMap.entries())
+                const itemEntries = Array.from(nameQuantityMap.entries())
                     .map(([name, qty]) => {
-                        if (!name) {
-                            return "";
-                        }
-                        if (!qty || Math.abs(qty) < 1e-6) {
-                            return name;
-                        }
-                        const rounded = Math.abs(qty - Math.round(qty)) < 1e-6 ? Math.round(qty) : Number(qty.toFixed(2));
-                        return `${name} x${rounded}`;
+                        const quantity = Math.abs(qty - Math.round(qty)) < 1e-6 ? Math.round(qty) : Number(qty.toFixed(2));
+                        return {
+                            name,
+                            quantity,
+                        };
                     })
-                    .filter((line) => line.length > 0);
-                if (nameLines.length > 0) {
-                    base.PackageName = nameLines.join("\n");
+                    .filter((entry) => entry.name);
+
+                if (itemEntries.length > 0) {
+                    base.purchaseItems = itemEntries;
+                    base.PackageName = itemEntries
+                        .map((entry) => (entry.quantity ? `${entry.name} x${entry.quantity}` : entry.name))
+                        .join("\n");
                 }
             }
 
@@ -484,7 +491,23 @@ const TherapySell: React.FC = () => {
                     <td className="align-middle">{sale.MemberCode || "-"}</td>
                     <td className="align-middle">{sale.MemberName || "-"}</td>
                     <td className="align-middle">{formatDateToYYYYMMDD(sale.PurchaseDate) || "-"}</td>
-                    <td className="align-middle">{getDisplayName(sale)}</td>
+                    <td className="align-middle" style={{ whiteSpace: 'pre-line' }}>
+                        {sale.purchaseItems && sale.purchaseItems.length > 0 ? (
+                            <div className="d-flex flex-column gap-1">
+                                {sale.purchaseItems.map((item, index) => (
+                                    <div
+                                        key={`${sale.therapy_sell_ids[index] ?? sale.Order_ID ?? 'row'}-${index}`}
+                                        className="d-flex justify-content-between"
+                                    >
+                                        <span>{item.name}</span>
+                                        {item.quantity ? <span className="ms-2">x{item.quantity}</span> : null}
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            getDisplayName(sale)
+                        )}
+                    </td>
                     <td className="text-center align-middle">{sale.Sessions || "-"}</td>
                     <td className="text-end align-middle">{formatCurrency(sale.Price) || "-"}</td>
                     <td className="align-middle">
