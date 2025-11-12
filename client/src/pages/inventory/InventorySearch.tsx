@@ -128,10 +128,15 @@ const InventorySearch: React.FC = () => {
             return;
         }
         
+        if (!checkPermission()) {
+            setError("無操作權限");
+            return;
+        }
+
         if (!window.confirm(`確定要刪除選中的 ${selectedItems.length} 個項目嗎？`)) {
             return;
         }
-        
+
         setLoading(true);
         try {
             let failedCount = 0;

@@ -18,6 +18,20 @@ interface StaffData {
     gender?: string;
 }
 
+const formatGender = (gender?: string) => {
+    if (!gender) {
+        return "-";
+    }
+
+    const genderMap: Record<string, string> = {
+        Male: "男",
+        Female: "女",
+        Other: "其他",
+    };
+
+    return genderMap[gender] ?? gender;
+};
+
 const Staff: React.FC = () => {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
@@ -224,7 +238,7 @@ const Staff: React.FC = () => {
                                 <td>{staff.name}</td>
                                 <td>{staff.national_id || "-"}</td>
                                 <td>{staff.phone || "-"}</td>
-                                <td className="text-center">{staff.gender || "-"}</td>
+                                <td className="text-center">{formatGender(staff.gender)}</td>
                             </tr>
                         ))
                     )}

@@ -18,7 +18,7 @@ const SalesOrderList: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [keyword, setKeyword] = useState("");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const { checkPermission, modal: permissionModal } = usePermissionGuard();
+    const { checkPermission: checkActionPermission, modal: permissionModal } = usePermissionGuard();
 
     const fetchData = useCallback(async (searchKeyword?: string) => {
         setLoading(true);
@@ -66,20 +66,23 @@ const SalesOrderList: React.FC = () => {
     };
 
     const handleExportWithPermission = async () => {
-        if (!checkPermission()) {
+        if (!checkActionPermission()) {
             return;
         }
         await handleExport();
     };
 
     const handleExportSelectedWithPermission = async () => {
-        if (!checkPermission()) {
+        if (!checkActionPermission()) {
             return;
         }
         await handleExportSelected();
     };
     const handleDelete = async () => {
         if (selectedIds.length === 0) return;
+        if (!checkActionPermission()) {
+            return;
+        }
         if (window.confirm(`確定要刪除選中的 ${selectedIds.length} 筆銷售單嗎？`)) {
             try {
                 const result = await deleteSalesOrders(selectedIds);
@@ -108,6 +111,13 @@ const SalesOrderList: React.FC = () => {
             <th>備註</th>
         </tr>
     );
+
+    const handleEdit = () => {
+        if (selectedIds.length !== 1) {
+            return;
+        }
+        navigate(`/finance/sales/add?order_id=${selectedIds[0]}`);
+    };
 
     const tableBody = loading ? (
         <tr><td colSpan={7} className="text-center py-5"><Spinner animation="border" /></td></tr>
@@ -150,12 +160,7 @@ const SalesOrderList: React.FC = () => {
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExportWithPermission} disabled={loading}>報表匯出</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleExportSelectedWithPermission} disabled={loading || selectedIds.length === 0}>勾選匯出</Button></Col>
                     <Col xs="auto"><Button variant="info" className="text-white" onClick={handleDelete} disabled={loading || selectedIds.length === 0}>刪除</Button></Col>
-                    <Col xs="auto"><Button variant="info" className="text-white" onClick={() => {
-                        if (!checkPermission()) {
-                            return;
-                        }
-                        navigate(`/finance/sales/add?order_id=${selectedIds[0]}`);
-                    }} disabled={loading || selectedIds.length !== 1}>修改</Button></Col>
+                    <Col xs="auto"><Button variant="info" className="text-white" onClick={handleEdit} disabled={loading || selectedIds.length !== 1}>修改</Button></Col>
                 </Row>
             </Container>
         </>
