@@ -340,7 +340,7 @@ const TherapySell: React.FC = () => {
             let totalSessions = 0;
             let aggregatedPrice: number | undefined;
             const nameQuantityMap = new Map<string, number>();
-            const noteSet = new Set<string>();
+            const noteLineCounts = new Map<string, number>();
 
             sortedItems.forEach((item) => {
                 const sessions = Number(item.Sessions || 0);
@@ -357,7 +357,9 @@ const TherapySell: React.FC = () => {
                         .split("\n")
                         .map((line) => line.trim())
                         .filter((line) => line.length > 0)
-                        .forEach((line) => noteSet.add(line));
+                        .forEach((line) => {
+                            noteLineCounts.set(line, (noteLineCounts.get(line) ?? 0) + 1);
+                        });
                 }
 
                 const priceValue = resolvePriceValue(item);
@@ -392,8 +394,29 @@ const TherapySell: React.FC = () => {
                 }
             }
 
-            if (noteSet.size > 0) {
-                base.Note = Array.from(noteSet).join("\n");
+            if (noteLineCounts.size > 0) {
+                const aggregatedNoteLines = Array.from(noteLineCounts.entries()).map(([line, count]) => {
+                    if (count <= 1) {
+                        return line;
+                    }
+
+                    const match = line.match(/^(.*?)(?:\s*[xX×]\s*(\d+(?:\.\d+)?))$/);
+                    if (match) {
+                        const baseLabel = match[1].trim();
+                        const quantity = Number(match[2]);
+                        if (Number.isFinite(quantity)) {
+                            const totalQuantity = quantity * count;
+                            const formattedQuantity = Number.isInteger(totalQuantity)
+                                ? totalQuantity.toString()
+                                : totalQuantity.toFixed(2);
+                            return `${baseLabel} x${formattedQuantity}`;
+                        }
+                    }
+
+                    return `${line} (x${count})`;
+                });
+
+                base.Note = aggregatedNoteLines.join("\n");
             } else if (typeof base.Note === "string" && base.Note.length > 0) {
                 base.Note = stripMetadataFromNote(base.Note);
             }
