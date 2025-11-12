@@ -48,7 +48,7 @@ const MemberInfo: React.FC = () => {
             <th style={{ width: '50px' }}>勾選</th>
             <th>店別</th>
             <th>姓名</th>
-            <th style={{ minWidth: '8ch' }}>會員編號</th>
+            <th style={{ minWidth: '10ch', whiteSpace: 'nowrap' }}>會員編號</th>
             <th>身份別</th>
             <th>生日</th>
             <th>年齡</th>
@@ -124,7 +124,7 @@ const MemberInfo: React.FC = () => {
     const content = (
         <div className="w-100">
             {/* 搜索區域 */}
-            <Container className="my-4"> {/* 使用 Container 來統一邊距 */}
+            <Container fluid className="my-4"> {/* 使用 Container 來統一邊距 */}
                 <Row className="align-items-center">
                     <Col xs={12} md={6} className="mb-3 mb-md-0">
                         <Form.Control
@@ -161,7 +161,7 @@ const MemberInfo: React.FC = () => {
             </Container>
 
             {/* 使用可滾動表格組件 */}
-            <Container>
+            <Container fluid>
                 <ScrollableTable
                     tableHeader={tableHeader}
                     tableBody={tableBody}
@@ -171,7 +171,7 @@ const MemberInfo: React.FC = () => {
             </Container>
 
             {/* 底部按鈕區域 */}
-            <Container className="my-4">
+            <Container fluid className="my-4">
                 <Row className="justify-content-end g-3">
                     <Col xs="auto">
                         <Button variant="info" className="text-white" onClick={handleExport} disabled={loading || members.length === 0}>
