@@ -206,20 +206,23 @@ const TherapySell: React.FC = () => {
         }
     };
 
+    const extractBundleId = (note?: string | null) => {
+        const match = note?.match(/\[bundle:(\d+)\]/);
+        return match ? parseInt(match[1], 10) : null;
+    };
+
     const getDisplayName = (sale: TherapySellRow) => {
-        const match = sale.Note?.match(/\[bundle:(\d+)\]/);
-        if (match) {
-            const id = parseInt(match[1], 10);
-            return bundleMap[id]?.name || sale.PackageName || "-";
+        const bundleId = extractBundleId(sale.Note);
+        if (bundleId) {
+            return bundleMap[bundleId]?.name || sale.PackageName || "-";
         }
         return sale.PackageName || "-";
     };
 
     const getNote = (sale: TherapySellRow) => {
-        const match = sale.Note?.match(/\[bundle:(\d+)\]/);
-        if (match) {
-            const id = parseInt(match[1], 10);
-            const contents = bundleMap[id]?.contents;
+        const bundleId = extractBundleId(sale.Note);
+        if (bundleId) {
+            const contents = bundleMap[bundleId]?.contents;
             if (contents) {
                 return contents.split(/[,，]/).join("\n");
             }
@@ -254,7 +257,7 @@ const TherapySell: React.FC = () => {
     const buildGroupKey = (sale: TherapySellRow) => {
         const staffKey = sale.Staff_ID ?? sale.StaffName ?? "";
         const storeKey = sale.store_id ?? sale.store_name ?? "";
-        return [
+        const baseParts = [
             sale.Member_ID ?? "",
             storeKey ?? "",
             staffKey ?? "",
@@ -262,7 +265,14 @@ const TherapySell: React.FC = () => {
             sale.PaymentMethod ?? "",
             sale.SaleCategory ?? "",
             cleanBundleTags(sale.Note)
-        ].join("|");
+        ];
+
+        const bundleId = extractBundleId(sale.Note);
+        if (bundleId) {
+            return [...baseParts, `bundle:${bundleId}`].join("|");
+        }
+
+        return [...baseParts, `order:${sale.Order_ID}`].join("|");
     };
     
 
@@ -355,7 +365,6 @@ const TherapySell: React.FC = () => {
             return;
         }
         if (!checkPermission()) {
-            setError('無操作權限');
             return;
         }
         if (window.confirm(`確定要刪除選定的 ${selectedItems.length} 筆紀錄嗎？`)) {
@@ -374,9 +383,10 @@ const TherapySell: React.FC = () => {
             } catch (error: any) {
                 console.error("刪除療程銷售失敗:", error);
                 const message = error.message || "刪除失敗，請重試";
-                setError(message);
                 if (message === '無操作權限') {
                     checkPermission();
+                } else {
+                    setError(message);
                 }
             } finally {
                 setLoading(false);

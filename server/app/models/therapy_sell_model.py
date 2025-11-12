@@ -5,6 +5,15 @@ from datetime import datetime
 import traceback
 import logging
 import json
+
+
+def _safe_float(value):
+    try:
+        if value is None:
+            return None
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
@@ -368,16 +377,19 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             f"--- [MODEL] Empty bundle inserted. ID: {cursor.lastrowid}"
                         )
                         continue
-                    total_qty = sum(item.get('quantity', 0) for item in bundle_items) or 1
+                    processed_items = []
+                    total_amount = 0
+                    base_total_sum = 0.0
+
                     for item in bundle_items:
+                        amount = int(item.get("quantity", 0)) * bundle_qty
                         item_values = {
                             "therapy_id": item.get("item_id"),
                             "member_id": data_item.get("memberId"),
                             "store_id": data_item.get("storeId"),
                             "staff_id": data_item.get("staffId"),
                             "date": data_item.get("purchaseDate", datetime.now().strftime("%Y-%m-%d")),
-                            "amount": int(item.get("quantity", 0)) * bundle_qty,
-                            "discount": float(data_item.get("discount") or 0) * (item.get("quantity", 0) / total_qty),
+                            "amount": amount,
                             "payment_method": data_item.get("paymentMethod"),
                             "sale_category": data_item.get("saleCategory"),
                             "note": f"{data_item.get('note', '')} [bundle:{bundle_id}]",
@@ -390,14 +402,74 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                             if not item_label:
                                 item_label = str(item_values.get("therapy_id"))
                             raise ValueError(f"組合{bundle_label}之品項{item_label}已下架")
+
                         unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
+                        base_total = unit_price * amount
                         item_values["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
-                        item_values["discount"] = float(item_values.get("discount") or 0)
-                        item_values["final_price"] = unit_price * item_values["amount"] - item_values["discount"]
-                        logging.debug(
-                            f"--- [MODEL] Values for SQL for bundle item {index + 1}: {item_values}"
+
+                        processed_items.append(
+                            {
+                                "values": item_values,
+                                "amount": amount,
+                                "unit_price": unit_price,
+                                "base_total": base_total,
+                            }
                         )
-                        cursor.execute(insert_query, item_values)
+                        total_amount += amount
+                        base_total_sum += base_total
+
+                    raw_bundle_discount = _safe_float(data_item.get("discount"))
+                    raw_bundle_final_price = _safe_float(data_item.get("finalPrice") or data_item.get("final_price"))
+
+                    bundle_final_total = raw_bundle_final_price
+                    if bundle_final_total is None:
+                        if raw_bundle_discount is not None and base_total_sum:
+                            bundle_final_total = base_total_sum - raw_bundle_discount
+                        else:
+                            bundle_final_total = base_total_sum
+                    bundle_final_total = max(bundle_final_total or 0.0, 0.0)
+
+                    bundle_discount_total = raw_bundle_discount
+                    if bundle_discount_total is None:
+                        bundle_discount_total = max(base_total_sum - bundle_final_total, 0.0)
+                    else:
+                        bundle_discount_total = max(bundle_discount_total, 0.0)
+
+                    allocated_final = 0.0
+                    allocated_discount = 0.0
+                    item_count = len(processed_items)
+
+                    for idx, processed in enumerate(processed_items):
+                        values_dict = processed["values"]
+                        base_total = processed["base_total"]
+                        amount = processed["amount"]
+
+                        if base_total_sum > 0:
+                            ratio = base_total / base_total_sum
+                        elif total_amount > 0:
+                            ratio = amount / total_amount
+                        else:
+                            ratio = 1.0 / item_count if item_count else 0.0
+
+                        if idx == item_count - 1:
+                            item_final_price = bundle_final_total - allocated_final
+                            item_discount = bundle_discount_total - allocated_discount
+                        else:
+                            item_final_price = round(bundle_final_total * ratio, 2)
+                            item_discount = round(bundle_discount_total * ratio, 2)
+                            allocated_final += item_final_price
+                            allocated_discount += item_discount
+
+                        item_final_price = max(round(item_final_price, 2), 0.0)
+                        item_discount = max(round(item_discount, 2), 0.0)
+
+                        values_dict["discount"] = item_discount
+                        values_dict["final_price"] = item_final_price
+
+                        logging.debug(
+                            f"--- [MODEL] Values for SQL for bundle item {index + 1}-{idx + 1}: {values_dict}"
+                        )
+                        cursor.execute(insert_query, values_dict)
                         created_ids.append(cursor.lastrowid)
                         logging.debug(
                             f"--- [MODEL] Bundle item inserted. ID: {cursor.lastrowid}"
@@ -426,8 +498,17 @@ def insert_many_therapy_sells(sales_data_list: list[dict]):
                     raise ValueError(f"品項{item_label}已下架")
                 unit_price = float(price_row["price"]) if price_row.get("price") is not None else 0.0
                 values_dict["therapy_name"] = price_row["name"] if price_row.get("name") is not None else None
-                values_dict["discount"] = float(values_dict.get("discount") or 0)
-                values_dict["final_price"] = unit_price * values_dict["amount"] - values_dict["discount"]
+                explicit_discount = _safe_float(data_item.get("discount"))
+                explicit_final = _safe_float(data_item.get("finalPrice") or data_item.get("final_price"))
+                if explicit_discount is not None:
+                    values_dict["discount"] = round(max(explicit_discount, 0.0), 2)
+                else:
+                    values_dict["discount"] = round(float(values_dict.get("discount") or 0), 2)
+
+                if explicit_final is not None:
+                    values_dict["final_price"] = round(max(explicit_final, 0.0), 2)
+                else:
+                    values_dict["final_price"] = round(unit_price * values_dict["amount"] - values_dict["discount"], 2)
                 logging.debug(f"--- [MODEL] Values for SQL for item {index + 1}: {values_dict}")
                 cursor.execute(insert_query, values_dict)
                 created_ids.append(cursor.lastrowid)
