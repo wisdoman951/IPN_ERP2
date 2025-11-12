@@ -240,7 +240,15 @@ const AddTherapySell: React.FC = () => {
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    let { value } = e.target;
+
+    if (name === 'cardNumber') {
+      value = value.replace(/\D/g, '').slice(0, 6);
+    } else if (name === 'transferCode') {
+      value = value.replace(/\D/g, '').slice(0, 5);
+    }
+
     setFormData((prev) => ({
       ...prev,
       [name]: name === 'discountAmount' ? parseFloat(value) || 0 : value,
@@ -525,9 +533,16 @@ const AddTherapySell: React.FC = () => {
 
                     {formData.paymentMethod === '信用卡' && (
                       <Form.Group className="mb-3" controlId="cardNumber">
-                        <Form.Label>卡號後五碼</Form.Label>
-                        <Form.Control type="text" name="cardNumber" maxLength={5} pattern="\d*" value={formData.cardNumber}
-                          onChange={handleChange} placeholder="請輸入信用卡號後五碼" />
+                        <Form.Label>授權碼（6個數字）</Form.Label>
+                        <Form.Control
+                          type="text"
+                          name="cardNumber"
+                          maxLength={6}
+                          pattern="\d*"
+                          value={formData.cardNumber}
+                          onChange={handleChange}
+                          placeholder="請輸入授權碼 6 個數字"
+                        />
                       </Form.Group>
                     )}
                     {formData.paymentMethod === '轉帳' && (
