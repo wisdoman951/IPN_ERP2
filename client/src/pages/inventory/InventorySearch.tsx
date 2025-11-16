@@ -127,9 +127,8 @@ const InventorySearch: React.FC = () => {
             setError("請先選擇要刪除的項目");
             return;
         }
-        
+
         if (!checkPermission()) {
-            setError("無操作權限");
             return;
         }
 
@@ -174,7 +173,6 @@ const InventorySearch: React.FC = () => {
     // 跳轉到更新頁面
     const handleEdit = () => {
         if (!checkPermission()) {
-            setError("無操作權限");
             return;
         }
         if (selectedItems.length !== 1) {
