@@ -548,6 +548,31 @@ const TherapySell: React.FC = () => {
                     }
                 });
 
+                if (actualComponentQuantities.size > 0) {
+                    const actualTotal = Array.from(actualComponentQuantities.values()).reduce(
+                        (sum, qty) => (Number.isFinite(qty) && qty > 0 ? sum + qty : sum),
+                        0,
+                    );
+
+                    if (Number.isFinite(actualTotal) && actualTotal > 0) {
+                        totalSessions += actualTotal;
+                    }
+
+                    actualComponentQuantities.forEach((qty, label) => {
+                        const normalizedQty = Number.isFinite(qty) && qty > 0 ? qty : undefined;
+                        recordNoteLine(label, normalizedQty);
+                    });
+
+                    const displayName = getDisplayName(group.items[0]);
+                    if (displayName && displayName !== "-") {
+                        const displayQty = metadataQuantity ?? 1;
+                        const increment = Number.isFinite(displayQty) && displayQty > 0 ? displayQty : 1;
+                        nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + increment);
+                    }
+
+                    return;
+                }
+
                 const hasExplicitComponentQuantities =
                     componentEntries.length > 0 &&
                     componentEntries.every((entry) => Number.isFinite(Number(entry.quantity)) && Number(entry.quantity) > 0);
