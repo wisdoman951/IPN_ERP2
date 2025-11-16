@@ -552,12 +552,17 @@ const TherapySell: React.FC = () => {
                     componentEntries.length > 0 &&
                     componentEntries.every((entry) => Number.isFinite(Number(entry.quantity)) && Number(entry.quantity) > 0);
 
-                let effectiveBundleQuantity: number | undefined = metadataQuantity;
-                if (effectiveBundleQuantity === undefined && hasExplicitComponentQuantities) {
+                let effectiveBundleQuantity: number | undefined = undefined;
+
+                if (hasExplicitComponentQuantities) {
                     const computed = computeBundleQuantityFromSessions(group.totalSessions, componentEntries);
                     if (computed !== undefined) {
                         effectiveBundleQuantity = computed;
                     }
+                }
+
+                if (effectiveBundleQuantity === undefined && metadataQuantity !== undefined) {
+                    effectiveBundleQuantity = metadataQuantity;
                 }
 
                 if (effectiveBundleQuantity === undefined || !Number.isFinite(effectiveBundleQuantity) || effectiveBundleQuantity <= 0) {
