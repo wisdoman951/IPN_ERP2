@@ -585,21 +585,30 @@ const TherapySell: React.FC = () => {
                     totalSessions += Number(effectiveBundleQuantity);
                 }
 
-                const quantityForComponents = hasActualComponentQuantities ? undefined : effectiveBundleQuantity;
+                const bundlePurchaseQuantity = (() => {
+                    const metadataQty = Number(metadataQuantity);
+                    if (Number.isFinite(metadataQty) && metadataQty > 0) {
+                        return metadataQty;
+                    }
+                    if (hasExplicitComponentQuantities) {
+                        const computed = computeBundleQuantityFromSessions(group.totalSessions, componentEntries);
+                        if (Number.isFinite(computed) && Number(computed) > 0) {
+                            return Number(computed);
+                        }
+                    }
+                    if (!hasActualComponentQuantities && Number.isFinite(effectiveBundleQuantity) && Number(effectiveBundleQuantity) > 0) {
+                        return Number(effectiveBundleQuantity);
+                    }
+                    return 1;
+                })();
                 if (componentEntries.length > 0) {
                     if (hasExplicitComponentQuantities) {
                         componentEntries.forEach((component) => {
                             const componentQuantity = Number(component.quantity);
                             const perBundleQuantity = Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 1;
-                            const contribution = quantityForComponents !== undefined ? perBundleQuantity * quantityForComponents : undefined;
-                            const actualQuantity = actualComponentQuantities.get(component.label);
-                            if (actualQuantity !== undefined) {
-                                recordNoteLine(component.label, actualQuantity);
-                            } else if (contribution !== undefined && Number.isFinite(contribution) && contribution > 0) {
-                                recordNoteLine(component.label, contribution);
-                            } else {
-                                recordNoteLine(component.label);
-                            }
+                            const contribution = perBundleQuantity * bundlePurchaseQuantity;
+                            const normalizedContribution = Number.isFinite(contribution) && contribution > 0 ? contribution : undefined;
+                            recordNoteLine(component.label, normalizedContribution);
                         });
                     } else if (!hasActualComponentQuantities) {
                         group.items.forEach((item) => {
