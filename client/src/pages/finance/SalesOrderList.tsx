@@ -18,7 +18,9 @@ const SalesOrderList: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [keyword, setKeyword] = useState("");
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
-    const { checkPermission: checkActionPermission, modal: permissionModal } = usePermissionGuard();
+    const { checkPermission: checkExportPermission, modal: exportPermissionModal } = usePermissionGuard();
+    const { checkPermission: checkDeletePermission, modal: deletePermissionModal } = usePermissionGuard({ disallowedRoles: ['basic', 'therapist'] });
+    const { checkPermission: checkEditPermission, modal: editPermissionModal } = usePermissionGuard({ disallowedRoles: ['therapist'] });
 
     const fetchData = useCallback(async (searchKeyword?: string) => {
         setLoading(true);
@@ -66,21 +68,21 @@ const SalesOrderList: React.FC = () => {
     };
 
     const handleExportWithPermission = async () => {
-        if (!checkActionPermission()) {
+        if (!checkExportPermission()) {
             return;
         }
         await handleExport();
     };
 
     const handleExportSelectedWithPermission = async () => {
-        if (!checkActionPermission()) {
+        if (!checkExportPermission()) {
             return;
         }
         await handleExportSelected();
     };
     const handleDelete = async () => {
         if (selectedIds.length === 0) return;
-        if (!checkActionPermission()) {
+        if (!checkDeletePermission()) {
             return;
         }
         if (window.confirm(`確定要刪除選中的 ${selectedIds.length} 筆銷售單嗎？`)) {
@@ -114,6 +116,9 @@ const SalesOrderList: React.FC = () => {
 
     const handleEdit = () => {
         if (selectedIds.length !== 1) {
+            return;
+        }
+        if (!checkEditPermission()) {
             return;
         }
         navigate(`/finance/sales/add?order_id=${selectedIds[0]}`);
@@ -172,7 +177,9 @@ const SalesOrderList: React.FC = () => {
                 <Header />
                 <DynamicContainer content={content} />
             </div>
-            {permissionModal}
+            {exportPermissionModal}
+            {deletePermissionModal}
+            {editPermissionModal}
         </>
     );
 };
