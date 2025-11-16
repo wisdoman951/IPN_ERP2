@@ -599,6 +599,18 @@ const TherapySell: React.FC = () => {
                     if (!hasActualComponentQuantities && Number.isFinite(effectiveBundleQuantity) && Number(effectiveBundleQuantity) > 0) {
                         return Number(effectiveBundleQuantity);
                     }
+                    console.log("DEBUG bundle", {
+                      bundleId,
+                      items: group.items.map(i => ({
+                        id: i.Order_ID,
+                        name: i.PackageName,
+                        Sessions: i.Sessions,
+                        Note: i.Note,
+                      })),
+                      actualComponentQuantities: Array.from(actualComponentQuantities.entries()),
+                      bundlePurchaseQuantity,
+                    });
+
                     return 1;
                 })();
                 if (componentEntries.length > 0) {
