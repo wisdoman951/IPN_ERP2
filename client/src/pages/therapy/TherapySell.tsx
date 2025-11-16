@@ -185,12 +185,17 @@ const computeBundleQuantityFromSessions = (
     if (!Number.isFinite(sessions) || sessions <= 0) {
         return undefined;
     }
+    const hasAllQuantities = components.every((entry) => {
+        const componentQuantity = Number(entry.quantity);
+        return Number.isFinite(componentQuantity) && componentQuantity > 0;
+    });
+    if (!hasAllQuantities) {
+        return undefined;
+    }
+
     const perBundleTotal = components.reduce((sum, entry) => {
         const componentQuantity = Number(entry.quantity);
-        if (Number.isFinite(componentQuantity) && componentQuantity > 0) {
-            return sum + componentQuantity;
-        }
-        return sum + 1;
+        return sum + (Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 0);
     }, 0);
     if (!Number.isFinite(perBundleTotal) || perBundleTotal <= 0) {
         return undefined;
@@ -474,91 +479,143 @@ const TherapySell: React.FC = () => {
                 }
             };
 
+            const recordDisplayNoteLines = (noteText?: string | null) => {
+                const displayNote = noteText ?? "";
+                if (!displayNote || displayNote === "-") {
+                    return;
+                }
+                displayNote
+                    .split("\n")
+                    .map((line) => line.trim())
+                    .filter((line) => line.length > 0)
+                    .forEach((line) => {
+                        const parsed = parseLineQuantity(line);
+                        if (parsed.hasQuantity && parsed.quantity !== undefined) {
+                            recordNoteLine(parsed.label, parsed.quantity);
+                        } else {
+                            recordNoteLine(parsed.label.length > 0 ? parsed.label : line);
+                        }
+                    });
+            };
+
+            const bundleGroups = new Map<number, { items: TherapySellRow[]; metadata?: BundleMetadata; totalSessions: number }>();
+            const standaloneItems: TherapySellRow[] = [];
+
             sortedItems.forEach((item) => {
-                const sessions = Number(item.Sessions ?? 0);
-                if (Number.isFinite(sessions)) {
-                    totalSessions += sessions;
+                const priceValue = resolvePriceValue(item);
+                if (priceValue !== undefined) {
+                    aggregatedPrice = (aggregatedPrice ?? 0) + priceValue;
                 }
 
+                const sessions = Number(item.Sessions ?? 0);
                 const bundleId = extractBundleId(item.Note);
-                const bundleMetadata = parseBundleMetadata(item.Note);
-                const metadataQuantity = coercePositiveNumber(bundleMetadata?.qty ?? bundleMetadata?.quantity);
-                let effectiveBundleQuantity: number | undefined = metadataQuantity;
-                let componentEntries: { label: string; quantity?: number }[] = [];
-                let noteHandled = false;
-
                 if (bundleId) {
-                    componentEntries = getBundleComponentEntries(bundleId);
-                    if (componentEntries.length > 0) {
-                        if (effectiveBundleQuantity === undefined) {
-                            const computed = computeBundleQuantityFromSessions(sessions, componentEntries);
-                            if (computed !== undefined) {
-                                effectiveBundleQuantity = computed;
-                            }
-                        }
-                        if (effectiveBundleQuantity === undefined || !Number.isFinite(effectiveBundleQuantity) || effectiveBundleQuantity <= 0) {
-                            effectiveBundleQuantity = 1;
-                        }
+                    const meta = parseBundleMetadata(item.Note);
+                    const existing = bundleGroups.get(bundleId) ?? { items: [], metadata: undefined, totalSessions: 0 };
+                    existing.items.push(item);
+                    if (Number.isFinite(sessions)) {
+                        existing.totalSessions += sessions;
+                    }
+                    if (meta) {
+                        const merged: BundleMetadata = { ...(existing.metadata || {}) };
+                        if (meta.qty !== undefined) merged.qty = meta.qty;
+                        if (meta.quantity !== undefined) merged.quantity = meta.quantity;
+                        if (meta.total !== undefined) merged.total = meta.total;
+                        if (meta.name) merged.name = meta.name;
+                        existing.metadata = merged;
+                    }
+                    bundleGroups.set(bundleId, existing);
+                    return;
+                }
 
-                        const quantityForComponents = effectiveBundleQuantity;
+                standaloneItems.push(item);
+            });
+
+            bundleGroups.forEach((group, bundleId) => {
+                const bundleMetadata = group.metadata;
+                const metadataQuantity = coercePositiveNumber(bundleMetadata?.qty ?? bundleMetadata?.quantity);
+                const componentEntries = getBundleComponentEntries(bundleId);
+                const actualComponentQuantities = new Map<string, number>();
+
+                group.items.forEach((item) => {
+                    const label = (item as any).therapy_name || item.PackageName || getDisplayName(item) || "";
+                    const sessions = Number(item.Sessions ?? (item as any).amount);
+                    if (label.trim().length === 0) {
+                        return;
+                    }
+                    if (Number.isFinite(sessions) && sessions > 0) {
+                        actualComponentQuantities.set(label, (actualComponentQuantities.get(label) ?? 0) + sessions);
+                    }
+                });
+
+                const hasExplicitComponentQuantities =
+                    componentEntries.length > 0 &&
+                    componentEntries.every((entry) => Number.isFinite(Number(entry.quantity)) && Number(entry.quantity) > 0);
+
+                let effectiveBundleQuantity: number | undefined = metadataQuantity;
+                if (effectiveBundleQuantity === undefined && hasExplicitComponentQuantities) {
+                    const computed = computeBundleQuantityFromSessions(group.totalSessions, componentEntries);
+                    if (computed !== undefined) {
+                        effectiveBundleQuantity = computed;
+                    }
+                }
+
+                if (effectiveBundleQuantity === undefined || !Number.isFinite(effectiveBundleQuantity) || effectiveBundleQuantity <= 0) {
+                    effectiveBundleQuantity = 1;
+                }
+
+                totalSessions += Number(effectiveBundleQuantity);
+
+                const quantityForComponents = effectiveBundleQuantity;
+                if (componentEntries.length > 0) {
+                    if (hasExplicitComponentQuantities) {
                         componentEntries.forEach((component) => {
                             const componentQuantity = Number(component.quantity);
                             const perBundleQuantity = Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 1;
                             const contribution = perBundleQuantity * quantityForComponents;
-                            if (Number.isFinite(contribution) && contribution > 0) {
+                            const actualQuantity = actualComponentQuantities.get(component.label);
+                            if (actualQuantity !== undefined) {
+                                recordNoteLine(component.label, actualQuantity);
+                            } else if (Number.isFinite(contribution) && contribution > 0) {
                                 recordNoteLine(component.label, contribution);
                             } else {
                                 recordNoteLine(component.label);
                             }
                         });
-                        noteHandled = componentEntries.length > 0;
+                    } else {
+                        group.items.forEach((item) => {
+                            const sessions = Number(item.Sessions ?? (item as any).amount);
+                            const qty = Number.isFinite(sessions) && sessions > 0 ? sessions : undefined;
+                            const label = (item as any).therapy_name || item.PackageName || getDisplayName(item) || "";
+                            recordNoteLine(label, qty);
+                        });
                     }
+                } else {
+                    recordDisplayNoteLines(getNote(group.items[0]));
                 }
 
-                if (!noteHandled) {
-                    const displayNote = getNote(item);
-                    if (displayNote && displayNote !== "-") {
-                        displayNote
-                            .split("\n")
-                            .map((line) => line.trim())
-                            .filter((line) => line.length > 0)
-                            .forEach((line) => {
-                                const parsed = parseLineQuantity(line);
-                                if (parsed.hasQuantity && parsed.quantity !== undefined) {
-                                    recordNoteLine(parsed.label, parsed.quantity);
-                                } else {
-                                    recordNoteLine(parsed.label.length > 0 ? parsed.label : line);
-                                }
-                            });
-                    }
-                }
-
-                const displayName = getDisplayName(item);
+                const displayName = getDisplayName(group.items[0]);
                 if (displayName && displayName !== "-") {
-                    let quantityForName: number | undefined = sessions;
-                    if (bundleId && (componentEntries.length > 0 || effectiveBundleQuantity !== undefined)) {
-                        quantityForName = effectiveBundleQuantity;
-                    }
-                    const numericQuantity = Number(quantityForName);
-                    if (Number.isFinite(numericQuantity) && numericQuantity > 0) {
-                        nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + numericQuantity);
-                    } else if (!Number.isFinite(numericQuantity) || numericQuantity === 0) {
-                        nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + 1);
-                    }
-                }
-
-                const priceValue = resolvePriceValue(item);
-                if (priceValue !== undefined) {
-                    aggregatedPrice = (aggregatedPrice ?? 0) + priceValue;
+                    const numericQuantity = Number(effectiveBundleQuantity);
+                    const increment = Number.isFinite(numericQuantity) && numericQuantity > 0 ? numericQuantity : 1;
+                    nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + increment);
                 }
             });
 
-            base.Sessions = totalSessions;
-            if (aggregatedPrice !== undefined) {
-                base.Price = aggregatedPrice;
-            } else {
-                base.Price = undefined;
-            }
+            standaloneItems.forEach((item) => {
+                const sessions = Number(item.Sessions ?? 0);
+                if (Number.isFinite(sessions) && sessions > 0) {
+                    totalSessions += sessions;
+                }
+
+                recordDisplayNoteLines(getNote(item));
+
+                const displayName = getDisplayName(item);
+                if (displayName && displayName !== "-") {
+                    const qty = Number.isFinite(sessions) && sessions > 0 ? sessions : 1;
+                    nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + qty);
+                }
+            });
 
             if (nameQuantityMap.size > 0) {
                 const itemEntries = Array.from(nameQuantityMap.entries())
@@ -602,10 +659,16 @@ const TherapySell: React.FC = () => {
                 base.Note = stripMetadataFromNote(base.Note);
             }
 
+            base.Sessions = totalSessions;
+            if (aggregatedPrice !== undefined) {
+                base.Price = aggregatedPrice;
+            } else {
+                base.Price = undefined;
+            }
+
             return base;
         });
     }, [sales, bundleMap]);
-
     const getRowKey = (sale: DisplayTherapySellRow) => sale.therapy_sell_ids.join(":");
 
     const handleDelete = async () => {
