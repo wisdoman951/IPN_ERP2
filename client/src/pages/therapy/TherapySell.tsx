@@ -464,18 +464,30 @@ const TherapySell: React.FC = () => {
                 if (normalizedLabel.length === 0) {
                     return;
                 }
+            
                 let entry = noteAggregations.get(normalizedLabel);
                 if (!entry) {
                     entry = {
                         occurrences: 0,
-                        totalQuantity: quantity !== undefined ? quantity : undefined,
+                        totalQuantity: undefined,
                     };
                     noteAggregations.set(normalizedLabel, entry);
                     noteOrder.push(normalizedLabel);
                 }
+            
+                // 計次還是保留：後面在沒有 totalQuantity 時可以用 occurrences 顯示 (xN)
                 entry.occurrences += 1;
+            
+                // ✅ 不再用「加總」的方式，避免 1+1 變成 2
                 if (quantity !== undefined) {
-                    entry.totalQuantity = (entry.totalQuantity ?? 0) + quantity;
+                    const q = Number(quantity);
+                    if (Number.isFinite(q) && q > 0) {
+                        // 這裡採用「取最大值」策略：多個來源都給數量，取較大的那個
+                        entry.totalQuantity =
+                            entry.totalQuantity === undefined
+                                ? q
+                                : Math.max(entry.totalQuantity, q);
+                    }
                 }
             };
 
