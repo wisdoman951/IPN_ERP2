@@ -178,32 +178,6 @@ const parseLineQuantity = (line: string): ParsedLineQuantity => {
     };
 };
 
-const computeBundleQuantityFromSessions = (
-    sessions: number,
-    components: { quantity?: number }[],
-): number | undefined => {
-    if (!Number.isFinite(sessions) || sessions <= 0) {
-        return undefined;
-    }
-    const hasAllQuantities = components.every((entry) => {
-        const componentQuantity = Number(entry.quantity);
-        return Number.isFinite(componentQuantity) && componentQuantity > 0;
-    });
-    if (!hasAllQuantities) {
-        return undefined;
-    }
-
-    const perBundleTotal = components.reduce((sum, entry) => {
-        const componentQuantity = Number(entry.quantity);
-        return sum + (Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 0);
-    }, 0);
-    if (!Number.isFinite(perBundleTotal) || perBundleTotal <= 0) {
-        return undefined;
-    }
-    const ratio = sessions / perBundleTotal;
-    return Number.isFinite(ratio) && ratio > 0 ? ratio : undefined;
-};
-
 const TherapySell: React.FC = () => {
     const navigate = useNavigate();
     const [sales, setSales] = useState<TherapySellRow[]>([]);
@@ -540,17 +514,9 @@ const TherapySell: React.FC = () => {
                     componentEntries.length > 0 &&
                     componentEntries.every((entry) => Number.isFinite(Number(entry.quantity)) && Number(entry.quantity) > 0);
 
-                let effectiveBundleQuantity: number | undefined = metadataQuantity;
-                if (effectiveBundleQuantity === undefined && hasExplicitComponentQuantities) {
-                    const computed = computeBundleQuantityFromSessions(group.totalSessions, componentEntries);
-                    if (computed !== undefined) {
-                        effectiveBundleQuantity = computed;
-                    }
-                }
-
-                if (effectiveBundleQuantity === undefined || !Number.isFinite(effectiveBundleQuantity) || effectiveBundleQuantity <= 0) {
-                    effectiveBundleQuantity = 1;
-                }
+                const effectiveBundleQuantity = (metadataQuantity !== undefined && Number.isFinite(metadataQuantity) && metadataQuantity > 0)
+                    ? metadataQuantity
+                    : 1;
 
                 totalSessions += Number(effectiveBundleQuantity);
 
