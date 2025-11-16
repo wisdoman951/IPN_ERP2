@@ -602,55 +602,48 @@ const TherapySell: React.FC = () => {
                     return 1;
                 })();
                 
-                if (componentEntries.length > 0) {
+                // ✅ 先看有沒有實際拆成 component 的堂數，如果有就全部信任它
+                if (hasActualComponentQuantities) {
+                    actualComponentQuantities.forEach((qty, label) => {
+                        const normalizedQty =
+                            Number.isFinite(qty) && qty > 0 ? qty : undefined;
+                        recordNoteLine(label, normalizedQty);
+                    });
+                } else if (componentEntries.length > 0) {
+                    // 只有在「沒有實際 component 紀錄」時，才用 bundle 設定推算
                     if (hasExplicitComponentQuantities) {
-                        // ✅ 優先使用實際銷售紀錄中的堂數（actualComponentQuantities）
                         componentEntries.forEach((component) => {
-                            const label = component.label;
-                            const actualQty = actualComponentQuantities.get(label);
-                
-                            let qtyToUse: number | undefined;
-                
-                            if (Number.isFinite(actualQty) && (actualQty as number) > 0) {
-                                // 信任這張訂單實際賣掉幾堂
-                                qtyToUse = actualQty as number;
-                            } else {
-                                // 後備：如果沒有實際堂數，就退回原本用 bundle 設定估算
-                                const componentQuantity = Number(component.quantity);
-                                const perBundleQuantity =
-                                    Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 1;
-                                const contribution = perBundleQuantity * bundlePurchaseQuantity;
-                                qtyToUse =
-                                    Number.isFinite(contribution) && contribution > 0 ? contribution : undefined;
-                            }
-                
-                            const normalized =
-                                qtyToUse !== undefined && Number.isFinite(qtyToUse) && qtyToUse > 0
-                                    ? qtyToUse
+                            const componentQuantity = Number(component.quantity);
+                            const perBundleQuantity =
+                                Number.isFinite(componentQuantity) && componentQuantity > 0
+                                    ? componentQuantity
+                                    : 1;
+                            const contribution = perBundleQuantity * bundlePurchaseQuantity;
+                            const normalizedContribution =
+                                Number.isFinite(contribution) && contribution > 0
+                                    ? contribution
                                     : undefined;
-                
-                            recordNoteLine(label, normalized);
+                            recordNoteLine(component.label, normalizedContribution);
                         });
-                    } else if (!hasActualComponentQuantities) {
-                        // 沒有 explicit component 設定、也沒有實際堂數，只能靠舊邏輯估
+                    } else {
+                        // 退回舊邏輯：完全沒有 metadata，只能用 group.items 的 Sessions 當作備註數量
                         group.items.forEach((item) => {
                             const sessions = Number(item.Sessions ?? (item as any).amount);
-                            const qty = Number.isFinite(sessions) && sessions > 0 ? sessions : undefined;
+                            const qty =
+                                Number.isFinite(sessions) && sessions > 0 ? sessions : undefined;
                             const label =
-                                (item as any).therapy_name || item.PackageName || getDisplayName(item) || "";
+                                (item as any).therapy_name ||
+                                item.PackageName ||
+                                getDisplayName(item) ||
+                                "";
                             recordNoteLine(label, qty);
                         });
                     }
-                } else if (hasActualComponentQuantities) {
-                    // 沒有 componentEntries，就純用實際堂數
-                    actualComponentQuantities.forEach((qty, label) => {
-                        const normalizedQty = Number.isFinite(qty) && qty > 0 ? qty : undefined;
-                        recordNoteLine(label, normalizedQty);
-                    });
                 } else {
-                    // 最後備案：用原本 Note 字串拆行
+                    // 真的什麼資訊都沒有，就用原本 Note 文字拆行
                     recordDisplayNoteLines(getNote(group.items[0]));
                 }
+
 
                 console.log("DEBUG bundle", {
                       bundleId,
