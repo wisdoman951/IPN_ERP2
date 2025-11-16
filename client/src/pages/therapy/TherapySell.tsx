@@ -860,7 +860,14 @@ const TherapySell: React.FC = () => {
                             return therapySaleCategoryValueToDisplayMap[cat] || cat || "-";
                         })()}
                     </td>
-                    <td className="align-middle" style={{ maxWidth: '150px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
+                    <td
+                      className="align-middle"
+                      style={{ maxWidth: '150px', whiteSpace: 'pre-line' }}
+                    >
+                      {sale.Note && sale.Note.trim().length > 0
+                        ? renderMultilineText(sale.Note)
+                        : "-"}
+                    </td>
                 </tr>
             );
         })
