@@ -23,13 +23,17 @@ const formatGender = (gender?: string) => {
         return "-";
     }
 
+    const normalized = gender.trim().toLowerCase();
+
     const genderMap: Record<string, string> = {
-        Male: "男",
-        Female: "女",
-        Other: "其他",
+        male: "男",
+        m: "男",
+        female: "女",
+        f: "女",
+        other: "其他",
     };
 
-    return genderMap[gender] ?? gender;
+    return genderMap[normalized] ?? gender.trim();
 };
 
 const Staff: React.FC = () => {
