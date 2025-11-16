@@ -548,7 +548,8 @@ const TherapySell: React.FC = () => {
                     }
                 });
 
-                if (actualComponentQuantities.size > 0) {
+                const hasActualComponentQuantities = actualComponentQuantities.size > 0;
+                if (hasActualComponentQuantities) {
                     const actualTotal = Array.from(actualComponentQuantities.values()).reduce(
                         (sum, qty) => (Number.isFinite(qty) && qty > 0 ? sum + qty : sum),
                         0,
@@ -557,20 +558,6 @@ const TherapySell: React.FC = () => {
                     if (Number.isFinite(actualTotal) && actualTotal > 0) {
                         totalSessions += actualTotal;
                     }
-
-                    actualComponentQuantities.forEach((qty, label) => {
-                        const normalizedQty = Number.isFinite(qty) && qty > 0 ? qty : undefined;
-                        recordNoteLine(label, normalizedQty);
-                    });
-
-                    const displayName = getDisplayName(group.items[0]);
-                    if (displayName && displayName !== "-") {
-                        const displayQty = metadataQuantity ?? 1;
-                        const increment = Number.isFinite(displayQty) && displayQty > 0 ? displayQty : 1;
-                        nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + increment);
-                    }
-
-                    return;
                 }
 
                 const hasExplicitComponentQuantities =
@@ -579,40 +566,51 @@ const TherapySell: React.FC = () => {
 
                 let effectiveBundleQuantity: number | undefined = undefined;
 
-                if (hasExplicitComponentQuantities) {
-                    const computed = computeBundleQuantityFromSessions(group.totalSessions, componentEntries);
-                    if (computed !== undefined) {
-                        effectiveBundleQuantity = computed;
+                if (!hasActualComponentQuantities) {
+                    if (hasExplicitComponentQuantities) {
+                        const computed = computeBundleQuantityFromSessions(group.totalSessions, componentEntries);
+                        if (computed !== undefined) {
+                            effectiveBundleQuantity = computed;
+                        }
                     }
+
+                    if (effectiveBundleQuantity === undefined && metadataQuantity !== undefined) {
+                        effectiveBundleQuantity = metadataQuantity;
+                    }
+
+                    if (effectiveBundleQuantity === undefined || !Number.isFinite(effectiveBundleQuantity) || effectiveBundleQuantity <= 0) {
+                        effectiveBundleQuantity = 1;
+                    }
+
+                    totalSessions += Number(effectiveBundleQuantity);
                 }
 
-                if (effectiveBundleQuantity === undefined && metadataQuantity !== undefined) {
-                    effectiveBundleQuantity = metadataQuantity;
-                }
-
-                if (effectiveBundleQuantity === undefined || !Number.isFinite(effectiveBundleQuantity) || effectiveBundleQuantity <= 0) {
-                    effectiveBundleQuantity = 1;
-                }
-
-                totalSessions += Number(effectiveBundleQuantity);
-
-                const quantityForComponents = effectiveBundleQuantity;
+                const bundlePurchaseQuantity = (() => {
+                    const metadataQty = Number(metadataQuantity);
+                    if (Number.isFinite(metadataQty) && metadataQty > 0) {
+                        return metadataQty;
+                    }
+                    if (hasExplicitComponentQuantities) {
+                        const computed = computeBundleQuantityFromSessions(group.totalSessions, componentEntries);
+                        if (Number.isFinite(computed) && Number(computed) > 0) {
+                            return Number(computed);
+                        }
+                    }
+                    if (!hasActualComponentQuantities && Number.isFinite(effectiveBundleQuantity) && Number(effectiveBundleQuantity) > 0) {
+                        return Number(effectiveBundleQuantity);
+                    }
+                    return 1;
+                })();
                 if (componentEntries.length > 0) {
                     if (hasExplicitComponentQuantities) {
                         componentEntries.forEach((component) => {
                             const componentQuantity = Number(component.quantity);
                             const perBundleQuantity = Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 1;
-                            const contribution = perBundleQuantity * quantityForComponents;
-                            const actualQuantity = actualComponentQuantities.get(component.label);
-                            if (actualQuantity !== undefined) {
-                                recordNoteLine(component.label, actualQuantity);
-                            } else if (Number.isFinite(contribution) && contribution > 0) {
-                                recordNoteLine(component.label, contribution);
-                            } else {
-                                recordNoteLine(component.label);
-                            }
+                            const contribution = perBundleQuantity * bundlePurchaseQuantity;
+                            const normalizedContribution = Number.isFinite(contribution) && contribution > 0 ? contribution : undefined;
+                            recordNoteLine(component.label, normalizedContribution);
                         });
-                    } else {
+                    } else if (!hasActualComponentQuantities) {
                         group.items.forEach((item) => {
                             const sessions = Number(item.Sessions ?? (item as any).amount);
                             const qty = Number.isFinite(sessions) && sessions > 0 ? sessions : undefined;
@@ -620,14 +618,21 @@ const TherapySell: React.FC = () => {
                             recordNoteLine(label, qty);
                         });
                     }
+                } else if (hasActualComponentQuantities) {
+                    actualComponentQuantities.forEach((qty, label) => {
+                        const normalizedQty = Number.isFinite(qty) && qty > 0 ? qty : undefined;
+                        recordNoteLine(label, normalizedQty);
+                    });
                 } else {
                     recordDisplayNoteLines(getNote(group.items[0]));
                 }
 
                 const displayName = getDisplayName(group.items[0]);
                 if (displayName && displayName !== "-") {
-                    const numericQuantity = Number(effectiveBundleQuantity);
-                    const increment = Number.isFinite(numericQuantity) && numericQuantity > 0 ? numericQuantity : 1;
+                    const displayQty = hasActualComponentQuantities
+                        ? metadataQuantity ?? 1
+                        : Number(effectiveBundleQuantity);
+                    const increment = Number.isFinite(displayQty) && Number(displayQty) > 0 ? Number(displayQty) : 1;
                     nameQuantityMap.set(displayName, (nameQuantityMap.get(displayName) ?? 0) + increment);
                 }
             });
