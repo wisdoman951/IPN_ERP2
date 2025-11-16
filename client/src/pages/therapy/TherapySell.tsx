@@ -185,12 +185,17 @@ const computeBundleQuantityFromSessions = (
     if (!Number.isFinite(sessions) || sessions <= 0) {
         return undefined;
     }
+    const hasAllQuantities = components.every((entry) => {
+        const componentQuantity = Number(entry.quantity);
+        return Number.isFinite(componentQuantity) && componentQuantity > 0;
+    });
+    if (!hasAllQuantities) {
+        return undefined;
+    }
+
     const perBundleTotal = components.reduce((sum, entry) => {
         const componentQuantity = Number(entry.quantity);
-        if (Number.isFinite(componentQuantity) && componentQuantity > 0) {
-            return sum + componentQuantity;
-        }
-        return sum + 1;
+        return sum + (Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 0);
     }, 0);
     if (!Number.isFinite(perBundleTotal) || perBundleTotal <= 0) {
         return undefined;
@@ -531,18 +536,15 @@ const TherapySell: React.FC = () => {
                 const metadataQuantity = coercePositiveNumber(bundleMetadata?.qty ?? bundleMetadata?.quantity);
                 const componentEntries = getBundleComponentEntries(bundleId);
 
+                const hasExplicitComponentQuantities =
+                    componentEntries.length > 0 &&
+                    componentEntries.every((entry) => Number.isFinite(Number(entry.quantity)) && Number(entry.quantity) > 0);
+
                 let effectiveBundleQuantity: number | undefined = metadataQuantity;
-                if (effectiveBundleQuantity === undefined && componentEntries.length > 0) {
+                if (effectiveBundleQuantity === undefined && hasExplicitComponentQuantities) {
                     const computed = computeBundleQuantityFromSessions(group.totalSessions, componentEntries);
                     if (computed !== undefined) {
                         effectiveBundleQuantity = computed;
-                    }
-                }
-
-                if (effectiveBundleQuantity === undefined) {
-                    const fallbackSessions = group.totalSessions;
-                    if (Number.isFinite(fallbackSessions) && fallbackSessions > 0) {
-                        effectiveBundleQuantity = fallbackSessions;
                     }
                 }
 
@@ -554,16 +556,25 @@ const TherapySell: React.FC = () => {
 
                 const quantityForComponents = effectiveBundleQuantity;
                 if (componentEntries.length > 0) {
-                    componentEntries.forEach((component) => {
-                        const componentQuantity = Number(component.quantity);
-                        const perBundleQuantity = Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 1;
-                        const contribution = perBundleQuantity * quantityForComponents;
-                        if (Number.isFinite(contribution) && contribution > 0) {
-                            recordNoteLine(component.label, contribution);
-                        } else {
-                            recordNoteLine(component.label);
-                        }
-                    });
+                    if (hasExplicitComponentQuantities) {
+                        componentEntries.forEach((component) => {
+                            const componentQuantity = Number(component.quantity);
+                            const perBundleQuantity = Number.isFinite(componentQuantity) && componentQuantity > 0 ? componentQuantity : 1;
+                            const contribution = perBundleQuantity * quantityForComponents;
+                            if (Number.isFinite(contribution) && contribution > 0) {
+                                recordNoteLine(component.label, contribution);
+                            } else {
+                                recordNoteLine(component.label);
+                            }
+                        });
+                    } else {
+                        group.items.forEach((item) => {
+                            const sessions = Number(item.Sessions ?? (item as any).amount);
+                            const qty = Number.isFinite(sessions) && sessions > 0 ? sessions : undefined;
+                            const label = (item as any).therapy_name || item.PackageName || getDisplayName(item) || "";
+                            recordNoteLine(label, qty);
+                        });
+                    }
                 } else {
                     recordDisplayNoteLines(getNote(group.items[0]));
                 }
