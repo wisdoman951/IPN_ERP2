@@ -56,8 +56,6 @@ def add_sales_order_route():
 def get_sales_orders_route():
     """獲取銷售單列表 (可帶 keyword 搜尋)"""
     try:
-        if _finance_permission() == 'therapist':
-            return jsonify({"error": "無操作權限"}), 403
         keyword = request.args.get('keyword', None)
         result = get_all_sales_orders(keyword)
         if result.get("success"):
