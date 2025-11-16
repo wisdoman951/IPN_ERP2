@@ -599,20 +599,9 @@ const TherapySell: React.FC = () => {
                     if (!hasActualComponentQuantities && Number.isFinite(effectiveBundleQuantity) && Number(effectiveBundleQuantity) > 0) {
                         return Number(effectiveBundleQuantity);
                     }
-                    console.log("DEBUG bundle", {
-                      bundleId,
-                      items: group.items.map(i => ({
-                        id: i.Order_ID,
-                        name: i.PackageName,
-                        Sessions: i.Sessions,
-                        Note: i.Note,
-                      })),
-                      actualComponentQuantities: Array.from(actualComponentQuantities.entries()),
-                      bundlePurchaseQuantity,
-                    });
-
                     return 1;
                 })();
+                
                 if (componentEntries.length > 0) {
                     if (hasExplicitComponentQuantities) {
                         // ✅ 優先使用實際銷售紀錄中的堂數（actualComponentQuantities）
@@ -663,7 +652,17 @@ const TherapySell: React.FC = () => {
                     recordDisplayNoteLines(getNote(group.items[0]));
                 }
 
-
+                console.log("DEBUG bundle", {
+                      bundleId,
+                      items: group.items.map(i => ({
+                        id: i.Order_ID,
+                        name: i.PackageName,
+                        Sessions: i.Sessions,
+                        Note: i.Note,
+                      })),
+                      actualComponentQuantities: Array.from(actualComponentQuantities.entries()),
+                      bundlePurchaseQuantity,
+                    });
                 const displayName = getDisplayName(group.items[0]);
                 if (displayName && displayName !== "-") {
                     const displayQty = hasActualComponentQuantities
