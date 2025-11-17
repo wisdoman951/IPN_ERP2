@@ -116,7 +116,7 @@ const MasterCostManagement: React.FC = () => {
     const content = (
         <Container className="mt-4">
             <Card className="shadow-sm">
-                <Card.Header as="h4">更新進貨成本</Card.Header>
+                <Card.Header as="h4">更新進貨價格 1.2.6.5</Card.Header>
                 <Card.Body>
                     <p className="text-muted">
                         僅限 admin 身分調整 MASTER 商品成本。修改後即會套用至「更新庫存資料」頁面顯示的進貨價。
