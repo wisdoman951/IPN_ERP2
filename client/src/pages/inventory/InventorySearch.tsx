@@ -45,12 +45,13 @@ const InventorySearch: React.FC = () => {
     const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const { checkPermission, modal: permissionModal, notifyNoPermission } = usePermissionGuard();
-
-    const isNoPermissionError = (error: unknown): boolean => {
-        const axiosError = error as AxiosError<{ error?: string }>;
-        return axiosError?.response?.status === 403 || axiosError?.response?.data?.error === '無操作權限';
-    };
+    const [masterSummary, setMasterSummary] = useState<MasterStockSummaryItem[]>([]);
+    const [summaryLoading, setSummaryLoading] = useState(false);
+    const [summaryErrorMessage, setSummaryErrorMessage] = useState<string | null>(null);
+    const [expandedMasters, setExpandedMasters] = useState<Record<number, boolean>>({});
+    const [variantDetails, setVariantDetails] = useState<Record<number, MasterVariantItem[]>>({});
+    const [variantLoading, setVariantLoading] = useState<Record<number, boolean>>({});
+    const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
     // 從 localStorage 中獲取用戶所屬店鋪ID
     const getUserStoreId = (): number | undefined => {
@@ -81,10 +82,10 @@ const InventorySearch: React.FC = () => {
             if (userStoreId) params.storeId = userStoreId;
             const data = await getMasterStockSummary(params);
             setMasterSummary(Array.isArray(data) ? data : []);
-            setSummaryError(null);
+            setSummaryErrorMessage(null);
         } catch (err) {
             console.error("獲取主庫存失敗:", err);
-            setSummaryError("獲取主庫存失敗，請稍後再試");
+            setSummaryErrorMessage("獲取主庫存失敗，請稍後再試");
             setMasterSummary([]);
         } finally {
             setSummaryLoading(false);
@@ -342,9 +343,9 @@ const InventorySearch: React.FC = () => {
                         <small className="text-muted">庫存依據您登入的店別彙總</small>
                     </Card.Header>
                     <Card.Body>
-                        {summaryError && (
-                            <Alert variant="danger" onClose={() => setSummaryError(null)} dismissible>
-                                {summaryError}
+                        {summaryErrorMessage && (
+                            <Alert variant="danger" onClose={() => setSummaryErrorMessage(null)} dismissible>
+                                {summaryErrorMessage}
                             </Alert>
                         )}
                         <Table responsive hover size="sm" className="mb-0">
