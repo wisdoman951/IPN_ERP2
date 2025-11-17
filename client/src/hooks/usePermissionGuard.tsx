@@ -14,6 +14,7 @@ interface UsePermissionGuardResult {
   checkPermission: () => boolean;
   modal: ReactNode;
   userRole: Role | null;
+  notifyNoPermission: () => void;
 }
 
 const resolveRole = (): Role | null => {
@@ -36,14 +37,15 @@ export const usePermissionGuard = (
 
   const handleClose = useCallback(() => setShowModal(false), []);
   const handleOpen = useCallback(() => setShowModal(true), []);
+  const notifyNoPermission = useCallback(() => handleOpen(), [handleOpen]);
 
   const checkPermission = useCallback(() => {
     if (userRole && disallowedRoles.includes(userRole)) {
-      handleOpen();
+      notifyNoPermission();
       return false;
     }
     return true;
-  }, [userRole, disallowedRoles, handleOpen]);
+  }, [userRole, disallowedRoles, notifyNoPermission]);
 
   const modal = useMemo(
     () => (
@@ -52,7 +54,7 @@ export const usePermissionGuard = (
     [showModal, handleClose, message]
   );
 
-  return { checkPermission, modal, userRole };
+  return { checkPermission, modal, userRole, notifyNoPermission };
 };
 
 export default usePermissionGuard;

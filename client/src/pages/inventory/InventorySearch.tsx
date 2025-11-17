@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Button, Container, Row, Col, Form, Alert, Spinner, Card, Table } from "react-bootstrap";
+import React, { useState, useEffect,useCallback } from "react";
+import type { AxiosError } from "axios";
+import { Button, Container, Row, Col, Form, Alert, Spinner, Card } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
@@ -213,11 +214,15 @@ const InventorySearch: React.FC = () => {
                 try {
                     await deleteInventoryItem(id);
                 } catch (err) {
+                    if (isNoPermissionError(err)) {
+                        notifyNoPermission();
+                        return;
+                    }
                     console.error(`刪除庫存項目 ID=${id} 失敗:`, err);
                     failedCount++;
                 }
             }
-            
+
             // 重新獲取庫存數據
             await fetchInventoryData();
             await fetchMasterSummaryData();
@@ -233,6 +238,10 @@ const InventorySearch: React.FC = () => {
                 setError("刪除操作失敗，請稍後再試");
             }
         } catch (err) {
+            if (isNoPermissionError(err)) {
+                notifyNoPermission();
+                return;
+            }
             console.error("批量刪除庫存項目失敗:", err);
             setError("刪除操作失敗，請稍後再試");
         } finally {
