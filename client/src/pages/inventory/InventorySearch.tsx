@@ -46,7 +46,7 @@ const InventorySearch: React.FC = () => {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [masterSummary, setMasterSummary] = useState<MasterStockSummaryItem[]>([]);
     const [summaryLoading, setSummaryLoading] = useState(false);
-    const [summaryError, setSummaryError] = useState<string | null>(null);
+    const [summaryErrorMessage, setSummaryErrorMessage] = useState<string | null>(null);
     const [expandedMasters, setExpandedMasters] = useState<Record<number, boolean>>({});
     const [variantDetails, setVariantDetails] = useState<Record<number, MasterVariantItem[]>>({});
     const [variantLoading, setVariantLoading] = useState<Record<number, boolean>>({});
@@ -81,10 +81,10 @@ const InventorySearch: React.FC = () => {
             if (userStoreId) params.storeId = userStoreId;
             const data = await getMasterStockSummary(params);
             setMasterSummary(Array.isArray(data) ? data : []);
-            setSummaryError(null);
+            setSummaryErrorMessage(null);
         } catch (err) {
             console.error("獲取主庫存失敗:", err);
-            setSummaryError("獲取主庫存失敗，請稍後再試");
+            setSummaryErrorMessage("獲取主庫存失敗，請稍後再試");
             setMasterSummary([]);
         } finally {
             setSummaryLoading(false);
@@ -334,9 +334,9 @@ const InventorySearch: React.FC = () => {
                         <small className="text-muted">庫存依據您登入的店別彙總</small>
                     </Card.Header>
                     <Card.Body>
-                        {summaryError && (
-                            <Alert variant="danger" onClose={() => setSummaryError(null)} dismissible>
-                                {summaryError}
+                        {summaryErrorMessage && (
+                            <Alert variant="danger" onClose={() => setSummaryErrorMessage(null)} dismissible>
+                                {summaryErrorMessage}
                             </Alert>
                         )}
                         <Table responsive hover size="sm" className="mb-0">
