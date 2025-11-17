@@ -32,6 +32,7 @@ def auth_required(f):
             store_name = request.headers.get('X-Store-Name')
             permission = request.headers.get('X-Permission')
             staff_id = _as_int(request.headers.get('X-Staff-ID'))
+            store_type = request.headers.get('X-Store-Type')
 
             if not store_id or not store_level:
                 return jsonify({"error": "認證失敗，請重新登入"}), 401
@@ -42,6 +43,7 @@ def auth_required(f):
             request.store_name = store_name
             request.permission = permission
             request.staff_id = staff_id
+            request.store_type = store_type
         else:
             try:
                 # 驗證JWT token
@@ -53,6 +55,7 @@ def auth_required(f):
                 store_name = payload.get('store_name')
                 permission = payload.get('permission')
                 staff_id = _as_int(payload.get('staff_id'))
+                store_type = payload.get('store_type')
 
                 if not store_id or not store_level:
                     return jsonify({"error": "無效的認證信息"}), 401
@@ -63,6 +66,7 @@ def auth_required(f):
                 request.store_name = store_name
                 request.permission = permission
                 request.staff_id = staff_id
+                request.store_type = store_type
 
             except jwt.ExpiredSignatureError:
                 return jsonify({"error": "認證已過期，請重新登入"}), 401
@@ -153,6 +157,7 @@ def get_user_from_token(request):
             'store_name': getattr(request, 'store_name', None),
             'staff_id': _as_int(getattr(request, 'staff_id', None)),
             'permission': getattr(request, 'permission', None),
+            'store_type': getattr(request, 'store_type', None),
         }
     
     try:
@@ -165,7 +170,8 @@ def get_user_from_token(request):
             'store_level': payload.get('store_level'),
             'store_name': payload.get('store_name'),
             'staff_id': _as_int(payload.get('staff_id')),
-            'permission': payload.get('permission')
+            'permission': payload.get('permission'),
+            'store_type': payload.get('store_type'),
         }
     except (jwt.ExpiredSignatureError, jwt.InvalidTokenError, Exception):
         # 如果token無效或過期，回退到由 auth_required 設置的請求屬性
@@ -178,6 +184,7 @@ def get_user_from_token(request):
             'store_name': getattr(request, 'store_name', None),
             'staff_id': _as_int(getattr(request, 'staff_id', None)),
             'permission': getattr(request, 'permission', None),
+            'store_type': getattr(request, 'store_type', None),
         }
 
     return user_info

@@ -1,6 +1,6 @@
 import pymysql
 from flask import Blueprint, request, jsonify
-from app.models.store_model import create_store, get_all_stores
+from app.models.store_model import create_store, get_all_stores, VALID_STORE_TYPES
 from app.middleware import admin_required
 
 # 建立一個新的 Blueprint
@@ -28,10 +28,16 @@ def add_new_store():
     API 端點：新增一間分店
     """
     # ... (此函式內容維持不變)
-    data = request.json
+    data = request.json or {}
     required_fields = ['store_name', 'account', 'password']
     if not all(field in data and data[field] for field in required_fields):
         return jsonify({"error": "分店名稱、帳號和密碼為必填欄位"}), 400
+
+    store_type = data.get('store_type', 'DIRECT')
+    store_type = store_type.upper() if isinstance(store_type, str) else 'DIRECT'
+    if store_type not in VALID_STORE_TYPES:
+        return jsonify({"error": "store_type 僅能為 DIRECT 或 FRANCHISE"}), 400
+    data['store_type'] = store_type
 
     try:
         store_id = create_store(data)
