@@ -68,6 +68,7 @@ def login():
             return jsonify({"error": "密碼錯誤"}), 401
         # 判斷商店級別
         store_level = "總店" if staff["permission"] == "admin" else "分店"
+        store_type = staff.get("store_type") or "DIRECT"
 
         # 生成JWT令牌
         payload = {
@@ -76,6 +77,7 @@ def login():
             'store_name': staff["store_name"],
             'staff_id': staff["staff_id"],
             'permission': staff["permission"],
+            'store_type': store_type,
             'exp': datetime.utcnow() + timedelta(seconds=JWT_EXPIRATION)  # 使用配置中的過期時間
         }
         token = jwt.encode(payload, JWT_SECRET_KEY, algorithm='HS256')
@@ -89,7 +91,8 @@ def login():
             "store_name": staff["store_name"],
             "permission": staff["permission"],
             "staff_id": staff["staff_id"],
-            "account": account
+            "account": account,
+            "store_type": store_type,
         }
         
         print("返回登錄成功響應:", response_data)
@@ -153,6 +156,7 @@ def refresh_token():
             'store_name': payload['store_name'],
             'staff_id': payload.get('staff_id'),
             'permission': payload['permission'],
+            'store_type': payload.get('store_type'),
             'exp': datetime.utcnow() + timedelta(seconds=JWT_EXPIRATION)  # 使用配置中的過期時間
         }
         
@@ -165,7 +169,8 @@ def refresh_token():
             "store_level": payload['store_level'],
             "store_name": payload['store_name'],
             "permission": payload['permission'],
-            "staff_id": payload.get('staff_id')
+            "staff_id": payload.get('staff_id'),
+            "store_type": payload.get('store_type')
         }), 200
         
     except jwt.ExpiredSignatureError:
@@ -202,7 +207,8 @@ def check_auth():
             "store_level": payload['store_level'],
             "store_name": payload['store_name'],
             "permission": payload['permission'],
-            "staff_id": payload.get('staff_id')
+            "staff_id": payload.get('staff_id'),
+            "store_type": payload.get('store_type')
         }), 200
         
     except jwt.ExpiredSignatureError:
