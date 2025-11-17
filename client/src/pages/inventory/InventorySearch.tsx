@@ -31,9 +31,10 @@ interface InventoryItem {
     Borrower: string;
     StockQuantity: number;
     StockThreshold: number;
-    Store_ID: number;
-    StoreName: string;
+    Store_ID: number | null;
+    StoreName: string | null;
     selected?: boolean;
+    IsMasterStock?: boolean;
 }
 
 const InventorySearch: React.FC = () => {
@@ -148,6 +149,20 @@ const InventorySearch: React.FC = () => {
         }
     };
 
+    const handleMasterRowToggle = (masterProductId: number) => {
+        toggleMasterVariants(masterProductId);
+    };
+
+    const handleMasterRowKeyDown = (
+        event: React.KeyboardEvent<HTMLTableRowElement>,
+        masterProductId: number
+    ) => {
+        if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            toggleMasterVariants(masterProductId);
+        }
+    };
+
     // 格式化日期
     const formatDate = (dateStr: string) => {
         if (!dateStr) return "";
@@ -183,7 +198,11 @@ const InventorySearch: React.FC = () => {
     };
 
     // 選中/取消選中項目
-    const toggleSelectItem = (inventoryId: number) => {
+    const toggleSelectItem = (item: InventoryItem) => {
+        if (item.IsMasterStock) {
+            return;
+        }
+        const inventoryId = item.Inventory_ID;
         if (selectedItems.includes(inventoryId)) {
             setSelectedItems(selectedItems.filter(id => id !== inventoryId));
         } else {
@@ -191,10 +210,25 @@ const InventorySearch: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        setSelectedItems(prev =>
+            prev.filter(id => {
+                const item = inventoryItems.find(inv => inv.Inventory_ID === id);
+                return item && !item.IsMasterStock;
+            })
+        );
+    }, [inventoryItems]);
+
     // 刪除選中的項目
     const handleDelete = async () => {
         if (selectedItems.length === 0) {
             setError("請先選擇要刪除的項目");
+            return;
+        }
+
+        const selectedRecords = inventoryItems.filter(item => selectedItems.includes(item.Inventory_ID));
+        if (selectedRecords.some(item => item.IsMasterStock)) {
+            setError("主商品庫存請至主商品庫存作業中管理");
             return;
         }
 
@@ -256,6 +290,16 @@ const InventorySearch: React.FC = () => {
         }
         if (selectedItems.length !== 1) {
             setError("請選擇一個項目進行修改");
+            return;
+        }
+
+        const targetItem = inventoryItems.find(item => item.Inventory_ID === selectedItems[0]);
+        if (!targetItem) {
+            setError("找不到選擇的庫存項目");
+            return;
+        }
+        if (targetItem.IsMasterStock) {
+            setError("主商品庫存請至主商品庫存作業中維護");
             return;
         }
 
@@ -351,7 +395,7 @@ const InventorySearch: React.FC = () => {
                         <Table responsive hover size="sm" className="mb-0">
                             <thead>
                                 <tr>
-                                    <th style={{ width: "120px" }}>動作</th>
+                                    <th style={{ width: "80px" }} className="text-center">展開</th>
                                     <th>產品編號</th>
                                     <th>品項</th>
                                     <th className="text-end">庫存數量</th>
@@ -366,24 +410,26 @@ const InventorySearch: React.FC = () => {
                                         </td>
                                     </tr>
                                 ) : masterSummary.length > 0 ? (
-                                    masterSummary.map(item => (
-                                        <React.Fragment key={item.master_product_id}>
-                                            <tr>
-                                                <td>
-                                                    <Button
-                                                        variant="link"
-                                                        className="p-0"
-                                                        onClick={() => toggleMasterVariants(item.master_product_id)}
-                                                        disabled={!!variantLoading[item.master_product_id]}
-                                                    >
-                                                        {expandedMasters[item.master_product_id] ? "收合明細" : "展開明細"}
-                                                    </Button>
-                                                </td>
-                                                <td>{item.master_product_code}</td>
-                                                <td>{item.name}</td>
-                                                <td className="text-end">{item.quantity_on_hand ?? 0}</td>
-                                                <td className="text-end">{formatDateTime(item.updated_at)}</td>
-                                            </tr>
+                                    masterSummary.map(item => {
+                                        const isExpanded = !!expandedMasters[item.master_product_id];
+                                        return (
+                                            <React.Fragment key={item.master_product_id}>
+                                                <tr
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => handleMasterRowToggle(item.master_product_id)}
+                                                    onKeyDown={event => handleMasterRowKeyDown(event, item.master_product_id)}
+                                                    style={{ cursor: "pointer" }}
+                                                    aria-expanded={isExpanded}
+                                                >
+                                                    <td className="text-center align-middle">
+                                                        <span>{isExpanded ? "▼" : "▶"}</span>
+                                                    </td>
+                                                    <td>{item.master_product_code}</td>
+                                                    <td>{item.name}</td>
+                                                    <td className="text-end">{item.quantity_on_hand ?? 0}</td>
+                                                    <td className="text-end">{formatDateTime(item.updated_at)}</td>
+                                                </tr>
                                             {expandedMasters[item.master_product_id] && (
                                                 <tr className="bg-light">
                                                     <td colSpan={5}>
@@ -420,8 +466,9 @@ const InventorySearch: React.FC = () => {
                                                     </td>
                                                 </tr>
                                             )}
-                                        </React.Fragment>
-                                    ))
+                                            </React.Fragment>
+                                        );
+                                    })
                                 ) : (
                                     <tr>
                                         <td colSpan={5} className="text-center text-muted py-4">
@@ -466,7 +513,8 @@ const InventorySearch: React.FC = () => {
                                             <Form.Check
                                                 type="checkbox"
                                                 checked={selectedItems.includes(item.Inventory_ID)}
-                                                onChange={() => toggleSelectItem(item.Inventory_ID)}
+                                                onChange={() => toggleSelectItem(item)}
+                                                disabled={item.IsMasterStock}
                                             />
                                         </td>
                                         <td>{item.ProductName}</td>
