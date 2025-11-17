@@ -1,6 +1,7 @@
 import pymysql
 from app.config import DB_CONFIG
 from datetime import datetime
+from app.helpers.sku_inventory import build_sku_quantity_plan
 
 def connect_to_db():
     """連接到數據庫"""
@@ -589,49 +590,87 @@ def update_inventory_item(inventory_id, data):
         return False
     finally:
         conn.close()
+def _normalize_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
+
+def _insert_inventory_row(cursor, data, product_id, quantity):
+    query = """
+        INSERT INTO inventory (
+            product_id, staff_id, date, quantity,
+            stock_in, stock_out, stock_loan,
+            stock_threshold, store_id,
+            supplier, buyer, voucher, note
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """
+
+    staff_id = data.get('staffId', 1)
+    date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
+    stock_in = data.get('stockIn')
+    stock_out = data.get('stockOut')
+    stock_loan = _normalize_int(data.get('stockLoan', 0))
+    stock_threshold = data.get('stockThreshold', 5)
+    store_id = data.get('storeId', 1)
+    supplier = data.get('supplier')
+    buyer = data.get('buyer')
+    voucher = data.get('voucher')
+    note = data.get('note')
+
+    if stock_in is None:
+        stock_in = quantity if quantity > 0 else 0
+    else:
+        stock_in = _normalize_int(stock_in, 0)
+
+    if stock_out is None:
+        stock_out = abs(quantity) if quantity < 0 else 0
+    else:
+        stock_out = _normalize_int(stock_out, 0)
+
+    values = (
+        product_id,
+        staff_id,
+        date,
+        quantity,
+        stock_in,
+        stock_out,
+        stock_loan,
+        stock_threshold,
+        store_id,
+        supplier,
+        buyer,
+        voucher,
+        note,
+    )
+
+    cursor.execute(query, values)
+
+
 def add_inventory_item(data):
-    """新增庫存記錄"""
+    """新增庫存記錄，支援依產品名稱同步多個 SKU。"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = """
-                INSERT INTO inventory (
-                    product_id, staff_id, date, quantity,
-                    stock_in, stock_out, stock_loan,
-                    stock_threshold, store_id,
-                    supplier, buyer, voucher, note
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """
-            
-            # 從請求中擷取數據
             product_id = data.get('productId')
-            staff_id = data.get('staffId', 1)  # 預設管理員 ID
-            date = data.get('date', datetime.now().strftime('%Y-%m-%d'))
-            
-            # 確定庫存變動類型
-            quantity = int(data.get('quantity', 0))
-            stock_in = int(data.get('stockIn', 0)) if quantity >= 0 else 0
-            stock_out = int(data.get('stockOut', 0)) if quantity < 0 else 0
-            stock_loan = int(data.get('stockLoan', 0))
-            
-            # 其他欄位
-            stock_threshold = data.get('stockThreshold', 5)
-            store_id = data.get('storeId', 1)  # 預設店鋪 ID
+            product_name = data.get('productName') or data.get('product_name')
+            total_quantity = _normalize_int(data.get('quantity', 0))
 
-            supplier = data.get('supplier')
-            buyer = data.get('buyer')
-            voucher = data.get('voucher')
-            note = data.get('note')
+            if product_id:
+                plan = [{"product_id": int(product_id), "quantity": total_quantity}]
+            else:
+                plan = build_sku_quantity_plan(
+                    cursor,
+                    total_quantity,
+                    product_name=product_name,
+                )
 
-            values = (
-                product_id, staff_id, date, quantity,
-                stock_in, stock_out, stock_loan,
-                stock_threshold, store_id,
-                supplier, buyer, voucher, note
-            )
-            
-            cursor.execute(query, values)
-            
+            for item in plan:
+                if item['quantity'] == 0:
+                    continue
+                _insert_inventory_row(cursor, data, item['product_id'], item['quantity'])
+
         conn.commit()
         return True
     except Exception as e:
