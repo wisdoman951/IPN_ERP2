@@ -1,15 +1,16 @@
 // client\src\hooks\useProductSell.ts
 import axios from 'axios';
 import { useState, useEffect, useCallback } from 'react';
-import { 
-  getAllProductSells, 
-  searchProductSells, 
-  deleteProductSell, 
-  exportProductSells, 
-  ProductSell 
+import {
+  getAllProductSells,
+  searchProductSells,
+  deleteProductSell,
+  exportProductSells,
+  ProductSell
 } from '../services/ProductSellService';
 import { downloadBlob } from '../utils/downloadBlob';
 import { sortByStoreAndMemberCode } from '../utils/storeMemberSort';
+import { getUserRole } from '../utils/authUtils';
 
 interface UseProductSellReturn {
   sales: ProductSell[];
@@ -82,8 +83,8 @@ export const useProductSell = (): UseProductSellReturn => {
       return;
     }
 
-    const permission = localStorage.getItem('permission');
-    if (permission === 'therapist') {
+    const role = (getUserRole() ?? localStorage.getItem('permission')) as 'admin' | 'basic' | 'therapist' | null;
+    if (role !== 'admin') {
       setError('無操作權限');
       alert('無操作權限');
       return;
