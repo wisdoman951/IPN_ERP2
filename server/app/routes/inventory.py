@@ -206,10 +206,12 @@ def delete_inventory(inventory_id):
         if getattr(request, 'permission', None) != 'admin':
             return jsonify({"error": "無操作權限"}), 403
         
+        # 找資料
         existing = get_inventory_by_id(inventory_id)
         if not existing:
             return jsonify({"error": "找不到該庫存記錄"}), 404
 
+        # 分店權限檢查
         user_store_level = request.store_level
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
@@ -227,8 +229,6 @@ def delete_inventory(inventory_id):
     except Exception as e:
         print(e)
         return jsonify({"error": str(e)}), 500
-
-
 
 @inventory_bp.route("/master/products", methods=["GET"])
 @auth_required
