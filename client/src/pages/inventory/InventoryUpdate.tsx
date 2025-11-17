@@ -38,17 +38,23 @@ const InventoryEntryForm = () => {
     note: ""
   });
 
-  useEffect(() => {
+  const refreshMasterProducts = useCallback(() => {
     setLoadingProducts(true);
-    Promise.all([getMasterProductsForInbound(), getAllStaffs()])
-      .then(([masters, staffsRes]) => {
-        setMasterProducts(masters);
-        setStaffs(staffsRes);
-      })
+    return getMasterProductsForInbound()
+      .then(setMasterProducts)
       .catch((error) => {
         console.error("載入主商品資料失敗", error);
       })
       .finally(() => setLoadingProducts(false));
+  }, []);
+
+  useEffect(() => {
+    refreshMasterProducts();
+    getAllStaffs()
+      .then(setStaffs)
+      .catch((error) => {
+        console.error("載入人員資料失敗", error);
+      });
 
     if (editingId) {
       getInventoryById(Number(editingId)).then((data) => {
@@ -68,7 +74,7 @@ const InventoryEntryForm = () => {
         }
       });
     }
-  }, [editingId]);
+  }, [editingId, refreshMasterProducts]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -223,6 +229,9 @@ const InventoryEntryForm = () => {
                   readOnly
                   placeholder="尚未提供"
                 />
+                <Form.Text className="text-muted">
+                  如需調整進貨成本請至「後台管理功能」中的「更新進貨成本」。
+                </Form.Text>
               </Form.Group>
             </Col>
           </Row>
@@ -443,6 +452,7 @@ const InventoryEntryForm = () => {
           </Button>
         </Modal.Footer>
       </Modal>
+
     </>
   );
 };

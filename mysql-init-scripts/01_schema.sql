@@ -467,11 +467,15 @@ DROP TABLE IF EXISTS `master_stock`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `master_stock` (
   `master_product_id` int NOT NULL,
+  `store_id` int NOT NULL,
   `quantity_on_hand` int NOT NULL DEFAULT 0,
   `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`master_product_id`),
-  CONSTRAINT `fk_master_stock_master` FOREIGN KEY (`master_product_id`) REFERENCES `master_product` (`master_product_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  PRIMARY KEY (`master_product_id`,`store_id`),
+  KEY `idx_master_stock_store` (`store_id`),
+  CONSTRAINT `fk_master_stock_master` FOREIGN KEY (`master_product_id`) REFERENCES `master_product` (`master_product_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_master_stock_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON DELETE CASCADE
+)
+ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --

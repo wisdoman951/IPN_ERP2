@@ -30,6 +30,11 @@ const HeadquartersBackend: React.FC = () => {
                                 <Col md={6}>
                                     <Button variant="info" size="lg" className="w-100 py-4 text-white" onClick={() => navigate("/backend/stores")}>分店管理</Button>
                                 </Col>
+                                <Col md={6}>
+                                    <Button variant="info" size="lg" className="w-100 py-4 text-white" onClick={() => navigate('/backend/master-costs')}>
+                                        更新進貨成本
+                                    </Button>
+                                </Col>
                             </>
                         )}
                         {/* ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ */}

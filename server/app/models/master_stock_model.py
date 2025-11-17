@@ -16,6 +16,15 @@ def connect_to_db():
     return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
 
 
+def _normalize_store_id(store_id: int | str | None) -> int | None:
+    if store_id is None:
+        return None
+    try:
+        return int(store_id)
+    except (TypeError, ValueError):
+        return None
+
+
 def _normalize_store_type(store_type: str | None) -> str:
     if not store_type:
         return "DIRECT"
@@ -34,9 +43,14 @@ def _convert_decimal_fields(rows: Iterable[dict], *fields: str) -> list[dict]:
     return converted
 
 
-def list_master_products_for_inbound(store_type: str | None, keyword: str | None = None) -> list[dict]:
+def list_master_products_for_inbound(
+    store_type: str | None,
+    store_id: int | str | None,
+    keyword: str | None = None,
+) -> list[dict]:
     """Return active master products with store-type-specific cost price."""
     store_type = _normalize_store_type(store_type)
+    store_id_value = _normalize_store_id(store_id)
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -48,13 +62,15 @@ def list_master_products_for_inbound(store_type: str | None, keyword: str | None
                        COALESCE(ms.quantity_on_hand, 0) AS quantity_on_hand,
                        stp.cost_price
                 FROM master_product mp
-                LEFT JOIN master_stock ms ON ms.master_product_id = mp.master_product_id
+                LEFT JOIN master_stock ms
+                       ON ms.master_product_id = mp.master_product_id
+                      AND ms.store_id = %s
                 LEFT JOIN store_type_price stp
                        ON stp.master_product_id = mp.master_product_id
                       AND stp.store_type = %s
                 WHERE mp.status = 'ACTIVE'
             """
-            params: list = [store_type]
+            params: list = [store_id_value, store_type]
             if keyword:
                 query += " AND (mp.name LIKE %s OR mp.master_product_code LIKE %s)"
                 like = f"%{keyword}%"
@@ -67,7 +83,44 @@ def list_master_products_for_inbound(store_type: str | None, keyword: str | None
         conn.close()
 
 
-def list_variants_for_outbound(keyword: str | None = None) -> list[dict]:
+def list_master_costs(
+    keyword: str | None = None,
+    master_product_id: int | None = None,
+) -> list[dict]:
+    """Return master products with both DIRECT and FRANCHISE cost prices."""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = """
+                SELECT mp.master_product_id,
+                       mp.master_product_code,
+                       mp.name,
+                       COALESCE(MAX(CASE WHEN stp.store_type = 'DIRECT' THEN stp.cost_price END), NULL) AS direct_cost_price,
+                       COALESCE(MAX(CASE WHEN stp.store_type = 'FRANCHISE' THEN stp.cost_price END), NULL) AS franchise_cost_price
+                FROM master_product mp
+                LEFT JOIN store_type_price stp ON stp.master_product_id = mp.master_product_id
+            """
+            params: list = []
+            conditions: list[str] = []
+            if master_product_id:
+                conditions.append("mp.master_product_id = %s")
+                params.append(master_product_id)
+            if keyword:
+                like = f"%{keyword}%"
+                conditions.append("(mp.name LIKE %s OR mp.master_product_code LIKE %s)")
+                params.extend([like, like])
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " GROUP BY mp.master_product_id ORDER BY mp.name"
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            return _convert_decimal_fields(rows, "direct_cost_price", "franchise_cost_price")
+    finally:
+        conn.close()
+
+
+def list_variants_for_outbound(store_id: int | str | None, keyword: str | None = None) -> list[dict]:
+    store_id_value = _normalize_store_id(store_id)
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -82,10 +135,12 @@ def list_variants_for_outbound(keyword: str | None = None) -> list[dict]:
                        COALESCE(ms.quantity_on_hand, 0) AS quantity_on_hand
                 FROM product_variant pv
                 JOIN master_product mp ON mp.master_product_id = pv.master_product_id
-                LEFT JOIN master_stock ms ON ms.master_product_id = mp.master_product_id
+                LEFT JOIN master_stock ms
+                       ON ms.master_product_id = mp.master_product_id
+                      AND ms.store_id = %s
                 WHERE mp.status = 'ACTIVE' AND pv.status = 'ACTIVE'
             """
-            params: list = []
+            params: list = [store_id_value]
             if keyword:
                 like = f"%{keyword}%"
                 query += " AND (pv.variant_code LIKE %s OR pv.display_name LIKE %s OR mp.name LIKE %s OR mp.master_product_code LIKE %s)"
@@ -98,7 +153,10 @@ def list_variants_for_outbound(keyword: str | None = None) -> list[dict]:
         conn.close()
 
 
-def list_master_stock_summary(keyword: str | None = None) -> list[dict]:
+def list_master_stock_summary(store_id: int | str | None, keyword: str | None = None) -> list[dict]:
+    store_id_value = _normalize_store_id(store_id)
+    if store_id_value is None:
+        raise ValueError("store_id is required when querying stock")
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -108,11 +166,16 @@ def list_master_stock_summary(keyword: str | None = None) -> list[dict]:
                        mp.name,
                        mp.status,
                        COALESCE(ms.quantity_on_hand, 0) AS quantity_on_hand,
-                       ms.updated_at
+                       ms.updated_at,
+                       s.store_id,
+                       s.store_name
                 FROM master_product mp
-                LEFT JOIN master_stock ms ON ms.master_product_id = mp.master_product_id
+                LEFT JOIN master_stock ms
+                       ON ms.master_product_id = mp.master_product_id
+                      AND ms.store_id = %s
+                LEFT JOIN store s ON s.store_id = %s
             """
-            params: list = []
+            params: list = [store_id_value, store_id_value]
             if keyword:
                 like = f"%{keyword}%"
                 query += " WHERE (mp.name LIKE %s OR mp.master_product_code LIKE %s)"
@@ -158,6 +221,9 @@ def receive_master_stock(
     if quantity is None or int(quantity) <= 0:
         raise ValueError("進貨數量必須大於 0")
     qty = int(quantity)
+    store_id_value = _normalize_store_id(store_id)
+    if store_id_value is None:
+        raise ValueError("請提供有效的 store_id")
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -166,36 +232,87 @@ def receive_master_stock(
                 raise ValueError("找不到指定的主商品")
 
             cursor.execute(
-                "SELECT quantity_on_hand FROM master_stock WHERE master_product_id = %s FOR UPDATE",
-                (master_product_id,),
+                "SELECT quantity_on_hand FROM master_stock WHERE master_product_id = %s AND store_id = %s FOR UPDATE",
+                (master_product_id, store_id_value),
             )
             row = cursor.fetchone()
             current_qty = row["quantity_on_hand"] if row else 0
             if row is None:
                 cursor.execute(
-                    "INSERT INTO master_stock (master_product_id, quantity_on_hand) VALUES (%s, 0)"
+                    "INSERT INTO master_stock (master_product_id, store_id, quantity_on_hand) VALUES (%s, %s, 0)"
                     " ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand",
-                    (master_product_id,),
+                    (master_product_id, store_id_value),
                 )
             cursor.execute(
                 "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, updated_at = NOW()"
-                " WHERE master_product_id = %s",
-                (qty, master_product_id),
+                " WHERE master_product_id = %s AND store_id = %s",
+                (qty, master_product_id, store_id_value),
             )
             cursor.execute(
                 """
                 INSERT INTO stock_transaction (master_product_id, store_id, staff_id, txn_type, quantity, reference_no, note)
                 VALUES (%s, %s, %s, 'INBOUND', %s, %s, %s)
                 """,
-                (master_product_id, store_id, staff_id, qty, reference_no, note),
+                (master_product_id, store_id_value, staff_id, qty, reference_no, note),
             )
         conn.commit()
-        return {"master_product_id": master_product_id, "quantity_on_hand": current_qty + qty}
+        return {
+            "master_product_id": master_product_id,
+            "store_id": store_id_value,
+            "quantity_on_hand": current_qty + qty,
+        }
     except Exception:
         conn.rollback()
         raise
     finally:
         conn.close()
+
+
+def upsert_master_cost_price(
+    master_product_id: int,
+    store_type: str,
+    cost_price: float | Decimal | str | int,
+) -> dict:
+    store_type = _normalize_store_type(store_type)
+    if not master_product_id:
+        raise ValueError("必須提供 master_product_id")
+    try:
+        price_value = float(cost_price)
+    except (TypeError, ValueError):
+        raise ValueError("請輸入正確的進貨價")
+    if price_value < 0:
+        raise ValueError("進貨價不能為負數")
+
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT master_product_id FROM master_product WHERE master_product_id = %s",
+                (master_product_id,),
+            )
+            if cursor.fetchone() is None:
+                raise ValueError("找不到指定的主商品")
+
+            cursor.execute(
+                """
+                INSERT INTO store_type_price (master_product_id, store_type, cost_price)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE cost_price = VALUES(cost_price)
+                """,
+                (master_product_id, store_type, price_value),
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return {
+        "master_product_id": master_product_id,
+        "store_type": store_type,
+        "cost_price": price_value,
+    }
 
 
 def ship_variant_stock(
@@ -209,6 +326,9 @@ def ship_variant_stock(
     if quantity is None or int(quantity) <= 0:
         raise ValueError("出貨數量必須大於 0")
     qty = int(quantity)
+    store_id_value = _normalize_store_id(store_id)
+    if store_id_value is None:
+        raise ValueError("請提供有效的 store_id")
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
@@ -222,34 +342,38 @@ def ship_variant_stock(
             master_product_id = variant["master_product_id"]
 
             cursor.execute(
-                "SELECT quantity_on_hand FROM master_stock WHERE master_product_id = %s FOR UPDATE",
-                (master_product_id,),
+                "SELECT quantity_on_hand FROM master_stock WHERE master_product_id = %s AND store_id = %s FOR UPDATE",
+                (master_product_id, store_id_value),
             )
             row = cursor.fetchone()
             current_qty = row["quantity_on_hand"] if row else 0
             if row is None:
                 cursor.execute(
-                    "INSERT INTO master_stock (master_product_id, quantity_on_hand) VALUES (%s, 0)"
+                    "INSERT INTO master_stock (master_product_id, store_id, quantity_on_hand) VALUES (%s, %s, 0)"
                     " ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand",
-                    (master_product_id,),
+                    (master_product_id, store_id_value),
                 )
             if current_qty < qty:
                 raise ValueError(f"庫存不足，目前僅剩 {current_qty}")
 
             cursor.execute(
                 "UPDATE master_stock SET quantity_on_hand = quantity_on_hand - %s, updated_at = NOW()"
-                " WHERE master_product_id = %s",
-                (qty, master_product_id),
+                " WHERE master_product_id = %s AND store_id = %s",
+                (qty, master_product_id, store_id_value),
             )
             cursor.execute(
                 """
                 INSERT INTO stock_transaction (master_product_id, variant_id, store_id, staff_id, txn_type, quantity, reference_no, note)
                 VALUES (%s, %s, %s, %s, 'OUTBOUND', %s, %s, %s)
                 """,
-                (master_product_id, variant_id, store_id, staff_id, -qty, reference_no, note),
+                (master_product_id, variant_id, store_id_value, staff_id, -qty, reference_no, note),
             )
         conn.commit()
-        return {"master_product_id": master_product_id, "quantity_on_hand": current_qty - qty}
+        return {
+            "master_product_id": master_product_id,
+            "store_id": store_id_value,
+            "quantity_on_hand": current_qty - qty,
+        }
     except Exception:
         conn.rollback()
         raise

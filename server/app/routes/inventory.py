@@ -24,6 +24,9 @@ from app.models.master_stock_model import (
     list_variants_for_master,
     receive_master_stock,
     ship_variant_stock,
+    list_master_costs,
+    upsert_master_cost_price,
+    VALID_STORE_TYPES,
 )
 
 from app.middleware import auth_required, get_user_from_token
@@ -32,11 +35,10 @@ inventory_bp = Blueprint("inventory", __name__)
 
 
 # =========================
-# Helper functions
+# Helpers
 # =========================
 
 def _safe_int(value):
-    """將值安全轉為 int，失敗則回傳 None"""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -45,40 +47,31 @@ def _safe_int(value):
 
 def _get_auth_context():
     """
-    從 request 取出目前登入者的權限資訊。
-    需配合 auth_required，中介層應該已經把相關屬性掛在 request 上。
+    從 token 取得使用者資訊，統一判斷是否為 admin / 總店。
     """
-    store_id = getattr(request, "store_id", None)
-    store_level = getattr(request, "store_level", None)
-    permission = getattr(request, "permission", None)
-    store_type = getattr(request, "store_type", None)
+    user_info = get_user_from_token(request)
+    store_level = user_info.get("store_level")
+    permission = user_info.get("permission")
+    is_admin = store_level == "總店" or permission == "admin"
 
-    is_admin = (store_level == "總店") or (permission == "admin")
     return {
-        "store_id": store_id,
-        "store_level": store_level,
+        "user_info": user_info,
+        "store_id": user_info.get("store_id"),
+        "store_type": user_info.get("store_type") or getattr(request, "store_type", None),
         "permission": permission,
-        "store_type": store_type,
         "is_admin": is_admin,
     }
 
 
 def _resolve_store_id(requested_store_id, user_info):
     """
-    統一處理 store_id 權限與解析：
-    - admin / 總店：可操作任意 store_id
-    - 其他使用者：若指定 store_id 與自身不同 → 拋 PermissionError
-    回傳 (target_store_id, user_store_id, is_admin)
+    統一處理 store_id 權限檢查：
+    - admin / 總店可以指定其他分店
+    - 一般分店只能操作自己的分店
     """
     user_store_id = _safe_int(user_info.get("store_id"))
-    is_admin = (
-        user_info.get("store_level") == "總店"
-        or user_info.get("permission") == "admin"
-    )
-
-    target_store_id = (
-        _safe_int(requested_store_id) if requested_store_id is not None else user_store_id
-    )
+    is_admin = user_info.get("store_level") == "總店" or user_info.get("permission") == "admin"
+    target_store_id = _safe_int(requested_store_id) if requested_store_id is not None else user_store_id
 
     if not target_store_id:
         return None, user_store_id, is_admin
@@ -90,7 +83,7 @@ def _resolve_store_id(requested_store_id, user_info):
 
 
 # =========================
-# 一般庫存列表 / 查詢 / 低庫存 / 明細
+# 庫存列表 / 搜尋 / 低庫存 / 明細
 # =========================
 
 @inventory_bp.route("/list", methods=["GET"])
@@ -180,7 +173,7 @@ def get_inventory_records():
 
 @inventory_bp.route("/<int:inventory_id>", methods=["GET"])
 @auth_required
-def get_inventory_item(inventory_id):
+def get_inventory_item_route(inventory_id):
     """根據ID獲取庫存記錄"""
     try:
         # 1000000 以上為銷售資料，不允許在此更動
@@ -409,7 +402,7 @@ def export_inventory():
 
 
 # =========================
-# Master Product / Master Stock API
+# Master Product / Master Stock API（新版，含店型 / 店別）
 # =========================
 
 @inventory_bp.route("/master/products", methods=["GET"])
@@ -417,9 +410,9 @@ def export_inventory():
 def list_master_products():
     """進貨視窗：僅顯示 master 商品，並依店型顯示成本價。"""
     keyword = request.args.get("q")
-    ctx = _get_auth_context()
-    store_type = ctx["store_type"]
-    products = list_master_products_for_inbound(store_type, keyword)
+    store_type = getattr(request, "store_type", None)
+    store_id = getattr(request, "store_id", None)
+    products = list_master_products_for_inbound(store_type, store_id, keyword)
     return jsonify(products)
 
 
@@ -428,16 +421,28 @@ def list_master_products():
 def list_outbound_variants():
     """出貨視窗：列出所有尾碼版本供選擇。"""
     keyword = request.args.get("q")
-    variants = list_variants_for_outbound(keyword)
+    store_id = getattr(request, "store_id", None)
+    variants = list_variants_for_outbound(store_id, keyword)
     return jsonify(variants)
 
 
 @inventory_bp.route("/master/summary", methods=["GET"])
 @auth_required
 def master_stock_summary():
-    """總覽 master 庫存"""
+    """總覽指定分店之 master 庫存"""
     keyword = request.args.get("q")
-    summary = list_master_stock_summary(keyword)
+    store_id_param = request.args.get("store_id")
+    user_info = get_user_from_token(request)
+    try:
+        target_store_id, _, _ = _resolve_store_id(store_id_param, user_info)
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    if not target_store_id:
+        return jsonify({"error": "請提供有效的 store_id"}), 400
+    try:
+        summary = list_master_stock_summary(target_store_id, keyword)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     return jsonify(summary)
 
 
@@ -449,18 +454,73 @@ def master_variants(master_product_id: int):
     return jsonify(variants)
 
 
+@inventory_bp.route("/master/prices", methods=["GET"])
+@auth_required
+def master_prices():
+    """查詢 master 商品成本價列表"""
+    if getattr(request, "permission", None) == "therapist":
+        return jsonify({"error": "無操作權限"}), 403
+    keyword = request.args.get("q")
+    master_id = request.args.get("master_product_id")
+    master_id_value = None
+    if master_id:
+        try:
+            master_id_value = int(master_id)
+        except (TypeError, ValueError):
+            master_id_value = None
+    prices = list_master_costs(keyword, master_id_value)
+    return jsonify(prices)
+
+
+@inventory_bp.route("/master/prices", methods=["POST"])
+@auth_required
+def update_master_price():
+    """更新 master 商品成本價（依店型）"""
+    if getattr(request, "permission", None) == "therapist":
+        return jsonify({"error": "無操作權限"}), 403
+
+    data = request.json or {}
+    master_product_id = _safe_int(data.get("master_product_id"))
+    cost_price = data.get("cost_price")
+    if not master_product_id:
+        return jsonify({"error": "master_product_id 為必填"}), 400
+
+    user_info = get_user_from_token(request)
+    can_override_store_type = (
+        user_info.get("store_level") == "總店" or user_info.get("permission") == "admin"
+    )
+    requested_store_type = data.get("store_type") if can_override_store_type else None
+    store_type = (
+        requested_store_type
+        or getattr(request, "store_type", None)
+        or user_info.get("store_type")
+    )
+    if not store_type or store_type.upper() not in VALID_STORE_TYPES:
+        store_type = "DIRECT"
+
+    try:
+        price = upsert_master_cost_price(master_product_id, store_type, cost_price)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
+    except Exception as exc:
+        print(f"[master_price_update] {exc}")
+        return jsonify({"error": "進貨價更新失敗"}), 500
+
+    summary = list_master_costs(None, master_product_id)
+    detail = summary[0] if summary else price
+    return jsonify({"message": "進貨價已更新", "price": price, "master": detail})
+
+
 @inventory_bp.route("/master/inbound", methods=["POST"])
 @auth_required
 def master_stock_inbound():
     """統一進貨：直接更新 master 庫存並記錄交易。"""
-    # 治療師沒有權限
     if getattr(request, "permission", None) == "therapist":
         return jsonify({"error": "無操作權限"}), 403
 
     data = request.json or {}
     master_product_id = _safe_int(data.get("master_product_id"))
     quantity = _safe_int(data.get("quantity"))
-
     if not master_product_id or not quantity:
         return jsonify({"error": "master_product_id 與 quantity 為必填"}), 400
 
@@ -469,7 +529,6 @@ def master_stock_inbound():
         store_id, _, _ = _resolve_store_id(data.get("store_id"), user_info)
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 403
-
     if not store_id:
         return jsonify({"error": "請提供有效的 store_id"}), 400
 
@@ -497,14 +556,12 @@ def master_stock_inbound():
 @auth_required
 def master_stock_outbound():
     """統一出貨：扣除 master 庫存但顯示各尾碼版本。"""
-    # 治療師沒有權限
     if getattr(request, "permission", None) == "therapist":
         return jsonify({"error": "無操作權限"}), 403
 
     data = request.json or {}
     variant_id = _safe_int(data.get("variant_id"))
     quantity = _safe_int(data.get("quantity"))
-
     if not variant_id or not quantity:
         return jsonify({"error": "variant_id 與 quantity 為必填"}), 400
 
@@ -513,7 +570,6 @@ def master_stock_outbound():
         store_id, _, _ = _resolve_store_id(data.get("store_id"), user_info)
     except PermissionError as exc:
         return jsonify({"error": str(exc)}), 403
-
     if not store_id:
         return jsonify({"error": "請提供有效的 store_id"}), 400
 
