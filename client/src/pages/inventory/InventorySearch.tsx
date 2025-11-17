@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import type { AxiosError } from "axios";
 import { Button, Container, Row, Col, Form, Alert, Spinner } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
@@ -35,7 +36,12 @@ const InventorySearch: React.FC = () => {
     const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const { checkPermission, modal: permissionModal } = usePermissionGuard();
+    const { checkPermission, modal: permissionModal, notifyNoPermission } = usePermissionGuard();
+
+    const isNoPermissionError = (error: unknown): boolean => {
+        const axiosError = error as AxiosError<{ error?: string }>;
+        return axiosError?.response?.status === 403 || axiosError?.response?.data?.error === '無操作權限';
+    };
 
     // 從 localStorage 中獲取用戶所屬店鋪ID
     const getUserStoreId = (): number | undefined => {
@@ -144,11 +150,15 @@ const InventorySearch: React.FC = () => {
                 try {
                     await deleteInventoryItem(id);
                 } catch (err) {
+                    if (isNoPermissionError(err)) {
+                        notifyNoPermission();
+                        return;
+                    }
                     console.error(`刪除庫存項目 ID=${id} 失敗:`, err);
                     failedCount++;
                 }
             }
-            
+
             // 重新獲取庫存數據
             await fetchInventoryData();
             
@@ -163,6 +173,10 @@ const InventorySearch: React.FC = () => {
                 setError("刪除操作失敗，請稍後再試");
             }
         } catch (err) {
+            if (isNoPermissionError(err)) {
+                notifyNoPermission();
+                return;
+            }
             console.error("批量刪除庫存項目失敗:", err);
             setError("刪除操作失敗，請稍後再試");
         } finally {
