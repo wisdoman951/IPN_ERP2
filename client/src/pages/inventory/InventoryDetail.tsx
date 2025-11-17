@@ -49,19 +49,7 @@ const InventoryDetail: React.FC = () => {
     disallowedRoles: ["basic", "therapist"],
   });
 
-  const resolveStoreScope = () => {
-    const storeLevel = localStorage.getItem('store_level');
-    const permission = localStorage.getItem('permission');
-    const isAdmin = storeLevel === '總店' || permission === 'admin';
-    const storeId = localStorage.getItem('store_id');
-    if (!isAdmin && storeId) {
-      return Number(storeId);
-    }
-    return undefined;
-  };
-
   const handleSearch = () => {
-    const scopedStoreId = resolveStoreScope();
     getInventoryRecords({
       start_date: startDate || undefined,
       end_date: endDate || undefined,
@@ -69,7 +57,6 @@ const InventoryDetail: React.FC = () => {
       buyer: buyer || undefined,
       productId: !masterProductId && productId ? Number(productId) : undefined,
       masterProductId: masterProductId ? Number(masterProductId) : undefined,
-      storeId: scopedStoreId,
     }).then((res) => setRecords(res));
   };
 
@@ -105,7 +92,6 @@ const InventoryDetail: React.FC = () => {
 
   const handleExport = async () => {
     try {
-      const scopedStoreId = resolveStoreScope();
       const blob = await exportInventory({
         start_date: startDate || undefined,
         end_date: endDate || undefined,
@@ -114,7 +100,6 @@ const InventoryDetail: React.FC = () => {
         detail: true,
         productId: !masterProductId && productId ? Number(productId) : undefined,
         masterProductId: masterProductId ? Number(masterProductId) : undefined,
-        storeId: scopedStoreId,
       });
       downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
