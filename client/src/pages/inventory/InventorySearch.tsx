@@ -50,6 +50,7 @@ const InventorySearch: React.FC = () => {
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryErrorMessage, setSummaryErrorMessage] = useState<string | null>(null);
     const [expandedMasters, setExpandedMasters] = useState<Record<number, boolean>>({});
+    const [summaryCollapsed, setSummaryCollapsed] = useState(true);
     const [variantDetails, setVariantDetails] = useState<Record<number, MasterVariantItem[]>>({});
     const [variantLoading, setVariantLoading] = useState<Record<number, boolean>>({});
     const { checkPermission, modal: permissionModal } = usePermissionGuard();
@@ -151,6 +152,10 @@ const InventorySearch: React.FC = () => {
 
     const handleMasterRowToggle = (masterProductId: number) => {
         toggleMasterVariants(masterProductId);
+    };
+
+    const toggleSummaryCollapse = () => {
+        setSummaryCollapsed(prev => !prev);
     };
 
     const handleMasterRowKeyDown = (
@@ -382,10 +387,27 @@ const InventorySearch: React.FC = () => {
                     </Row>
                 </Container>
                 <Card className="mb-4">
-                    <Card.Header className="d-flex justify-content-between align-items-center">
-                        <span>主商品庫存總覽</span>
-                        <small className="text-muted">庫存依據您登入的店別彙總</small>
+                    <Card.Header
+                        className="d-flex justify-content-between align-items-center"
+                        role="button"
+                        tabIndex={0}
+                        onClick={toggleSummaryCollapse}
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                toggleSummaryCollapse();
+                            }
+                        }}
+                    >
+                        <div className="d-flex align-items-center gap-2">
+                            <span>{summaryCollapsed ? '▶' : '▼'}</span>
+                            <span>主商品庫存總覽</span>
+                        </div>
+                        <small className="text-muted">
+                            {summaryCollapsed ? '點擊展開' : '點擊收合'}
+                        </small>
                     </Card.Header>
+                    {!summaryCollapsed && (
                     <Card.Body>
                         {summaryErrorMessage && (
                             <Alert variant="danger" onClose={() => setSummaryErrorMessage(null)} dismissible>
@@ -479,6 +501,7 @@ const InventorySearch: React.FC = () => {
                             </tbody>
                         </Table>
                     </Card.Body>
+                    )}
                 </Card>
 
                 <Container>

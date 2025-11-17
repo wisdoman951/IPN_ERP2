@@ -3,11 +3,165 @@ import pymysql
 import json
 from decimal import Decimal
 from uuid import uuid4
+from functools import lru_cache
 from app.config import DB_CONFIG
 
 def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
+
+
+def _normalize_int(value):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+@lru_cache(maxsize=1)
+def _master_stock_supports_store_level() -> bool:
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 1
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'master_stock'
+                  AND COLUMN_NAME = 'store_id'
+                LIMIT 1
+                """
+            )
+            return cursor.fetchone() is not None
+    except Exception:
+        return False
+    finally:
+        conn.close()
+
+
+def _get_master_product_id_for_variant(cursor, variant_id: int | None):
+    if variant_id is None:
+        return None
+    cursor.execute(
+        "SELECT master_product_id FROM product_variant WHERE variant_id = %s",
+        (variant_id,),
+    )
+    row = cursor.fetchone()
+    return row["master_product_id"] if row else None
+
+
+def _adjust_master_stock_for_variant(
+    cursor,
+    variant_id: int | None,
+    store_id: int | None,
+    quantity_change: int,
+    staff_id: int | None = None,
+    reference_no: str | None = None,
+    note: str | None = None,
+):
+    if not quantity_change or variant_id is None:
+        return
+
+    master_product_id = _get_master_product_id_for_variant(cursor, variant_id)
+    if master_product_id is None:
+        return
+
+    store_scoped = _master_stock_supports_store_level()
+    store_value = _normalize_int(store_id)
+    if store_scoped and store_value is None:
+        raise ValueError("store_id is required when master_stock is store-level")
+
+    if store_scoped:
+        select_query = (
+            "SELECT quantity_on_hand FROM master_stock WHERE master_product_id = %s AND store_id = %s FOR UPDATE"
+        )
+        select_params = (master_product_id, store_value)
+    else:
+        select_query = "SELECT quantity_on_hand FROM master_stock WHERE master_product_id = %s FOR UPDATE"
+        select_params = (master_product_id,)
+
+    cursor.execute(select_query, select_params)
+    row = cursor.fetchone()
+    if row is None:
+        if store_scoped:
+            cursor.execute(
+                "INSERT INTO master_stock (master_product_id, store_id, quantity_on_hand) VALUES (%s, %s, 0)"
+                " ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand",
+                (master_product_id, store_value),
+            )
+        else:
+            cursor.execute(
+                "INSERT INTO master_stock (master_product_id, quantity_on_hand) VALUES (%s, 0)"
+                " ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand",
+                (master_product_id,),
+            )
+        cursor.execute(select_query, select_params)
+        row = cursor.fetchone()
+
+    current_qty = row["quantity_on_hand"] if row else 0
+    new_qty = current_qty + quantity_change
+    if new_qty < 0:
+        raise ValueError(f"庫存不足，無法扣除 {abs(quantity_change)}，目前僅剩 {current_qty}")
+
+    if store_scoped:
+        update_query = (
+            "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, updated_at = NOW()"
+            " WHERE master_product_id = %s AND store_id = %s"
+        )
+        update_params = (quantity_change, master_product_id, store_value)
+    else:
+        update_query = (
+            "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, updated_at = NOW()"
+            " WHERE master_product_id = %s"
+        )
+        update_params = (quantity_change, master_product_id)
+    cursor.execute(update_query, update_params)
+
+    txn_type = "ADJUST"
+    if quantity_change > 0:
+        txn_type = "INBOUND"
+    elif quantity_change < 0:
+        txn_type = "OUTBOUND"
+
+    cursor.execute(
+        """
+        INSERT INTO stock_transaction (master_product_id, variant_id, store_id, staff_id, txn_type, quantity, reference_no, note)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        """,
+        (
+            master_product_id,
+            variant_id,
+            store_value if store_scoped else None,
+            staff_id,
+            txn_type,
+            quantity_change,
+            reference_no,
+            note,
+        ),
+    )
+
+
+def _build_master_stock_join_clause(store_id):
+    store_scoped = _master_stock_supports_store_level()
+    store_id_value = _normalize_int(store_id)
+    params: list[int] = []
+    where_clause = ""
+    if store_scoped and store_id_value is not None:
+        where_clause = "WHERE ms.store_id = %s"
+        params.append(store_id_value)
+
+    join_clause = f"""
+        LEFT JOIN (
+            SELECT pv.variant_id AS product_id,
+                   SUM(ms.quantity_on_hand) AS quantity_on_hand
+            FROM product_variant pv
+            JOIN master_stock ms ON ms.master_product_id = pv.master_product_id
+            {where_clause}
+            GROUP BY pv.variant_id
+        ) ms_inventory ON ms_inventory.product_id = p.product_id
+    """
+    return join_clause, params
 
 def get_all_product_sells(store_id=None):
     """獲取產品銷售紀錄，可選用 store_id 過濾"""
@@ -257,6 +411,15 @@ def insert_product_sell(data: dict):
                     }
                     cursor.execute(insert_query, item_data)
                     update_inventory_quantity(item['item_id'], data['store_id'], -quantity, cursor)
+                    _adjust_master_stock_for_variant(
+                        cursor,
+                        item['item_id'],
+                        data.get('store_id'),
+                        -quantity,
+                        data.get('staff_id'),
+                        item_data.get('order_reference'),
+                        item_data.get('note'),
+                    )
 
                 conn.commit()
                 return conn.insert_id()
@@ -270,6 +433,15 @@ def insert_product_sell(data: dict):
                 cursor.execute(insert_query, data)
                 quantity_change = -int(data['quantity'])
                 update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
+                _adjust_master_stock_for_variant(
+                    cursor,
+                    data['product_id'],
+                    data.get('store_id'),
+                    quantity_change,
+                    data.get('staff_id'),
+                    data.get('order_reference'),
+                    data.get('note'),
+                )
                 conn.commit()
                 return conn.insert_id()
     except Exception as e:
@@ -455,7 +627,7 @@ def update_product_sell(sell_id: int, data: dict):
         with conn.cursor() as cursor:
             # 1. 獲取原始銷售記錄的 product_id, quantity, store_id, staff_id
             cursor.execute(
-                "SELECT product_id, quantity, store_id, staff_id FROM product_sell WHERE product_sell_id = %s",
+                "SELECT product_id, quantity, store_id, staff_id, order_reference FROM product_sell WHERE product_sell_id = %s",
                 (sell_id,)
             )
             original_sell = cursor.fetchone()
@@ -465,7 +637,8 @@ def update_product_sell(sell_id: int, data: dict):
             original_product_id = original_sell['product_id']
             original_quantity = original_sell['quantity']
             original_store_id = original_sell['store_id'] # 假設 store_id 通常不變，如果變更則庫存調整更複雜
-            # original_staff_id = original_sell['staff_id'] # 如果需要比較
+            original_staff_id = original_sell.get('staff_id')
+            original_order_reference = original_sell.get('order_reference')
 
             # 準備更新的欄位列表和對應的值
             fields_to_update = []
@@ -477,7 +650,7 @@ def update_product_sell(sell_id: int, data: dict):
             allowed_fields = [
                 "member_id", "staff_id", "store_id", "product_id", "date", 
                 "quantity", "unit_price", "discount_amount", "final_price", 
-                "payment_method", "sale_category", "note"
+                "payment_method", "sale_category", "note", "order_reference"
             ]
 
             for field in allowed_fields:
@@ -502,6 +675,8 @@ def update_product_sell(sell_id: int, data: dict):
             new_product_id = int(data.get("product_id", original_product_id))
             new_quantity = int(data.get("quantity", original_quantity))
             new_store_id = int(data.get("store_id", original_store_id)) # 假設 store_id 也可能變更
+            new_staff_id = _normalize_int(data.get("staff_id", original_staff_id))
+            new_order_reference = data.get("order_reference", original_order_reference)
             cursor.execute("SELECT status FROM product WHERE product_id = %s", (new_product_id,))
             status_row = cursor.fetchone()
             if not status_row or status_row.get('status') != 'PUBLISHED':
@@ -517,6 +692,24 @@ def update_product_sell(sell_id: int, data: dict):
                 # b. 將新銷售的產品數量從新店家庫存中扣除
                 update_inventory_quantity(new_product_id, new_store_id, -new_quantity, cursor) # 扣除負數
                 print(f"庫存調整：新產品 {new_product_id} 在店家 {new_store_id} 扣除數量 {new_quantity}")
+                _adjust_master_stock_for_variant(
+                    cursor,
+                    original_product_id,
+                    original_store_id,
+                    original_quantity,
+                    original_staff_id,
+                    original_order_reference,
+                    data.get('note'),
+                )
+                _adjust_master_stock_for_variant(
+                    cursor,
+                    new_product_id,
+                    new_store_id,
+                    -new_quantity,
+                    new_staff_id,
+                    new_order_reference,
+                    data.get('note'),
+                )
                 inventory_adjusted = True
             
             conn.commit()
@@ -537,7 +730,7 @@ def delete_product_sell(sell_id: int):
         with conn.cursor() as cursor:
             # 1. 獲取要刪除的記錄的 product_id, quantity, store_id 以便還原庫存
             cursor.execute(
-                "SELECT product_id, quantity, store_id FROM product_sell WHERE product_sell_id = %s",
+                "SELECT product_id, quantity, store_id, staff_id, order_reference FROM product_sell WHERE product_sell_id = %s",
                 (sell_id,)
             )
             sell_to_delete = cursor.fetchone()
@@ -548,6 +741,8 @@ def delete_product_sell(sell_id: int):
             product_id_to_restore = sell_to_delete['product_id']
             quantity_to_restore = sell_to_delete['quantity']
             store_id_to_restore = sell_to_delete['store_id']
+            staff_id_to_log = sell_to_delete.get('staff_id')
+            order_reference = sell_to_delete.get('order_reference')
 
             # 2. 刪除銷售記錄
             query = "DELETE FROM product_sell WHERE product_sell_id = %s"
@@ -559,6 +754,15 @@ def delete_product_sell(sell_id: int):
 
             # 3. 恢復庫存數量
             update_inventory_quantity(product_id_to_restore, store_id_to_restore, quantity_to_restore, cursor) # 加回正數
+            _adjust_master_stock_for_variant(
+                cursor,
+                product_id_to_restore,
+                store_id_to_restore,
+                quantity_to_restore,
+                staff_id_to_log,
+                order_reference,
+                None,
+            )
             print(f"庫存調整：產品 {product_id_to_restore} 在店家 {store_id_to_restore} 加回數量 {quantity_to_restore} (因銷售記錄 {sell_id} 刪除)")
             
             conn.commit()
@@ -599,7 +803,10 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 p.purchase_price AS purchase_price,
                 p.visible_store_ids,
                 p.visible_permissions,
-                COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
+                CASE
+                    WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL THEN MAX(ms_inventory.quantity_on_hand)
+                    ELSE COALESCE(SUM(i.quantity), 0)
+                END AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
                 COALESCE(
@@ -619,17 +826,21 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
             LEFT JOIN product_category pc ON p.product_id = pc.product_id
             LEFT JOIN category c ON pc.category_id = c.category_id
             LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
+            {master_join}
             LEFT JOIN product_price_tier ppt ON ppt.product_id = p.product_id AND ppt.identity_type IS NOT NULL
         """
 
-        params = []
+        params: list = []
         store_join = ""
-        # 若指定 store_id，僅統計該店家的庫存，且保留沒有庫存紀錄的產品
-        if store_id is not None:
+        store_id_value = _normalize_int(store_id)
+        if store_id_value is not None:
             store_join = "AND i.store_id = %s"
-            params.append(store_id)
+            params.append(store_id_value)
 
-        query = base_query.replace("{store_join}", store_join)
+        master_join_clause, master_params = _build_master_stock_join_clause(store_id_value)
+
+        query = base_query.replace("{store_join}", store_join).replace("{master_join}", master_join_clause)
+        params.extend(master_params)
         if status:
             query += " WHERE p.status = %s"
             params.append(status)
@@ -690,7 +901,10 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 p.purchase_price AS purchase_price,
                 p.visible_store_ids,
                 p.visible_permissions,
-                COALESCE(SUM(i.quantity), 0) AS inventory_quantity,
+                CASE
+                    WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL THEN MAX(ms_inventory.quantity_on_hand)
+                    ELSE COALESCE(SUM(i.quantity), 0)
+                END AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
                 COALESCE(
@@ -710,16 +924,21 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
             LEFT JOIN product_category pc ON p.product_id = pc.product_id
             LEFT JOIN category c ON pc.category_id = c.category_id
             LEFT JOIN inventory i ON p.product_id = i.product_id {store_join}
+            {master_join}
             LEFT JOIN product_price_tier ppt ON ppt.product_id = p.product_id AND ppt.identity_type IS NOT NULL
         """
 
         params = []
         conditions = []
         store_join = ""
+        store_id_value = _normalize_int(store_id)
 
-        if store_id is not None:
+        if store_id_value is not None:
             store_join = "AND i.store_id = %s"
-            params.append(store_id)
+            params.append(store_id_value)
+
+        master_join_clause, master_params = _build_master_stock_join_clause(store_id_value)
+        params.extend(master_params)
 
         if keyword:
             conditions.append("(p.name LIKE %s OR p.code LIKE %s)")
@@ -728,7 +947,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
             conditions.append("p.status = %s")
             params.append(status)
 
-        query = base_query.replace("{store_join}", store_join)
+        query = base_query.replace("{store_join}", store_join).replace("{master_join}", master_join_clause)
 
         if conditions:
             query += " WHERE " + " AND ".join(conditions)
