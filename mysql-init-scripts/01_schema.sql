@@ -399,6 +399,111 @@ CREATE TABLE `product_price_tier` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `master_product`
+--
+
+DROP TABLE IF EXISTS `master_product`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `master_product` (
+  `master_product_id` int NOT NULL AUTO_INCREMENT,
+  `master_product_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('ACTIVE','INACTIVE') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ACTIVE',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`master_product_id`),
+  UNIQUE KEY `uk_master_product_code` (`master_product_code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `product_variant`
+--
+
+DROP TABLE IF EXISTS `product_variant`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `product_variant` (
+  `variant_id` int NOT NULL,
+  `master_product_id` int NOT NULL,
+  `variant_code` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `display_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `sale_price` decimal(10,2) DEFAULT NULL,
+  `status` enum('ACTIVE','INACTIVE') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ACTIVE',
+  PRIMARY KEY (`variant_id`),
+  UNIQUE KEY `uk_product_variant_code` (`variant_code`),
+  KEY `idx_product_variant_master` (`master_product_id`),
+  CONSTRAINT `fk_product_variant_master` FOREIGN KEY (`master_product_id`) REFERENCES `master_product` (`master_product_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_product_variant_product` FOREIGN KEY (`variant_id`) REFERENCES `product` (`product_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `store_type_price`
+--
+
+DROP TABLE IF EXISTS `store_type_price`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `store_type_price` (
+  `price_id` int NOT NULL AUTO_INCREMENT,
+  `master_product_id` int NOT NULL,
+  `store_type` enum('DIRECT','FRANCHISE') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `cost_price` decimal(10,2) NOT NULL DEFAULT '0.00',
+  `effective_date` date DEFAULT NULL,
+  PRIMARY KEY (`price_id`),
+  UNIQUE KEY `uk_store_type_price` (`master_product_id`,`store_type`),
+  CONSTRAINT `fk_store_type_price_master` FOREIGN KEY (`master_product_id`) REFERENCES `master_product` (`master_product_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `master_stock`
+--
+
+DROP TABLE IF EXISTS `master_stock`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `master_stock` (
+  `master_product_id` int NOT NULL,
+  `quantity_on_hand` int NOT NULL DEFAULT 0,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`master_product_id`),
+  CONSTRAINT `fk_master_stock_master` FOREIGN KEY (`master_product_id`) REFERENCES `master_product` (`master_product_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Table structure for table `stock_transaction`
+--
+
+DROP TABLE IF EXISTS `stock_transaction`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `stock_transaction` (
+  `txn_id` bigint NOT NULL AUTO_INCREMENT,
+  `master_product_id` int NOT NULL,
+  `variant_id` int DEFAULT NULL,
+  `store_id` int DEFAULT NULL,
+  `staff_id` int DEFAULT NULL,
+  `txn_type` enum('INBOUND','OUTBOUND','ADJUST') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `quantity` int NOT NULL,
+  `reference_no` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`txn_id`),
+  KEY `idx_stock_txn_master` (`master_product_id`),
+  KEY `idx_stock_txn_variant` (`variant_id`),
+  KEY `idx_stock_txn_store` (`store_id`),
+  CONSTRAINT `fk_stock_txn_master` FOREIGN KEY (`master_product_id`) REFERENCES `master_product` (`master_product_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_stock_txn_variant` FOREIGN KEY (`variant_id`) REFERENCES `product` (`product_id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_stock_txn_store` FOREIGN KEY (`store_id`) REFERENCES `store` (`store_id`) ON DELETE SET NULL,
+  CONSTRAINT `fk_stock_txn_staff` FOREIGN KEY (`staff_id`) REFERENCES `staff` (`staff_id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `product_bundle_items`
 --
 
@@ -672,6 +777,7 @@ CREATE TABLE `store` (
   `store_id` int NOT NULL AUTO_INCREMENT,
   `store_name` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `store_location` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `store_type` enum('DIRECT','FRANCHISE') NOT NULL DEFAULT 'DIRECT' COMMENT '決定進貨價視圖的店型',
   PRIMARY KEY (`store_id`),
   UNIQUE KEY `store_name` (`store_name`)
 ) ENGINE=InnoDB AUTO_INCREMENT=7 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
