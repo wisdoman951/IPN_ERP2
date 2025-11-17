@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from typing import Iterable
+from typing import Iterable, Callable, TypeVar
 
 import pymysql
 from pymysql.cursors import DictCursor
@@ -10,6 +10,8 @@ from pymysql.cursors import DictCursor
 from app.config import DB_CONFIG
 
 VALID_STORE_TYPES = {"DIRECT", "FRANCHISE"}
+PRICE_TABLE_CANDIDATES: tuple[str, ...] = ("store_type_price", "stock_type_price")
+T = TypeVar("T")
 
 
 def connect_to_db():
@@ -43,6 +45,23 @@ def _convert_decimal_fields(rows: Iterable[dict], *fields: str) -> list[dict]:
     return converted
 
 
+def _run_with_price_table(operation: Callable[[str], T]) -> T:
+    """Execute DB operations that depend on the store-type price table name."""
+    last_missing_table_error: pymysql.err.ProgrammingError | None = None
+    for table_name in PRICE_TABLE_CANDIDATES:
+        try:
+            return operation(table_name)
+        except pymysql.err.ProgrammingError as exc:
+            is_missing_table = len(exc.args) > 0 and exc.args[0] == 1146
+            if is_missing_table and table_name != PRICE_TABLE_CANDIDATES[-1]:
+                last_missing_table_error = exc
+                continue
+            raise
+    if last_missing_table_error:
+        raise last_missing_table_error
+    raise RuntimeError("price table operation failed without executing")
+
+
 def list_master_products_for_inbound(
     store_type: str | None,
     store_id: int | str | None,
@@ -54,31 +73,34 @@ def list_master_products_for_inbound(
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = """
-                SELECT mp.master_product_id,
-                       mp.master_product_code,
-                       mp.name,
-                       mp.status,
-                       COALESCE(ms.quantity_on_hand, 0) AS quantity_on_hand,
-                       stp.cost_price
-                FROM master_product mp
-                LEFT JOIN master_stock ms
-                       ON ms.master_product_id = mp.master_product_id
-                      AND ms.store_id = %s
-                LEFT JOIN store_type_price stp
-                       ON stp.master_product_id = mp.master_product_id
-                      AND stp.store_type = %s
-                WHERE mp.status = 'ACTIVE'
-            """
-            params: list = [store_id_value, store_type]
-            if keyword:
-                query += " AND (mp.name LIKE %s OR mp.master_product_code LIKE %s)"
-                like = f"%{keyword}%"
-                params.extend([like, like])
-            query += " ORDER BY mp.name"
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-            return _convert_decimal_fields(rows, "cost_price")
+            def _execute(price_table: str):
+                query = f"""
+                    SELECT mp.master_product_id,
+                           mp.master_product_code,
+                           mp.name,
+                           mp.status,
+                           COALESCE(ms.quantity_on_hand, 0) AS quantity_on_hand,
+                           stp.cost_price
+                    FROM master_product mp
+                    LEFT JOIN master_stock ms
+                           ON ms.master_product_id = mp.master_product_id
+                          AND ms.store_id = %s
+                    LEFT JOIN {price_table} stp
+                           ON stp.master_product_id = mp.master_product_id
+                          AND stp.store_type = %s
+                    WHERE mp.status = 'ACTIVE'
+                """
+                params: list = [store_id_value, store_type]
+                if keyword:
+                    query += " AND (mp.name LIKE %s OR mp.master_product_code LIKE %s)"
+                    like = f"%{keyword}%"
+                    params.extend([like, like])
+                query += " ORDER BY mp.name"
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+                return _convert_decimal_fields(rows, "cost_price")
+
+            return _run_with_price_table(_execute)
     finally:
         conn.close()
 
@@ -91,30 +113,33 @@ def list_master_costs(
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = """
-                SELECT mp.master_product_id,
-                       mp.master_product_code,
-                       mp.name,
-                       COALESCE(MAX(CASE WHEN stp.store_type = 'DIRECT' THEN stp.cost_price END), NULL) AS direct_cost_price,
-                       COALESCE(MAX(CASE WHEN stp.store_type = 'FRANCHISE' THEN stp.cost_price END), NULL) AS franchise_cost_price
-                FROM master_product mp
-                LEFT JOIN store_type_price stp ON stp.master_product_id = mp.master_product_id
-            """
-            params: list = []
-            conditions: list[str] = []
-            if master_product_id:
-                conditions.append("mp.master_product_id = %s")
-                params.append(master_product_id)
-            if keyword:
-                like = f"%{keyword}%"
-                conditions.append("(mp.name LIKE %s OR mp.master_product_code LIKE %s)")
-                params.extend([like, like])
-            if conditions:
-                query += " WHERE " + " AND ".join(conditions)
-            query += " GROUP BY mp.master_product_id ORDER BY mp.name"
-            cursor.execute(query, params)
-            rows = cursor.fetchall()
-            return _convert_decimal_fields(rows, "direct_cost_price", "franchise_cost_price")
+            def _execute(price_table: str):
+                query = f"""
+                    SELECT mp.master_product_id,
+                           mp.master_product_code,
+                           mp.name,
+                           COALESCE(MAX(CASE WHEN stp.store_type = 'DIRECT' THEN stp.cost_price END), NULL) AS direct_cost_price,
+                           COALESCE(MAX(CASE WHEN stp.store_type = 'FRANCHISE' THEN stp.cost_price END), NULL) AS franchise_cost_price
+                    FROM master_product mp
+                    LEFT JOIN {price_table} stp ON stp.master_product_id = mp.master_product_id
+                """
+                params: list = []
+                conditions: list[str] = []
+                if master_product_id:
+                    conditions.append("mp.master_product_id = %s")
+                    params.append(master_product_id)
+                if keyword:
+                    like = f"%{keyword}%"
+                    conditions.append("(mp.name LIKE %s OR mp.master_product_code LIKE %s)")
+                    params.extend([like, like])
+                if conditions:
+                    query += " WHERE " + " AND ".join(conditions)
+                query += " GROUP BY mp.master_product_id ORDER BY mp.name"
+                cursor.execute(query, params)
+                rows = cursor.fetchall()
+                return _convert_decimal_fields(rows, "direct_cost_price", "franchise_cost_price")
+
+            return _run_with_price_table(_execute)
     finally:
         conn.close()
 
@@ -293,14 +318,17 @@ def upsert_master_cost_price(
             if cursor.fetchone() is None:
                 raise ValueError("找不到指定的主商品")
 
-            cursor.execute(
-                """
-                INSERT INTO store_type_price (master_product_id, store_type, cost_price)
-                VALUES (%s, %s, %s)
-                ON DUPLICATE KEY UPDATE cost_price = VALUES(cost_price)
-                """,
-                (master_product_id, store_type, price_value),
-            )
+            def _execute(price_table: str):
+                cursor.execute(
+                    f"""
+                    INSERT INTO {price_table} (master_product_id, store_type, cost_price)
+                    VALUES (%s, %s, %s)
+                    ON DUPLICATE KEY UPDATE cost_price = VALUES(cost_price)
+                    """,
+                    (master_product_id, store_type, price_value),
+                )
+
+            _run_with_price_table(_execute)
         conn.commit()
     except Exception:
         conn.rollback()
