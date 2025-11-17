@@ -3,6 +3,15 @@ import bcrypt
 from app.config import DB_CONFIG
 from pymysql.cursors import DictCursor
 
+VALID_STORE_TYPES = {"DIRECT", "FRANCHISE"}
+
+
+def _normalize_store_type(store_type: str | None) -> str:
+    if not store_type:
+        return "DIRECT"
+    upper = store_type.upper()
+    return upper if upper in VALID_STORE_TYPES else "DIRECT"
+
 def connect_to_db():
     """建立資料庫連線"""
     return pymysql.connect(**DB_CONFIG, cursorclass=DictCursor)
@@ -14,8 +23,12 @@ def create_store(store_data: dict):
         with conn.cursor() as cursor:
             # 先新增分店資訊
             cursor.execute(
-                "INSERT INTO store (store_name, store_location) VALUES (%s, %s)",
-                (store_data['store_name'], store_data.get('store_location'))
+                "INSERT INTO store (store_name, store_location, store_type) VALUES (%s, %s, %s)",
+                (
+                    store_data['store_name'],
+                    store_data.get('store_location'),
+                    _normalize_store_type(store_data.get('store_type')),
+                )
             )
             store_id = conn.insert_id()
 
@@ -51,7 +64,7 @@ def get_all_stores():
     try:
         with conn.cursor() as cursor:
             query = """
-                SELECT s.store_id, s.store_name, s.store_location,
+                SELECT s.store_id, s.store_name, s.store_location, s.store_type,
                        sa.account, sa.permission
                 FROM store AS s
                 LEFT JOIN store_account AS sa ON sa.store_id = s.store_id

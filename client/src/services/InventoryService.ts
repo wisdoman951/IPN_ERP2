@@ -10,6 +10,32 @@ const extractArray = (data: any) => {
     return [];
 };
 
+export interface MasterProductInboundItem {
+    master_product_id: number;
+    master_product_code: string;
+    name: string;
+    status: string;
+    quantity_on_hand: number;
+    cost_price?: number | null;
+}
+
+export interface MasterProductCostRow {
+    master_product_id: number;
+    master_product_code: string;
+    name: string;
+    direct_cost_price?: number | null;
+    franchise_cost_price?: number | null;
+}
+
+export interface MasterStockInboundPayload {
+    master_product_id: number;
+    quantity: number;
+    store_id?: number;
+    staff_id?: number;
+    reference_no?: string;
+    note?: string;
+}
+
 // 獲取所有庫存記錄
 export const getAllInventory = async (storeId?: number) => {
     const level = localStorage.getItem("store_level");
@@ -137,6 +163,33 @@ export const getLowStockItems = async (storeId?: number) => {
 export const getAllProducts = async () => {
     const response = await axios.get(`${API_URL}/products`);
     return extractArray(response.data);
+};
+
+// 主商品（進貨用）
+export const getMasterProductsForInbound = async (keyword?: string) => {
+    const params = keyword ? { q: keyword } : undefined;
+    const response = await axios.get(`${API_URL}/master/products`, { params });
+    return extractArray(response.data) as MasterProductInboundItem[];
+};
+
+export const createMasterStockInbound = async (payload: MasterStockInboundPayload) => {
+    return axios.post(`${API_URL}/master/inbound`, payload);
+};
+
+export const getMasterProductCosts = async (params?: { keyword?: string; master_product_id?: number }) => {
+    const query: any = {};
+    if (params?.keyword) query.q = params.keyword;
+    if (params?.master_product_id) query.master_product_id = params.master_product_id;
+    const response = await axios.get(`${API_URL}/master/prices`, { params: query });
+    return extractArray(response.data) as MasterProductCostRow[];
+};
+
+export const updateMasterProductCost = async (payload: {
+    master_product_id: number;
+    cost_price: number;
+    store_type?: "DIRECT" | "FRANCHISE";
+}) => {
+    return axios.post(`${API_URL}/master/prices`, payload);
 };
 
 // 匯出庫存數據
