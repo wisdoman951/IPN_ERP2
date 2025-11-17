@@ -1,6 +1,115 @@
 import pymysql
+from pymysql import MySQLError
+from functools import lru_cache
 from app.config import DB_CONFIG
 from datetime import datetime
+
+
+def _normalize_store_id(store_id):
+    if store_id is None:
+        return None
+    try:
+        return int(store_id)
+    except (TypeError, ValueError):
+        return None
+
+
+@lru_cache(maxsize=1)
+def _master_stock_has_store_column():
+    """Detect whether master_stock keeps quantity per store."""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT 1
+                FROM information_schema.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
+                  AND TABLE_NAME = 'master_stock'
+                  AND COLUMN_NAME = 'store_id'
+                LIMIT 1
+                """
+            )
+            return cursor.fetchone() is not None
+    except MySQLError:
+        return False
+    finally:
+        conn.close()
+
+
+def _fetch_master_inventory_rows(store_id=None, keyword=None):
+    """Return inventory-style rows from master_stock for the unified UI."""
+    store_scoped = _master_stock_has_store_column()
+    scoped_store_id = _normalize_store_id(store_id) if store_scoped else None
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            store_scope_match = "COALESCE(ms.store_id, 0)" if store_scoped else "0"
+            inventory_id_expr = (
+                "(1000000 + ms.master_product_id * 1000 + COALESCE(ms.store_id, 0))"
+                if store_scoped
+                else "(1000000 + ms.master_product_id)"
+            )
+            store_id_select = "ms.store_id AS Store_ID" if store_scoped else "NULL AS Store_ID"
+            store_name_select = "s.store_name AS StoreName" if store_scoped else "NULL AS StoreName"
+            store_join = "LEFT JOIN store s ON s.store_id = ms.store_id" if store_scoped else ""
+            tx_join = f"""
+                LEFT JOIN (
+                    SELECT master_product_id,
+                           COALESCE(store_id, 0) AS store_scope,
+                           SUM(CASE WHEN txn_type = 'INBOUND' THEN quantity ELSE 0 END) AS total_in,
+                           SUM(CASE WHEN txn_type = 'OUTBOUND' THEN ABS(quantity) ELSE 0 END) AS total_out,
+                           SUM(CASE WHEN txn_type = 'ADJUST' THEN quantity ELSE 0 END) AS total_adjust
+                    FROM stock_transaction
+                    GROUP BY master_product_id, COALESCE(store_id, 0)
+                ) tx
+                       ON tx.master_product_id = ms.master_product_id
+                      AND tx.store_scope = {store_scope_match}
+            """
+            query = f"""
+                SELECT
+                    {inventory_id_expr} AS Inventory_ID,
+                    mp.master_product_id AS Product_ID,
+                    mp.name AS ProductName,
+                    mp.master_product_code AS ProductCode,
+                    COALESCE(tx.total_in, 0) AS StockIn,
+                    COALESCE(tx.total_out, 0) AS StockOut,
+                    COALESCE(tx.total_adjust, 0) AS StockLoan,
+                    COALESCE(ms.quantity_on_hand, 0) AS StockQuantity,
+                    5 AS StockThreshold,
+                    ms.updated_at AS StockInTime,
+                    {store_id_select},
+                    {store_name_select},
+                    1 AS IsMasterStock
+                FROM master_stock ms
+                JOIN master_product mp ON mp.master_product_id = ms.master_product_id
+                {store_join}
+                {tx_join}
+            """
+            params = []
+            conditions = []
+            if store_scoped and scoped_store_id is not None:
+                conditions.append("ms.store_id = %s")
+                params.append(scoped_store_id)
+            if keyword:
+                like = f"%{keyword}%"
+                conditions.append("(mp.name LIKE %s OR mp.master_product_code LIKE %s)")
+                params.extend([like, like])
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " ORDER BY mp.name"
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            for row in rows:
+                row['IsMasterStock'] = True
+                row['StockThreshold'] = row.get('StockThreshold') or 5
+                row['StockLoan'] = row.get('StockLoan') or 0
+            return rows
+    except MySQLError as e:
+        print(f"master stock inventory query error: {e}")
+        return []
+    finally:
+        conn.close()
 
 def connect_to_db():
     """連接到數據庫"""
@@ -9,6 +118,7 @@ def connect_to_db():
 def get_all_inventory(store_id=None):
     """獲取所有庫存記錄，可依店鋪篩選"""
     conn = connect_to_db()
+    result = []
     try:
         with conn.cursor() as cursor:
             query = """
@@ -62,16 +172,19 @@ def get_all_inventory(store_id=None):
                     row['UnsoldDays'] = (datetime.now() - last_sold).days
                 else:
                     row['UnsoldDays'] = None
-            return result
     except Exception as e:
         print(f"獲取庫存記錄錯誤: {e}")
-        return []
+        result = []
     finally:
         conn.close()
+
+    master_rows = _fetch_master_inventory_rows(store_id)
+    return (result or []) + master_rows
 
 def search_inventory(keyword, store_id=None):
     """搜尋庫存記錄，可依店鋪篩選"""
     conn = connect_to_db()
+    result = []
     try:
         with conn.cursor() as cursor:
             query = """
@@ -126,12 +239,14 @@ def search_inventory(keyword, store_id=None):
                     row['UnsoldDays'] = (datetime.now() - last_sold).days
                 else:
                     row['UnsoldDays'] = None
-            return result
     except Exception as e:
         print(f"搜尋庫存記錄錯誤: {e}")
-        return []
+        result = []
     finally:
         conn.close()
+
+    master_rows = _fetch_master_inventory_rows(store_id, keyword)
+    return (result or []) + master_rows
 
 def get_inventory_by_id(inventory_id):
     """根據ID獲取庫存記錄"""
