@@ -273,10 +273,12 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
                             ))}
                         </div>
                     </Form.Group>
-                    <Form.Group className="mb-3">
-                        <Form.Label>設定進貨價</Form.Label>
-                        <Form.Control type="number" min={0} value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} />
-                    </Form.Group>
+                    {!editingProduct && (
+                        <Form.Group className="mb-3">
+                            <Form.Label>設定進貨價</Form.Label>
+                            <Form.Control type="number" min={0} value={purchasePrice} onChange={e => setPurchasePrice(e.target.value)} />
+                        </Form.Group>
+                    )}
                     <Form.Group className="mb-3">
                         <Form.Label>限定分店 (可複選)</Form.Label>
                         <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
