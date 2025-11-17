@@ -13,16 +13,17 @@ def get_all_inventory(store_id=None):
         with conn.cursor() as cursor:
             query = """
                 SELECT
-                    MAX(i.inventory_id) AS Inventory_ID,
-                    p.product_id AS Product_ID,
+                    MIN(i.inventory_id) AS Inventory_ID,
+                    MIN(p.product_id) AS Product_ID,
                     p.name AS ProductName,
-                    p.code AS ProductCode,
+                    MIN(p.code) AS PrimaryCode,
+                    GROUP_CONCAT(DISTINCT p.code ORDER BY p.code) AS AllCodes,
                     SUM(i.quantity) AS StockQuantity,
                     SUM(IFNULL(i.stock_in, 0)) AS StockIn,
                     SUM(IFNULL(i.stock_out, 0)) AS StockOut,
                     SUM(IFNULL(i.stock_loan, 0)) AS StockLoan,
-                    MAX(i.store_id) AS Store_ID,
-                    st.store_name AS StoreName,
+                    i.store_id AS Store_ID,
+                    MAX(st.store_name) AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
                     COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
                     MAX(sales.last_sold) AS LastSoldTime,
@@ -49,7 +50,7 @@ def get_all_inventory(store_id=None):
                 query += " WHERE i.store_id = %s"
                 params.append(store_id)
 
-            query += " GROUP BY p.product_id, p.name, p.code, st.store_name ORDER BY p.name"
+            query += " GROUP BY p.name, i.store_id ORDER BY p.name"
 
             cursor.execute(query, params)
             result = cursor.fetchall()
@@ -76,16 +77,17 @@ def search_inventory(keyword, store_id=None):
         with conn.cursor() as cursor:
             query = """
                 SELECT
-                    MAX(i.inventory_id) AS Inventory_ID,
-                    p.product_id AS Product_ID,
+                    MIN(i.inventory_id) AS Inventory_ID,
+                    MIN(p.product_id) AS Product_ID,
                     p.name AS ProductName,
-                    p.code AS ProductCode,
+                    MIN(p.code) AS PrimaryCode,
+                    GROUP_CONCAT(DISTINCT p.code ORDER BY p.code) AS AllCodes,
                     SUM(i.quantity) AS StockQuantity,
                     SUM(IFNULL(i.stock_in, 0)) AS StockIn,
                     SUM(IFNULL(i.stock_out, 0)) AS StockOut,
                     SUM(IFNULL(i.stock_loan, 0)) AS StockLoan,
-                    MAX(i.store_id) AS Store_ID,
-                    st.store_name AS StoreName,
+                    i.store_id AS Store_ID,
+                    MAX(st.store_name) AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
                     COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
                     MAX(sales.last_sold) AS LastSoldTime,
@@ -113,7 +115,7 @@ def search_inventory(keyword, store_id=None):
                 query += " AND i.store_id = %s"
                 params.append(store_id)
 
-            query += " GROUP BY p.product_id, p.name, p.code, st.store_name ORDER BY p.name"
+            query += " GROUP BY p.name, i.store_id ORDER BY p.name"
 
             cursor.execute(query, params)
             result = cursor.fetchall()
@@ -204,16 +206,17 @@ def get_low_stock_inventory(store_id=None):
         with conn.cursor() as cursor:
             query = """
                 SELECT
-                    MAX(i.inventory_id) AS Inventory_ID,
-                    p.product_id AS Product_ID,
-                    p.name AS ProductName, 
-                    p.code AS ProductCode, 
+                    MIN(i.inventory_id) AS Inventory_ID,
+                    MIN(p.product_id) AS Product_ID,
+                    p.name AS ProductName,
+                    MIN(p.code) AS PrimaryCode,
+                    GROUP_CONCAT(DISTINCT p.code ORDER BY p.code) AS AllCodes,
                     SUM(i.quantity) AS StockQuantity,
                     SUM(IFNULL(i.stock_in, 0)) AS StockIn,
                     SUM(IFNULL(i.stock_out, 0)) AS StockOut,
                     SUM(IFNULL(i.stock_loan, 0)) AS StockLoan,
-                    MAX(i.store_id) AS Store_ID,
-                    st.store_name AS StoreName,
+                    i.store_id AS Store_ID,
+                    MAX(st.store_name) AS StoreName,
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
                     COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
                     MAX(i.date) AS StockInTime
@@ -235,7 +238,7 @@ def get_low_stock_inventory(store_id=None):
                 query += " WHERE i.store_id = %s"
                 params.append(store_id)
 
-            query += " GROUP BY p.product_id, p.name, p.code, st.store_name HAVING SUM(i.quantity) <= MAX(IFNULL(i.stock_threshold, 5)) ORDER BY (SUM(i.quantity) / MAX(IFNULL(i.stock_threshold, 5))) ASC, p.name"
+            query += " GROUP BY p.name, i.store_id HAVING SUM(i.quantity) <= MAX(IFNULL(i.stock_threshold, 5)) ORDER BY (SUM(i.quantity) / MAX(IFNULL(i.stock_threshold, 5))) ASC, p.name"
 
             cursor.execute(query, params)
             results = cursor.fetchall()
