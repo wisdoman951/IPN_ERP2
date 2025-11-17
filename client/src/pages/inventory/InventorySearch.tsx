@@ -1,5 +1,4 @@
-import React, { useState, useEffect,useCallback } from "react";
-import type { AxiosError } from "axios";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button, Container, Row, Col, Form, Alert, Spinner, Card, Table } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
@@ -22,6 +21,7 @@ import usePermissionGuard from "../../hooks/usePermissionGuard";
 interface InventoryItem {
     Inventory_ID: number;
     Product_ID: number;
+    MasterProduct_ID?: number;
     ProductName: string;
     ProductCode: string;
     StockIn: number;
@@ -31,8 +31,9 @@ interface InventoryItem {
     Borrower: string;
     StockQuantity: number;
     StockThreshold: number;
-    Store_ID: number | null;
-    StoreName: string | null;
+    Store_ID: number;
+    StoreName: string;
+    IsMaster?: number;
     selected?: boolean;
     IsMasterStock?: boolean;
 }
@@ -48,9 +49,8 @@ const InventorySearch: React.FC = () => {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const [masterSummary, setMasterSummary] = useState<MasterStockSummaryItem[]>([]);
     const [summaryLoading, setSummaryLoading] = useState(false);
-    const [summaryErrorMessage, setSummaryErrorMessage] = useState<string | null>(null);
+    const [summaryError, setSummaryError] = useState<string | null>(null);
     const [expandedMasters, setExpandedMasters] = useState<Record<number, boolean>>({});
-    const [summaryCollapsed, setSummaryCollapsed] = useState(true);
     const [variantDetails, setVariantDetails] = useState<Record<number, MasterVariantItem[]>>({});
     const [variantLoading, setVariantLoading] = useState<Record<number, boolean>>({});
     const { checkPermission, modal: permissionModal } = usePermissionGuard();
@@ -70,11 +70,23 @@ const InventorySearch: React.FC = () => {
     };
     
     const userStoreId = getUserStoreId();
-    const isAdmin = (() => {
-        const level = localStorage.getItem('store_level');
-        const perm = localStorage.getItem('permission');
-        return level === '總店' || perm === 'admin';
-    })();
+    const fetchMasterSummaryData = useCallback(async (keywordParam?: string) => {
+        setSummaryLoading(true);
+        try {
+            const params: { keyword?: string; storeId?: number } = {};
+            if (keywordParam) params.keyword = keywordParam;
+            if (userStoreId) params.storeId = userStoreId;
+            const data = await getMasterStockSummary(params);
+            setMasterSummary(Array.isArray(data) ? data : []);
+            setSummaryError(null);
+        } catch (err) {
+            console.error("獲取主庫存失敗:", err);
+            setSummaryError("獲取主庫存失敗，請稍後再試");
+            setMasterSummary([]);
+        } finally {
+            setSummaryLoading(false);
+        }
+    }, [userStoreId]);
 
     const fetchMasterSummaryData = useCallback(async (keywordParam?: string) => {
         setSummaryLoading(true);
@@ -104,7 +116,7 @@ const InventorySearch: React.FC = () => {
     const fetchInventoryData = async () => {
         setLoading(true);
         try {
-            const data = await getAllInventory(isAdmin ? undefined : userStoreId);
+            const data = await getAllInventory(userStoreId);
             setInventoryItems(Array.isArray(data) ? data : []);
             setError(null);
         } catch (err) {
@@ -121,7 +133,7 @@ const InventorySearch: React.FC = () => {
         setLoading(true);
         fetchMasterSummaryData(keyword);
         try {
-            const data = await searchInventory(keyword, isAdmin ? undefined : userStoreId);
+            const data = await searchInventory(keyword, userStoreId);
             setInventoryItems(Array.isArray(data) ? data : []);
             setError(null);
         } catch (err) {
@@ -147,24 +159,6 @@ const InventorySearch: React.FC = () => {
             } finally {
                 setVariantLoading(prev => ({ ...prev, [masterProductId]: false }));
             }
-        }
-    };
-
-    const handleMasterRowToggle = (masterProductId: number) => {
-        toggleMasterVariants(masterProductId);
-    };
-
-    const toggleSummaryCollapse = () => {
-        setSummaryCollapsed(prev => !prev);
-    };
-
-    const handleMasterRowKeyDown = (
-        event: React.KeyboardEvent<HTMLTableRowElement>,
-        masterProductId: number
-    ) => {
-        if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            toggleMasterVariants(masterProductId);
         }
     };
 
@@ -316,7 +310,7 @@ const InventorySearch: React.FC = () => {
         setLoading(true);
         try {
             const blob = await exportInventory({
-                storeId: isAdmin ? undefined : userStoreId,
+                storeId: userStoreId,
             });
             downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
             setSuccessMessage("庫存數據匯出成功");
@@ -387,37 +381,20 @@ const InventorySearch: React.FC = () => {
                     </Row>
                 </Container>
                 <Card className="mb-4">
-                    <Card.Header
-                        className="d-flex justify-content-between align-items-center"
-                        role="button"
-                        tabIndex={0}
-                        onClick={toggleSummaryCollapse}
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                                event.preventDefault();
-                                toggleSummaryCollapse();
-                            }
-                        }}
-                    >
-                        <div className="d-flex align-items-center gap-2">
-                            <span>{summaryCollapsed ? '▶' : '▼'}</span>
-                            <span>主商品庫存總覽</span>
-                        </div>
-                        <small className="text-muted">
-                            {summaryCollapsed ? '點擊展開' : '點擊收合'}
-                        </small>
+                    <Card.Header className="d-flex justify-content-between align-items-center">
+                        <span>主商品庫存總覽</span>
+                        <small className="text-muted">庫存依據您登入的店別彙總</small>
                     </Card.Header>
-                    {!summaryCollapsed && (
                     <Card.Body>
-                        {summaryErrorMessage && (
-                            <Alert variant="danger" onClose={() => setSummaryErrorMessage(null)} dismissible>
-                                {summaryErrorMessage}
+                        {summaryError && (
+                            <Alert variant="danger" onClose={() => setSummaryError(null)} dismissible>
+                                {summaryError}
                             </Alert>
                         )}
                         <Table responsive hover size="sm" className="mb-0">
                             <thead>
                                 <tr>
-                                    <th style={{ width: "80px" }} className="text-center">展開</th>
+                                    <th style={{ width: "120px" }}>動作</th>
                                     <th>產品編號</th>
                                     <th>品項</th>
                                     <th className="text-end">庫存數量</th>
@@ -432,26 +409,24 @@ const InventorySearch: React.FC = () => {
                                         </td>
                                     </tr>
                                 ) : masterSummary.length > 0 ? (
-                                    masterSummary.map(item => {
-                                        const isExpanded = !!expandedMasters[item.master_product_id];
-                                        return (
-                                            <React.Fragment key={item.master_product_id}>
-                                                <tr
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    onClick={() => handleMasterRowToggle(item.master_product_id)}
-                                                    onKeyDown={event => handleMasterRowKeyDown(event, item.master_product_id)}
-                                                    style={{ cursor: "pointer" }}
-                                                    aria-expanded={isExpanded}
-                                                >
-                                                    <td className="text-center align-middle">
-                                                        <span>{isExpanded ? "▼" : "▶"}</span>
-                                                    </td>
-                                                    <td>{item.master_product_code}</td>
-                                                    <td>{item.name}</td>
-                                                    <td className="text-end">{item.quantity_on_hand ?? 0}</td>
-                                                    <td className="text-end">{formatDateTime(item.updated_at)}</td>
-                                                </tr>
+                                    masterSummary.map(item => (
+                                        <React.Fragment key={item.master_product_id}>
+                                            <tr>
+                                                <td>
+                                                    <Button
+                                                        variant="link"
+                                                        className="p-0"
+                                                        onClick={() => toggleMasterVariants(item.master_product_id)}
+                                                        disabled={!!variantLoading[item.master_product_id]}
+                                                    >
+                                                        {expandedMasters[item.master_product_id] ? "收合明細" : "展開明細"}
+                                                    </Button>
+                                                </td>
+                                                <td>{item.master_product_code}</td>
+                                                <td>{item.name}</td>
+                                                <td className="text-end">{item.quantity_on_hand ?? 0}</td>
+                                                <td className="text-end">{formatDateTime(item.updated_at)}</td>
+                                            </tr>
                                             {expandedMasters[item.master_product_id] && (
                                                 <tr className="bg-light">
                                                     <td colSpan={5}>
@@ -488,9 +463,8 @@ const InventorySearch: React.FC = () => {
                                                     </td>
                                                 </tr>
                                             )}
-                                            </React.Fragment>
-                                        );
-                                    })
+                                        </React.Fragment>
+                                    ))
                                 ) : (
                                     <tr>
                                         <td colSpan={5} className="text-center text-muted py-4">
@@ -501,7 +475,6 @@ const InventorySearch: React.FC = () => {
                             </tbody>
                         </Table>
                     </Card.Body>
-                    )}
                 </Card>
 
                 <Container>
@@ -536,8 +509,8 @@ const InventorySearch: React.FC = () => {
                                             <Form.Check
                                                 type="checkbox"
                                                 checked={selectedItems.includes(item.Inventory_ID)}
-                                                onChange={() => toggleSelectItem(item)}
-                                                disabled={item.IsMasterStock}
+                                                disabled={item.IsMaster === 1}
+                                                onChange={() => item.IsMaster === 1 ? undefined : toggleSelectItem(item.Inventory_ID)}
                                             />
                                         </td>
                                         <td>{item.ProductName}</td>
@@ -552,7 +525,13 @@ const InventorySearch: React.FC = () => {
                                             <Button
                                                 variant="link"
                                                 className="p-0"
-                                                onClick={() => navigate(`/inventory/inventory-detail?productId=${item.Product_ID}&productName=${encodeURIComponent(item.ProductName)}`)}
+                                                onClick={() => {
+                                                    const masterId = item.MasterProduct_ID ?? item.Product_ID;
+                                                    const detailParams = item.IsMaster
+                                                        ? `masterProductId=${masterId}`
+                                                        : `productId=${item.Product_ID}`;
+                                                    navigate(`/inventory/inventory-detail?${detailParams}&productName=${encodeURIComponent(item.ProductName)}`);
+                                                }}
                                             >
                                                 查看詳細入庫資訊
                                             </Button>

@@ -57,15 +57,9 @@ export interface MasterStockInboundPayload {
 
 // 獲取所有庫存記錄
 export const getAllInventory = async (storeId?: number) => {
-    const level = localStorage.getItem("store_level");
-    const perm = localStorage.getItem("permission");
-    const isAdmin = level === "總店" || perm === "admin";
-
     const params: any = {};
-    if (!isAdmin && storeId !== undefined) {
+    if (storeId !== undefined) {
         params.store_id = storeId;
-    } else if (isAdmin && storeId !== undefined) {
-        params.store_id = storeId; // allow admin specify store
     }
 
     const response = await axios.get(`${API_URL}/list`, { params });
@@ -74,14 +68,8 @@ export const getAllInventory = async (storeId?: number) => {
 
 // 搜尋庫存記錄
 export const searchInventory = async (keyword: string, storeId?: number) => {
-    const level = localStorage.getItem("store_level");
-    const perm = localStorage.getItem("permission");
-    const isAdmin = level === "總店" || perm === "admin";
-
     const params: any = { keyword };
-    if (!isAdmin && storeId !== undefined) {
-        params.store_id = storeId;
-    } else if (isAdmin && storeId !== undefined) {
+    if (storeId !== undefined) {
         params.store_id = storeId;
     }
 
@@ -107,20 +95,16 @@ export const getInventoryRecords = async (params?: {
     sale_staff?: string;
     buyer?: string;
     productId?: number;
+    masterProductId?: number;
 }) => {
-    const level = localStorage.getItem('store_level');
-    const perm = localStorage.getItem('permission');
-    const isAdmin = level === '總店' || perm === 'admin';
-
     const query: any = {};
     if (params?.start_date) query.start_date = params.start_date;
     if (params?.end_date) query.end_date = params.end_date;
     if (params?.sale_staff) query.sale_staff = params.sale_staff;
     if (params?.buyer) query.buyer = params.buyer;
     if (params?.productId) query.product_id = params.productId;
-    if (!isAdmin && params?.storeId !== undefined) {
-        query.store_id = params.storeId;
-    } else if (isAdmin && params?.storeId !== undefined) {
+    if (params?.masterProductId) query.master_product_id = params.masterProductId;
+    if (params?.storeId !== undefined) {
         query.store_id = params.storeId;
     }
 
@@ -163,14 +147,8 @@ export const deleteInventoryItem = async (id: number) => {
 
 // 獲取低庫存產品
 export const getLowStockItems = async (storeId?: number) => {
-    const level = localStorage.getItem('store_level');
-    const perm = localStorage.getItem('permission');
-    const isAdmin = level === '總店' || perm === 'admin';
-
     const params: any = {};
-    if (!isAdmin && storeId !== undefined) {
-        params.store_id = storeId;
-    } else if (isAdmin && storeId !== undefined) {
+    if (storeId !== undefined) {
         params.store_id = storeId;
     }
 
@@ -233,11 +211,8 @@ export const exportInventory = async (params?: {
     buyer?: string;
     detail?: boolean;
     productId?: number;
+    masterProductId?: number;
 }): Promise<Blob> => {
-    const level = localStorage.getItem('store_level');
-    const perm = localStorage.getItem('permission');
-    const isAdmin = level === '總店' || perm === 'admin';
-
     const query: any = {};
     if (params?.start_date) query.start_date = params.start_date;
     if (params?.end_date) query.end_date = params.end_date;
@@ -245,10 +220,8 @@ export const exportInventory = async (params?: {
     if (params?.buyer) query.buyer = params.buyer;
     if (params?.detail) query.detail = params.detail;
     if (params?.productId) query.product_id = params.productId;
-
-    if (!isAdmin && params?.storeId !== undefined) {
-        query.store_id = params.storeId;
-    } else if (isAdmin && params?.storeId !== undefined) {
+    if (params?.masterProductId) query.master_product_id = params.masterProductId;
+    if (params?.storeId !== undefined) {
         query.store_id = params.storeId;
     }
 
