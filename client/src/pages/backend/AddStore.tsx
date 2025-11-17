@@ -3,21 +3,28 @@ import { Container, Form, Button, Alert, Card, Row, Col } from 'react-bootstrap'
 import { useNavigate } from 'react-router-dom';
 import Header from '../../components/Header';
 // vvvvv 引入我們新建的 StoreService vvvvv
-import { addStore } from '../../services/StoreService';
+import { addStore, StoreType } from '../../services/StoreService';
 
 const AddStore: React.FC = () => {
     const navigate = useNavigate();
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<{
+        store_name: string;
+        store_location: string;
+        account: string;
+        password: string;
+        store_type: StoreType;
+    }>({
         store_name: '',
         store_location: '',
         account: '',
-        password: ''
+        password: '',
+        store_type: 'DIRECT',
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [success, setSuccess] = useState<string | null>(null);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
     };
@@ -81,6 +88,20 @@ const AddStore: React.FC = () => {
                                         value={formData.store_location}
                                         onChange={handleChange}
                                     />
+                                </Col>
+                            </Form.Group>
+
+                            <Form.Group as={Row} className="mb-3" controlId="storeType">
+                                <Form.Label column sm={3}>店型</Form.Label>
+                                <Col sm={9}>
+                                    <Form.Select
+                                        name="store_type"
+                                        value={formData.store_type}
+                                        onChange={handleChange}
+                                    >
+                                        <option value="DIRECT">直營</option>
+                                        <option value="FRANCHISE">加盟</option>
+                                    </Form.Select>
                                 </Col>
                             </Form.Group>
 

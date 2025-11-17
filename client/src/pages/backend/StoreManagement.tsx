@@ -60,6 +60,7 @@ const StoreManagement: React.FC = () => {
                             <th>分店編號</th>
                             <th>分店名稱</th>
                             <th>分店地址</th>
+                            <th>店型</th>
                             <th>登入帳號</th>
                             <th>權限</th>
                             <th>密碼</th>
@@ -67,20 +68,21 @@ const StoreManagement: React.FC = () => {
                     </thead>
                     <tbody>
                         {loading ? (
-                            <tr><td colSpan={6} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
+                            <tr><td colSpan={7} className="text-center py-5"><Spinner animation="border" variant="info"/></td></tr>
                         ) : stores.length > 0 ? (
                             stores.map(store => (
                                 <tr key={store.store_id}>
                                     <td className="align-middle">{store.store_id}</td>
                                     <td className="align-middle">{store.store_name}</td>
                                     <td className="align-middle">{store.store_location || '---'}</td>
+                                    <td className="align-middle">{store.store_type === 'FRANCHISE' ? '加盟' : '直營'}</td>
                                     <td className="align-middle">{store.account}</td>
                                     <td className="align-middle">{store.permission}</td>
                                     <td className="align-middle">********</td>
                                 </tr>
                             ))
                         ) : (
-                            <tr><td colSpan={6} className="text-center text-muted py-5">尚無分店資料</td></tr>
+                            <tr><td colSpan={7} className="text-center text-muted py-5">尚無分店資料</td></tr>
                         )}
                     </tbody>
                 </Table>
