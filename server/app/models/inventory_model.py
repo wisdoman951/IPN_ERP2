@@ -177,7 +177,7 @@ def get_all_inventory(store_id=None):
             query += " GROUP BY p.product_id, p.name, p.code, st.store_name ORDER BY p.name"
 
             cursor.execute(query, params)
-            result = cursor.fetchall()
+            result = list(cursor.fetchall())   # 👈 強制轉成 list
             result = _normalize_legacy_rows(result)
 
             # ✅ 正確：這裡用同一個 cursor 去抓 master rows
