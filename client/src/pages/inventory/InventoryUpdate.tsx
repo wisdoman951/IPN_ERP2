@@ -1,25 +1,37 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Container, Row, Col, Form, Button, Modal, ListGroup } from "react-bootstrap";
-import { getAllProducts, Product } from "../../services/ProductSellService"; // ✅ 改用正確來源
+import { Container, Row, Col, Form, Button, Modal, ListGroup, Spinner } from "react-bootstrap";
 import { getAllStaffs, Staff } from "../../services/StaffService";
-import { getCategories, Category } from "../../services/CategoryService";
-import { addInventoryItem, getInventoryById, updateInventoryItem, exportInventory } from "../../services/InventoryService";
+import {
+  getMasterProductsForInbound,
+  createMasterStockInbound,
+  MasterProductInboundItem,
+  getInventoryById,
+  updateInventoryItem,
+  exportInventory,
+  updateMasterProductCost
+} from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import Header from "../../components/Header";
-import { getStoreName } from "../../services/AuthUtils";
-import { MemberIdentity } from "../../types/memberIdentity";
+import { getStoreName, getStoreId } from "../../services/AuthUtils";
 
 const InventoryEntryForm = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const editingId = searchParams.get('id');
 
-  const [products, setProducts] = useState<Product[]>([]);
+  const [masterProducts, setMasterProducts] = useState<MasterProductInboundItem[]>([]);
   const [staffs, setStaffs] = useState<Staff[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
   const [productSearch, setProductSearch] = useState('');
   const [showProductModal, setShowProductModal] = useState(false);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+  const [showCostModal, setShowCostModal] = useState(false);
+  const [costInput, setCostInput] = useState('');
+  const [savingCost, setSavingCost] = useState(false);
+  const [canEditCost, setCanEditCost] = useState(false);
+  const [isAdminStore, setIsAdminStore] = useState(false);
+  const storedStoreType = (localStorage.getItem('store_type') || 'DIRECT').toUpperCase() as 'DIRECT' | 'FRANCHISE';
+  const [costStoreType, setCostStoreType] = useState<'DIRECT' | 'FRANCHISE'>(storedStoreType);
 
   const [formData, setFormData] = useState({
     product_id: "",
@@ -34,17 +46,23 @@ const InventoryEntryForm = () => {
     note: ""
   });
 
+  const refreshMasterProducts = useCallback(() => {
+    setLoadingProducts(true);
+    return getMasterProductsForInbound()
+      .then(setMasterProducts)
+      .catch((error) => {
+        console.error("載入主商品資料失敗", error);
+      })
+      .finally(() => setLoadingProducts(false));
+  }, []);
+
   useEffect(() => {
-    Promise.all([getAllProducts(), getCategories('product'), getAllStaffs()]).then(([res, cats, staffsRes]) => {
-      const sorted = [...res].sort((a, b) => {
-        const codeA = a.product_code ? parseInt(a.product_code, 10) : 0;
-        const codeB = b.product_code ? parseInt(b.product_code, 10) : 0;
-        return codeB - codeA;
+    refreshMasterProducts();
+    getAllStaffs()
+      .then(setStaffs)
+      .catch((error) => {
+        console.error("載入人員資料失敗", error);
       });
-      setProducts(sorted);
-      setCategories(cats);
-      setStaffs(staffsRes);
-    });
 
     if (editingId) {
       getInventoryById(Number(editingId)).then((data) => {
@@ -64,7 +82,14 @@ const InventoryEntryForm = () => {
         }
       });
     }
-  }, [editingId]);
+  }, [editingId, refreshMasterProducts]);
+
+  useEffect(() => {
+    const permission = localStorage.getItem('permission');
+    const storeLevel = localStorage.getItem('store_level');
+    setCanEditCost(permission !== 'therapist');
+    setIsAdminStore(storeLevel === '總店' || permission === 'admin');
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -77,18 +102,6 @@ const InventoryEntryForm = () => {
         alert("請選擇進貨人");
         return;
       }
-
-      const payload = {
-        productId: Number(formData.product_id),
-        quantity: Number(formData.quantity),
-        stockIn: Number(formData.quantity),
-        date: formData.date,
-        staffId: Number(formData.staff_id),
-        supplier: formData.supplier || undefined,
-        buyer: formData.buyer || undefined,
-        voucher: formData.voucher || undefined,
-        note: formData.note
-      } as any;
 
       if (editingId) {
         await updateInventoryItem(Number(editingId), {
@@ -104,10 +117,30 @@ const InventoryEntryForm = () => {
           voucher: formData.voucher || undefined,
         } as any);
         alert("更新成功");
-      } else {
-        await addInventoryItem(payload);
-        alert("新增成功");
+        navigate('/inventory/inventory-search');
+        return;
       }
+
+      if (!formData.product_id) {
+        alert("請先選擇品項");
+        return;
+      }
+
+      if (!formData.quantity || Number(formData.quantity) <= 0) {
+        alert("請輸入正確的數量");
+        return;
+      }
+
+      const storeId = getStoreId();
+      await createMasterStockInbound({
+        master_product_id: Number(formData.product_id),
+        quantity: Number(formData.quantity),
+        staff_id: Number(formData.staff_id),
+        store_id: storeId ? Number(storeId) : undefined,
+        reference_no: formData.voucher || undefined,
+        note: formData.note || undefined,
+      });
+      alert("新增成功");
 
       navigate('/inventory/inventory-search');
     } catch (error) {
@@ -128,132 +161,69 @@ const InventoryEntryForm = () => {
 
   const filteredProducts = useMemo(() => {
     const lower = productSearch.trim().toLowerCase();
-    return products.filter(p =>
+    return masterProducts.filter(p =>
       !lower ||
-      p.product_name.toLowerCase().includes(lower) ||
-      (p.product_code || '').toLowerCase().includes(lower)
+      p.name.toLowerCase().includes(lower) ||
+      (p.master_product_code || '').toLowerCase().includes(lower)
     );
-  }, [products, productSearch]);
-
-  const grouped = useMemo(() =>
-    categories.map(cat => ({
-      name: cat.name,
-      items: filteredProducts.filter(p => p.categories?.includes(cat.name))
-    })), [categories, filteredProducts]);
-
-  const ungrouped = useMemo(() =>
-    filteredProducts.filter(
-      p => !p.categories || !p.categories.some(c => categories.some(cat => cat.name === c))
-    ), [filteredProducts, categories]);
+  }, [masterProducts, productSearch]);
 
   const selectedProduct = useMemo(
-    () => products.find(p => String(p.product_id) === formData.product_id),
-    [products, formData.product_id]
+    () => masterProducts.find(p => String(p.master_product_id) === formData.product_id),
+    [masterProducts, formData.product_id]
   );
-
-  const determinePricingIdentity = useCallback((storeName: string | null | undefined): MemberIdentity | null => {
-    if (!storeName) {
-      return null;
-    }
-    const normalized = storeName.trim();
-    if (!normalized) {
-      return null;
-    }
-
-    const matchesKeyword = (keywords: string[]) =>
-      keywords.some(keyword => normalized.includes(keyword));
-
-    if (matchesKeyword(["桃園", "桃園店", "桃園門市"])) {
-      return "加盟店";
-    }
-
-    if (matchesKeyword([
-      "台北", "台北店", "台北門市",
-      "台中", "台中店", "台中門市",
-      "澎湖", "澎湖店", "澎湖門市",
-      "總部", "總店"
-    ])) {
-      return "直營店";
-    }
-
-    return null;
-  }, []);
-
-  const pricingIdentity = useMemo(
-    () => determinePricingIdentity(formData.store_name),
-    [determinePricingIdentity, formData.store_name]
-  );
-
-  const resolvePriceForIdentity = useCallback((
-    tiers: Product["price_tiers"],
-    fallback: number | string | undefined | null,
-    identity: MemberIdentity
-  ): number | undefined => {
-    const toNumber = (value: number | string | null | undefined) => {
-      if (value === undefined || value === null || value === "") {
-        return undefined;
-      }
-      const parsed = Number(value);
-      return Number.isNaN(parsed) ? undefined : parsed;
-    };
-
-    if (identity === "一般售價") {
-      const general = toNumber(tiers?.["一般售價"]);
-      if (general !== undefined) {
-        return general;
-      }
-      return toNumber(fallback);
-    }
-
-    const specific = toNumber(tiers?.[identity]);
-    if (specific !== undefined) {
-      return specific;
-    }
-
-    const general = toNumber(tiers?.["一般售價"]);
-    if (general !== undefined) {
-      return general;
-    }
-
-    return toNumber(fallback);
-  }, []);
 
   const purchasePriceDisplay = useMemo(() => {
-    if (!selectedProduct) {
+    if (!selectedProduct || selectedProduct.cost_price === undefined || selectedProduct.cost_price === null) {
       return "";
     }
+    return Number(selectedProduct.cost_price).toLocaleString();
+  }, [selectedProduct]);
 
-    const toNumber = (value: number | string | null | undefined) => {
-      if (value === undefined || value === null || value === "") {
-        return undefined;
+  const handleOpenCostModal = useCallback(() => {
+    if (!selectedProduct) {
+      alert('請先選擇品項');
+      return;
+    }
+    if (!canEditCost) {
+      alert('您沒有權限設定進貨價');
+      return;
+    }
+    setCostInput(selectedProduct.cost_price ? String(selectedProduct.cost_price) : '');
+    setCostStoreType(isAdminStore ? costStoreType : storedStoreType);
+    setShowCostModal(true);
+  }, [selectedProduct, canEditCost, isAdminStore, costStoreType, storedStoreType]);
+
+  const handleSaveCost = useCallback(async () => {
+    if (!selectedProduct) return;
+    const numericValue = Number(costInput);
+    if (!Number.isFinite(numericValue) || numericValue < 0) {
+      alert('請輸入有效的進貨價');
+      return;
+    }
+    setSavingCost(true);
+    try {
+      const payload: { master_product_id: number; cost_price: number; store_type?: 'DIRECT' | 'FRANCHISE' } = {
+        master_product_id: selectedProduct.master_product_id,
+        cost_price: numericValue,
+      };
+      if (isAdminStore) {
+        payload.store_type = costStoreType;
       }
-      const parsed = Number(value);
-      return Number.isNaN(parsed) ? undefined : parsed;
-    };
-
-    const identityPrice = pricingIdentity
-      ? resolvePriceForIdentity(selectedProduct.price_tiers, selectedProduct.product_price, pricingIdentity)
-      : undefined;
-
-    if (identityPrice !== undefined) {
-      return Number(identityPrice).toLocaleString();
+      await updateMasterProductCost(payload);
+      await refreshMasterProducts();
+      alert('進貨價已更新');
+      setShowCostModal(false);
+    } catch (error) {
+      console.error('進貨價更新失敗', error);
+      alert('進貨價更新失敗，請稍後再試');
+    } finally {
+      setSavingCost(false);
     }
+  }, [selectedProduct, costInput, costStoreType, isAdminStore, refreshMasterProducts]);
 
-    const purchase = toNumber(selectedProduct.purchase_price as number | string | null | undefined);
-    if (purchase !== undefined) {
-      return Number(purchase).toLocaleString();
-    }
-
-    const fallback = toNumber(selectedProduct.product_price as number | string | null | undefined);
-    if (fallback !== undefined) {
-      return Number(fallback).toLocaleString();
-    }
-
-    return "";
-  }, [pricingIdentity, resolvePriceForIdentity, selectedProduct]);
-
-  const handleProductSelect = useCallback((product: Product) => {
-    setFormData(prev => ({ ...prev, product_id: String(product.product_id) }));
+  const handleProductSelect = useCallback((product: MasterProductInboundItem) => {
+    setFormData(prev => ({ ...prev, product_id: String(product.master_product_id) }));
     setShowProductModal(false);
     setProductSearch('');
   }, []);
@@ -280,7 +250,7 @@ const InventoryEntryForm = () => {
                     type="text"
                     readOnly
                     placeholder="請選擇品項"
-                    value={selectedProduct ? `[${selectedProduct.product_code ?? ""}] ${selectedProduct.product_name}` : ""}
+                    value={selectedProduct ? selectedProduct.name : ""}
                   />
                   <Button
                     variant="info"
@@ -310,12 +280,21 @@ const InventoryEntryForm = () => {
             <Col xs={12} md={6}>
               <Form.Group controlId="purchase_price">
                 <Form.Label>進貨價錢</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={purchasePriceDisplay}
-                  readOnly
-                  placeholder="尚未提供"
-                />
+                <div className="d-flex gap-2">
+                  <Form.Control
+                    type="text"
+                    value={purchasePriceDisplay}
+                    readOnly
+                    placeholder="尚未提供"
+                  />
+                  <Button
+                    variant="outline-secondary"
+                    onClick={handleOpenCostModal}
+                    disabled={!canEditCost}
+                  >
+                    設定進貨價
+                  </Button>
+                </div>
               </Form.Group>
             </Col>
           </Row>
@@ -496,47 +475,36 @@ const InventoryEntryForm = () => {
             />
           </Form.Group>
           <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
-            {grouped.filter(g => g.items.length > 0).map(g => (
-              <div key={g.name} className="mb-3">
-                <h6 className="mb-2">{g.name}</h6>
-                <ListGroup>
-                  {g.items.map(item => (
-                    <ListGroup.Item
-                      action
-                      key={item.product_id}
-                      onClick={() => handleProductSelect(item)}
-                    >
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span>[{item.product_code ?? ""}] {item.product_name}</span>
-                        <small className="text-muted">庫存 {item.inventory_quantity}</small>
-                      </div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              </div>
-            ))}
-
-            {ungrouped.length > 0 && (
-              <div>
-                <h6 className="mb-2">未分類</h6>
-                <ListGroup>
-                  {ungrouped.map(item => (
-                    <ListGroup.Item
-                      action
-                      key={item.product_id}
-                      onClick={() => handleProductSelect(item)}
-                    >
-                      <div className="d-flex justify-content-between align-items-center">
-                        <span>[{item.product_code ?? ""}] {item.product_name}</span>
-                        <small className="text-muted">庫存 {item.inventory_quantity}</small>
-                      </div>
-                    </ListGroup.Item>
-                  ))}
-                </ListGroup>
-              </div>
+            {loadingProducts && (
+              <div className="text-center text-muted">載入商品中…</div>
             )}
 
-            {filteredProducts.length === 0 && (
+            {!loadingProducts && filteredProducts.length > 0 && (
+              <ListGroup>
+                {filteredProducts.map(item => (
+                  <ListGroup.Item
+                    action
+                    key={item.master_product_id}
+                    onClick={() => handleProductSelect(item)}
+                  >
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div>{item.name}</div>
+                      <div className="text-muted small">
+                        庫存 {item.quantity_on_hand ?? 0}
+                        {item.cost_price !== undefined && item.cost_price !== null && (
+                          <>
+                            <span className="mx-1">·</span>
+                            進貨價 {Number(item.cost_price).toLocaleString()}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </ListGroup.Item>
+                ))}
+              </ListGroup>
+            )}
+
+            {!loadingProducts && filteredProducts.length === 0 && (
               <div className="text-center text-muted">沒有符合條件的品項</div>
             )}
           </div>
@@ -544,6 +512,61 @@ const InventoryEntryForm = () => {
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCloseProductModal}>
             關閉
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal
+        show={showCostModal}
+        onHide={() => setShowCostModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>設定進貨價</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedProduct ? (
+            <>
+              <p className="mb-2">{selectedProduct.name}</p>
+              {isAdminStore && (
+                <Form.Group className="mb-3">
+                  <Form.Label>套用店型</Form.Label>
+                  <Form.Select
+                    value={costStoreType}
+                    onChange={(e) => setCostStoreType(e.target.value as 'DIRECT' | 'FRANCHISE')}
+                  >
+                    <option value="DIRECT">直營店</option>
+                    <option value="FRANCHISE">加盟店</option>
+                  </Form.Select>
+                </Form.Group>
+              )}
+              <Form.Group>
+                <Form.Label>進貨價</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="0"
+                  value={costInput}
+                  onChange={(e) => setCostInput(e.target.value)}
+                />
+                <Form.Text className="text-muted">
+                  將更新{isAdminStore ? '所選店型' : (storedStoreType === 'FRANCHISE' ? '加盟店' : '直營店')}的進貨成本。
+                </Form.Text>
+              </Form.Group>
+            </>
+          ) : (
+            <p className="mb-0">請先選擇品項</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCostModal(false)}>
+            取消
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSaveCost}
+            disabled={savingCost || !selectedProduct}
+          >
+            {savingCost && <Spinner animation="border" size="sm" className="me-2" />}儲存
           </Button>
         </Modal.Footer>
       </Modal>
