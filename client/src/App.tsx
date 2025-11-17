@@ -65,6 +65,7 @@ import AddStore from './pages/backend/AddStore';
 import StoreManagement from './pages/backend/StoreManagement';
 import AddProduct from './pages/backend/add-product';
 import AddTherapy from './pages/backend/add-therapy';
+import MasterCostManagement from './pages/backend/MasterCostManagement';
 
 
 // 帳務管理
@@ -168,6 +169,7 @@ const App: React.FC = () => {
                     <Route path="/backend/product-bundles" element={<ProtectedRoute element={<ProductBundleManagement />} adminOnly={true} />} />
                     <Route path="/backend/add-store" element={<ProtectedRoute element={<AddStore />} adminOnly={true} />} />
                     <Route path="/backend/stores"  element={<ProtectedRoute element={<StoreManagement />} adminOnly={true} />} />
+                    <Route path="/backend/master-costs" element={<ProtectedRoute element={<MasterCostManagement />} adminOnly={true} />} />
                     <Route path="/backend/add-product" element={<ProtectedRoute element={<AddProduct />} />} />
                     <Route path="/backend/add-therapy" element={<ProtectedRoute element={<AddTherapy />} />} />
                     
