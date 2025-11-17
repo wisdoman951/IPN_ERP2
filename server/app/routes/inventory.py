@@ -202,8 +202,10 @@ def add_inventory():
 def delete_inventory(inventory_id):
     """刪除庫存記錄"""
     try:
+        # 權限檢查
         if getattr(request, 'permission', None) != 'admin':
             return jsonify({"error": "無操作權限"}), 403
+        
         existing = get_inventory_by_id(inventory_id)
         if not existing:
             return jsonify({"error": "找不到該庫存記錄"}), 404
@@ -211,8 +213,21 @@ def delete_inventory(inventory_id):
         user_store_level = request.store_level
         user_store_id = request.store_id
         is_admin = user_store_level == '總店' or request.permission == 'admin'
+
         if not is_admin and existing.get('Store_ID') != user_store_id:
             return jsonify({"error": "無權刪除其他分店的庫存紀錄"}), 403
+
+        # 執行刪除
+        success = delete_inventory_item(inventory_id)
+        if success:
+            return jsonify({"message": "庫存記錄刪除成功", "success": True}), 200
+        else:
+            return jsonify({"error": "庫存記錄刪除失敗"}), 400
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": str(e)}), 500
+
 
 
 @inventory_bp.route("/master/products", methods=["GET"])
