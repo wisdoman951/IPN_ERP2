@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Button, Container, Row, Col, Form, Alert, Spinner, Card, Table } from "react-bootstrap";
+import { Button, Container, Row, Col, Form, Alert, Spinner, Card, Table, Collapse } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
@@ -50,6 +50,7 @@ const InventorySearch: React.FC = () => {
     const [masterSummary, setMasterSummary] = useState<MasterStockSummaryItem[]>([]);
     const [summaryLoading, setSummaryLoading] = useState(false);
     const [summaryError, setSummaryError] = useState<string | null>(null);
+    const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
     const [expandedMasters, setExpandedMasters] = useState<Record<number, boolean>>({});
     const [variantDetails, setVariantDetails] = useState<Record<number, MasterVariantItem[]>>({});
     const [variantLoading, setVariantLoading] = useState<Record<number, boolean>>({});
@@ -364,9 +365,22 @@ const InventorySearch: React.FC = () => {
                 </Container>
                 <Card className="mb-4">
                     <Card.Header className="d-flex justify-content-between align-items-center">
-                        <span>主商品庫存總覽</span>
+                        <div className="d-flex align-items-center gap-2">
+                            <span className="fw-semibold mb-0">主商品庫存總覽</span>
+                            <Button
+                                variant="link"
+                                className="p-0"
+                                onClick={() => setIsSummaryExpanded(prev => !prev)}
+                                aria-controls="master-stock-summary"
+                                aria-expanded={isSummaryExpanded}
+                            >
+                                {isSummaryExpanded ? "收合主商品庫存總覽" : "展開主商品庫存總覽"}
+                            </Button>
+                        </div>
                         <small className="text-muted">庫存依據您登入的店別彙總</small>
                     </Card.Header>
+                    <Collapse in={isSummaryExpanded}>
+                        <div id="master-stock-summary">
                     <Card.Body>
                         {summaryError && (
                             <Alert variant="danger" onClose={() => setSummaryError(null)} dismissible>
@@ -457,6 +471,8 @@ const InventorySearch: React.FC = () => {
                             </tbody>
                         </Table>
                     </Card.Body>
+                        </div>
+                    </Collapse>
                 </Card>
 
                 <Container>
