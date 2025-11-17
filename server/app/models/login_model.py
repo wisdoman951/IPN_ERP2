@@ -19,7 +19,7 @@ def find_staff_by_account(account):
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT s.store_id, s.store_name, s.store_location,
+                SELECT s.store_id, s.store_name, s.store_location, s.store_type,
                        st.staff_id, st.account, st.password, st.permission
                 FROM staff AS st
                 JOIN store AS s ON st.store_id = s.store_id
@@ -73,7 +73,7 @@ def get_store_info(store_id):
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT s.store_id, s.store_name, s.store_location,
+                SELECT s.store_id, s.store_name, s.store_location, s.store_type,
                        st.staff_id, st.account, st.permission
                 FROM store AS s
                 LEFT JOIN staff AS st ON st.store_id = s.store_id
@@ -93,7 +93,7 @@ def get_all_stores():
         with conn.cursor() as cursor:
             cursor.execute(
                 """
-                SELECT s.store_id, s.store_name, s.store_location,
+                SELECT s.store_id, s.store_name, s.store_location, s.store_type,
                        st.staff_id, st.account, st.permission
                 FROM store AS s
                 LEFT JOIN staff AS st ON st.store_id = s.store_id
