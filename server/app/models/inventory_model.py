@@ -24,6 +24,33 @@ def _normalize_legacy_rows(rows):
     return rows
 
 
+def _normalize_date_for_sort(value):
+    """將資料列中的日期欄位轉換為可排序的 datetime 物件。"""
+    if isinstance(value, datetime):
+        return value
+
+    if isinstance(value, str):
+        text = value.strip()
+        if not text:
+            return datetime.min
+
+        # 嘗試以 ISO 格式解析 (支援 `YYYY-MM-DD`, `YYYY-MM-DD HH:MM:SS`, `YYYY-MM-DDTHH:MM:SS` 等)
+        try:
+            sanitized = text.replace('Z', '+00:00')
+            return datetime.fromisoformat(sanitized)
+        except ValueError:
+            pass
+
+        # 若失敗則再試著使用常見格式
+        for fmt in ("%Y/%m/%d", "%Y/%m/%d %H:%M:%S"):
+            try:
+                return datetime.strptime(text, fmt)
+            except ValueError:
+                continue
+
+    return datetime.min
+
+
 def _fetch_master_inventory_rows(cursor, store_id=None, keyword=None):
     rows = []
     if store_id:
@@ -712,8 +739,14 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
             if buyer:
                 records = [r for r in records if r.get('Buyer') and buyer.lower() in r.get('Buyer', '').lower()]
 
-            # 依日期與ID倒序排列
-            records.sort(key=lambda x: (x.get('Date'), x.get('Inventory_ID')), reverse=True)
+            # 依日期與ID倒序排列，允許 Date 為 None 或非標準格式
+            records.sort(
+                key=lambda x: (
+                    _normalize_date_for_sort(x.get('Date')),
+                    x.get('Inventory_ID') or 0,
+                ),
+                reverse=True,
+            )
             return records
     except Exception as e:
         print(f"獲取庫存進出明細錯誤: {e}")
