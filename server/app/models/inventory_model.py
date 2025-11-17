@@ -195,7 +195,6 @@ def get_all_inventory(store_id=None):
 def search_inventory(keyword, store_id=None):
     """搜尋庫存記錄，可依店鋪篩選"""
     conn = connect_to_db()
-    result = []
     try:
         with conn.cursor() as cursor:
             query = """
@@ -244,17 +243,18 @@ def search_inventory(keyword, store_id=None):
             cursor.execute(query, params)
             result = cursor.fetchall()
             result = _normalize_legacy_rows(result)
+
+            # ✅ 一樣用同一個 cursor 抓 master rows + keyword
             master_rows = _fetch_master_inventory_rows(cursor, store_id, keyword)
             result.extend(master_rows)
             return result
+
     except Exception as e:
         print(f"搜尋庫存記錄錯誤: {e}")
-        result = []
+        return []
     finally:
         conn.close()
 
-    master_rows = _fetch_master_inventory_rows(store_id, keyword)
-    return (result or []) + master_rows
 
 def get_inventory_by_id(inventory_id):
     """根據ID獲取庫存記錄"""
