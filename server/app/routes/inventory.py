@@ -165,6 +165,12 @@ def add_inventory():
         user_store_id = user_info.get('store_id')
         is_admin = user_store_level == '總店' or user_info.get('permission') == 'admin'
 
+        product_name = data.get('productName') or data.get('product_name')
+        if not data.get('productId') and not product_name:
+            return jsonify({"error": "請提供 product_name"}), 400
+        if product_name:
+            data['productName'] = product_name
+
         if not data.get('storeId'):
             data['storeId'] = user_store_id
         elif not is_admin and int(data.get('storeId')) != user_store_id:

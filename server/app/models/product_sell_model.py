@@ -3,7 +3,9 @@ import pymysql
 import json
 from decimal import Decimal
 from uuid import uuid4
+from typing import Optional
 from app.config import DB_CONFIG
+from app.helpers.sku_inventory import build_sku_quantity_plan
 
 def connect_to_db():
     """連接到數據庫"""
@@ -254,13 +256,31 @@ def insert_product_sell(data: dict):
                         "sale_category": data.get('sale_category'),
                         "note": bundle_note_with_tag,
                         "order_reference": bundle_order_reference,
-                    }
+                    } 
                     cursor.execute(insert_query, item_data)
-                    update_inventory_quantity(item['item_id'], data['store_id'], -quantity, cursor)
+                    apply_group_inventory_change(
+                        cursor,
+                        data['store_id'],
+                        -quantity,
+                        product_id=item['item_id'],
+                    )
 
                 conn.commit()
                 return conn.insert_id()
             else:
+                if not data.get('product_id'):
+                    provided_name = data.get('product_name') or data.get('productName')
+                    if provided_name:
+                        cursor.execute(
+                            "SELECT product_id FROM product WHERE name = %s ORDER BY product_id LIMIT 1",
+                            (provided_name,),
+                        )
+                        name_row = cursor.fetchone()
+                        if not name_row:
+                            raise ValueError(f"找不到產品名稱 {provided_name} 對應的 SKU")
+                        data['product_id'] = name_row['product_id']
+                    else:
+                        raise ValueError('缺少 product_id 或 product_name')
                 cursor.execute("SELECT name, status FROM product WHERE product_id = %s", (data['product_id'],))
                 name_row = cursor.fetchone()
                 if not name_row or name_row.get('status') != 'PUBLISHED':
@@ -269,7 +289,12 @@ def insert_product_sell(data: dict):
                 data['order_reference'] = data.get('order_reference')
                 cursor.execute(insert_query, data)
                 quantity_change = -int(data['quantity'])
-                update_inventory_quantity(data['product_id'], data['store_id'], quantity_change, cursor)
+                apply_group_inventory_change(
+                    cursor,
+                    data['store_id'],
+                    quantity_change,
+                    product_id=data['product_id'],
+                )
                 conn.commit()
                 return conn.insert_id()
     except Exception as e:
@@ -355,75 +380,28 @@ def update_inventory_quantity(product_id: int, store_id: int, quantity_change: i
         # 確保錯誤被重新拋出，以便調用它的函數 (如 insert_product_sell) 中的事務可以回滾
         raise
 
-def update_product_sell(sell_id: int, data: dict):
-    """更新產品銷售紀錄"""
-    conn = connect_to_db()
-    try:
-        with conn.cursor() as cursor:
-            # 1. 獲取原始銷售記錄
-            cursor.execute("SELECT product_id, quantity, store_id FROM product_sell WHERE product_sell_id = %s", (sell_id,))
-            original_sell = cursor.fetchone()
-            if not original_sell:
-                raise ValueError(f"找不到銷售記錄 ID: {sell_id}")
 
-            # 2. 計算庫存變動
-            original_product_id = original_sell['product_id']
-            original_quantity = original_sell['quantity']
-            original_store_id = original_sell['store_id']
+def apply_group_inventory_change(
+    cursor: pymysql.cursors.DictCursor,
+    store_id: int,
+    quantity_change: int,
+    *,
+    product_id: Optional[int] = None,
+    product_name: Optional[str] = None,
+):
+    """Distribute a quantity change across all SKUs that share the same name."""
 
-            new_product_id = int(data.get("product_id", original_product_id))
-            new_quantity = int(data.get("quantity", original_quantity))
-            new_store_id = int(data.get("store_id", original_store_id))
-
-            # 3. 更新銷售紀錄本身
-            fields = [f"{key} = %s" for key in data.keys()]
-            query = f"UPDATE product_sell SET {', '.join(fields)} WHERE product_sell_id = %s"
-            params = list(data.values()) + [sell_id]
-            cursor.execute(query, tuple(params))
-
-            # 4. 調整庫存
-            if (new_product_id != original_product_id or 
-                new_quantity != original_quantity or 
-                new_store_id != original_store_id):
-                # a. 將原數量加回原庫存
-                update_inventory_quantity(original_product_id, original_store_id, original_quantity, cursor)
-                # b. 從新庫存中扣除新數量
-                update_inventory_quantity(new_product_id, new_store_id, -new_quantity, cursor)
-        
-        conn.commit()
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
-def delete_product_sell(sell_id):
-    """刪除產品銷售紀錄"""
-    conn = connect_to_db()
-    try:
-        with conn.cursor() as cursor:
-            # 獲取要刪除的記錄以還原庫存
-            cursor.execute(
-                "SELECT inventory_id FROM product_sell WHERE product_sell_id = %s",
-                (sell_id,)
-            )
-            sell = cursor.fetchone()
-            
-            if not sell:
-                raise ValueError("找不到指定的銷售記錄")
-            
-            query = "DELETE FROM product_sell WHERE product_sell_id = %s"
-            cursor.execute(query, (sell_id,))
-            
-            # 恢復庫存數量
-            update_inventory_quantity(sell["inventory_id"], 1)
-            
-        conn.commit()
-        return True
-    except Exception as e:
-        conn.rollback()
-        raise e
-    finally:
-        conn.close()
+    plan = build_sku_quantity_plan(
+        cursor,
+        quantity_change,
+        product_id=product_id,
+        product_name=product_name,
+    )
+    for item in plan:
+        qty = item.get('quantity', 0)
+        if qty == 0:
+            continue
+        update_inventory_quantity(item['product_id'], store_id, qty, cursor)
 
 def update_inventory_after_sale(product_id: int, store_id: int, quantity_change: int, cursor: pymysql.cursors.DictCursor):
     update_query = """
@@ -511,11 +489,21 @@ def update_product_sell(sell_id: int, data: dict):
             if new_product_id != original_product_id or new_quantity != original_quantity or new_store_id != original_store_id:
                 # 產品、數量或店家有變更，需要調整庫存
                 # a. 將原銷售的產品數量加回原店家庫存
-                update_inventory_quantity(original_product_id, original_store_id, original_quantity, cursor) # 加回正數
+                apply_group_inventory_change(
+                    cursor,
+                    original_store_id,
+                    original_quantity,
+                    product_id=original_product_id,
+                )
                 print(f"庫存調整：原產品 {original_product_id} 在店家 {original_store_id} 加回數量 {original_quantity}")
-                
+
                 # b. 將新銷售的產品數量從新店家庫存中扣除
-                update_inventory_quantity(new_product_id, new_store_id, -new_quantity, cursor) # 扣除負數
+                apply_group_inventory_change(
+                    cursor,
+                    new_store_id,
+                    -new_quantity,
+                    product_id=new_product_id,
+                )
                 print(f"庫存調整：新產品 {new_product_id} 在店家 {new_store_id} 扣除數量 {new_quantity}")
                 inventory_adjusted = True
             
@@ -558,7 +546,12 @@ def delete_product_sell(sell_id: int):
                 raise ValueError(f"嘗試刪除銷售記錄 ID: {sell_id} 失敗，記錄可能已被刪除。")
 
             # 3. 恢復庫存數量
-            update_inventory_quantity(product_id_to_restore, store_id_to_restore, quantity_to_restore, cursor) # 加回正數
+            apply_group_inventory_change(
+                cursor,
+                store_id_to_restore,
+                quantity_to_restore,
+                product_id=product_id_to_restore,
+            )
             print(f"庫存調整：產品 {product_id_to_restore} 在店家 {store_id_to_restore} 加回數量 {quantity_to_restore} (因銷售記錄 {sell_id} 刪除)")
             
             conn.commit()
