@@ -67,16 +67,24 @@ GROUP BY mp.master_product_id, st.store_type
 ON DUPLICATE KEY UPDATE
     cost_price = VALUES(cost_price);
 
--- 5. 依照既有 inventory 彙總主庫存
-INSERT INTO master_stock (master_product_id, quantity_on_hand, updated_at)
+SET @fallback_store_id = (
+    SELECT store_id FROM store
+    WHERE store_name IN ('總店','總部')
+    ORDER BY store_id DESC
+    LIMIT 1
+);
+SET @fallback_store_id = COALESCE(@fallback_store_id, (SELECT MIN(store_id) FROM store));
+
+INSERT INTO master_stock (master_product_id, store_id, quantity_on_hand, updated_at)
 SELECT
     mp.master_product_id,
+    COALESCE(inv.store_id, @fallback_store_id) AS store_id,
     COALESCE(SUM(inv.quantity), 0) AS quantity_on_hand,
     NOW()
 FROM master_product mp
 LEFT JOIN product_variant pv ON pv.master_product_id = mp.master_product_id
 LEFT JOIN inventory inv ON inv.product_id = pv.variant_id
-GROUP BY mp.master_product_id
+GROUP BY mp.master_product_id, COALESCE(inv.store_id, @fallback_store_id)
 ON DUPLICATE KEY UPDATE
     quantity_on_hand = VALUES(quantity_on_hand),
     updated_at = VALUES(updated_at);

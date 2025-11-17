@@ -27,6 +27,25 @@ export interface MasterProductCostRow {
     franchise_cost_price?: number | null;
 }
 
+export interface MasterStockSummaryItem {
+    master_product_id: number;
+    master_product_code: string;
+    name: string;
+    status: string;
+    quantity_on_hand: number;
+    updated_at?: string;
+    store_id?: number;
+    store_name?: string;
+}
+
+export interface MasterVariantItem {
+    variant_id: number;
+    variant_code: string;
+    display_name: string;
+    sale_price?: number | null;
+    status?: string;
+}
+
 export interface MasterStockInboundPayload {
     master_product_id: number;
     quantity: number;
@@ -190,6 +209,19 @@ export const updateMasterProductCost = async (payload: {
     store_type?: "DIRECT" | "FRANCHISE";
 }) => {
     return axios.post(`${API_URL}/master/prices`, payload);
+};
+
+export const getMasterStockSummary = async (params?: { keyword?: string; storeId?: number }) => {
+    const query: any = {};
+    if (params?.keyword) query.q = params.keyword;
+    if (params?.storeId) query.store_id = params.storeId;
+    const response = await axios.get(`${API_URL}/master/summary`, { params: query });
+    return extractArray(response.data) as MasterStockSummaryItem[];
+};
+
+export const getMasterVariants = async (masterProductId: number) => {
+    const response = await axios.get(`${API_URL}/master/${masterProductId}/variants`);
+    return extractArray(response.data) as MasterVariantItem[];
 };
 
 // 匯出庫存數據

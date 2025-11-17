@@ -2,6 +2,8 @@
 
 `store_type_price` is the only table that controls what purchase cost appears on the “更新庫存資料 (進貨)” screen.  Each row ties a logical master product to one store type (直營 = `DIRECT`, 加盟 = `FRANCHISE`).
 
+> **New:** Admin 身分可直接透過「後台管理系統 → 更新進貨成本」頁面維護這些價格，頁面會寫入同一張 `store_type_price` 表。下方 SQL 說明仍然適用於批次或手動維護需求。
+
 ## Table columns
 - `master_product_id` – references `master_product.master_product_id`.
 - `store_type` – `DIRECT` or `FRANCHISE`.

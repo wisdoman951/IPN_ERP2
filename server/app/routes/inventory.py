@@ -36,6 +36,17 @@ from app.models.master_stock_model import (
     upsert_master_cost_price,
     VALID_STORE_TYPES,
 )
+from app.models.master_stock_model import (
+    list_master_products_for_inbound,
+    list_variants_for_outbound,
+    list_master_stock_summary,
+    list_variants_for_master,
+    receive_master_stock,
+    ship_variant_stock,
+    list_master_costs,
+    upsert_master_cost_price,
+    VALID_STORE_TYPES,
+)
 from app.middleware import auth_required, get_user_from_token
 
 inventory_bp = Blueprint("inventory", __name__)
@@ -251,7 +262,8 @@ def list_master_products():
     """進貨視窗：僅顯示 master 商品，並依店型顯示成本價。"""
     keyword = request.args.get("q")
     store_type = getattr(request, 'store_type', None)
-    products = list_master_products_for_inbound(store_type, keyword)
+    store_id = getattr(request, 'store_id', None)
+    products = list_master_products_for_inbound(store_type, store_id, keyword)
     return jsonify(products)
 
 
@@ -260,7 +272,8 @@ def list_master_products():
 def list_outbound_variants():
     """出貨視窗：列出所有尾碼版本供選擇。"""
     keyword = request.args.get("q")
-    variants = list_variants_for_outbound(keyword)
+    store_id = getattr(request, 'store_id', None)
+    variants = list_variants_for_outbound(store_id, keyword)
     return jsonify(variants)
 
 
@@ -268,7 +281,18 @@ def list_outbound_variants():
 @auth_required
 def master_stock_summary():
     keyword = request.args.get("q")
-    summary = list_master_stock_summary(keyword)
+    store_id_param = request.args.get("store_id")
+    user_info = get_user_from_token(request)
+    try:
+        target_store_id, _, _ = _resolve_store_id(store_id_param, user_info)
+    except PermissionError as exc:
+        return jsonify({"error": str(exc)}), 403
+    if not target_store_id:
+        return jsonify({"error": "請提供有效的 store_id"}), 400
+    try:
+        summary = list_master_stock_summary(target_store_id, keyword)
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 400
     return jsonify(summary)
 
 
