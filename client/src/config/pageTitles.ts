@@ -75,5 +75,5 @@ export const pageTitles: PageTitleMap = {
   '/backend/product-bundles': { basic: '無權限', admin: '產品組合管理 1.2.6.3' },
   '/backend/stores': { basic: '無權限', admin: '分店管理 1.2.6.4' },
   '/backend/add-store': { basic: '無權限', admin: '建立新的分店帳號 1.2.6.4.1' },
-
+  '/backend/master-costs': { basic: '無權限', admin: '更新進貨價格 1.2.6.5' },
 };
