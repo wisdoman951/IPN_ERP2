@@ -70,7 +70,7 @@ const InventorySearch: React.FC = () => {
     };
     
     const userStoreId = getUserStoreId();
-    const fetchMasterSummaryData = useCallback(async (keywordParam?: string) => {
+    const loadMasterSummary = useCallback(async (keywordParam?: string) => {
         setSummaryLoading(true);
         try {
             const params: { keyword?: string; storeId?: number } = {};
@@ -88,29 +88,11 @@ const InventorySearch: React.FC = () => {
         }
     }, [userStoreId]);
 
-    const fetchMasterSummaryData = useCallback(async (keywordParam?: string) => {
-        setSummaryLoading(true);
-        try {
-            const params: { keyword?: string; storeId?: number } = {};
-            if (keywordParam) params.keyword = keywordParam;
-            if (userStoreId) params.storeId = userStoreId;
-            const data = await getMasterStockSummary(params);
-            setMasterSummary(Array.isArray(data) ? data : []);
-            setSummaryErrorMessage(null);
-        } catch (err) {
-            console.error("獲取主庫存失敗:", err);
-            setSummaryErrorMessage("獲取主庫存失敗，請稍後再試");
-            setMasterSummary([]);
-        } finally {
-            setSummaryLoading(false);
-        }
-    }, [userStoreId]);
-
     // 載入庫存資料
     useEffect(() => {
-        fetchMasterSummaryData();
+        loadMasterSummary();
         fetchInventoryData();
-    }, [location.key, fetchMasterSummaryData]);
+    }, [location.key, loadMasterSummary]);
 
     // 獲取所有庫存資料
     const fetchInventoryData = async () => {
@@ -131,7 +113,7 @@ const InventorySearch: React.FC = () => {
     // 搜尋庫存資料
     const handleSearch = async () => {
         setLoading(true);
-        fetchMasterSummaryData(keyword);
+        loadMasterSummary(keyword);
         try {
             const data = await searchInventory(keyword, userStoreId);
             setInventoryItems(Array.isArray(data) ? data : []);
@@ -258,7 +240,7 @@ const InventorySearch: React.FC = () => {
 
             // 重新獲取庫存數據
             await fetchInventoryData();
-            await fetchMasterSummaryData();
+            await loadMasterSummary();
             
             // 清空選中項目
             setSelectedItems([]);

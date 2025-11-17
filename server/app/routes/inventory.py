@@ -39,6 +39,17 @@ from app.models.master_stock_model import (
     upsert_master_cost_price,
     VALID_STORE_TYPES,
 )
+from app.models.master_stock_model import (
+    list_master_products_for_inbound,
+    list_variants_for_outbound,
+    list_master_stock_summary,
+    list_variants_for_master,
+    receive_master_stock,
+    ship_variant_stock,
+    list_master_costs,
+    upsert_master_cost_price,
+    VALID_STORE_TYPES,
+)
 from app.middleware import auth_required, get_user_from_token
 
 inventory_bp = Blueprint("inventory", __name__)
