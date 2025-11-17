@@ -28,6 +28,21 @@ WHERE pv.variant_code = 'PCP0104';
 ```
 
 ## Setting or updating the purchase price
+### Automatic seed data
+The spreadsheets provided by IPN have already been encoded in
+`mysql-init-scripts/04_store_type_price_seed.sql`.  Run it after the
+initial migration to import or refresh the 直營 (`DIRECT`) and 加盟
+(`FRANCHISE`) purchase prices:
+
+```bash
+mysql -u <user> -p <database> < mysql-init-scripts/04_store_type_price_seed.sql
+```
+
+Some products share一個 `master_product_code`（例如單盒與多盒包裝的
+`PSO01*` 產品）；在這些情況我們取列表中的最高價，以確保進貨頁面預設
+成本不會低估。
+
+### Manual updates
 Use an `INSERT ... ON DUPLICATE KEY UPDATE` so it works for both new and existing prices:
 ```sql
 INSERT INTO store_type_price (master_product_id, store_type, cost_price)
