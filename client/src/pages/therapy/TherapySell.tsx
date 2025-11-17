@@ -214,7 +214,7 @@ const TherapySell: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [bundleMap, setBundleMap] = useState<Record<number, { name: string; contents: string }>>({});
     const bundleContentsCache = useMemo(() => new Map<number, { label: string; quantity?: number }[]>(), [bundleMap]);
-    const { checkPermission, modal: permissionModal } = usePermissionGuard();
+    const { checkPermission, modal: permissionModal, userRole } = usePermissionGuard();
 
 
 
@@ -752,7 +752,9 @@ const TherapySell: React.FC = () => {
             alert("請先選擇要刪除的項目");
             return;
         }
-        if (!checkPermission()) {
+        const role = (userRole ?? localStorage.getItem('permission')) as 'admin' | 'basic' | 'therapist' | null;
+        if (role !== 'admin') {
+            alert('無操作權限');
             return;
         }
         if (window.confirm(`確定要刪除選定的 ${selectedItems.length} 筆紀錄嗎？`)) {
