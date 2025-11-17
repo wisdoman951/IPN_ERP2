@@ -35,6 +35,7 @@ interface InventoryItem {
     StoreName: string;
     IsMaster?: number;
     selected?: boolean;
+    IsMasterStock?: boolean;
 }
 
 const InventorySearch: React.FC = () => {
@@ -178,7 +179,11 @@ const InventorySearch: React.FC = () => {
     };
 
     // 選中/取消選中項目
-    const toggleSelectItem = (inventoryId: number) => {
+    const toggleSelectItem = (item: InventoryItem) => {
+        if (item.IsMasterStock) {
+            return;
+        }
+        const inventoryId = item.Inventory_ID;
         if (selectedItems.includes(inventoryId)) {
             setSelectedItems(selectedItems.filter(id => id !== inventoryId));
         } else {
@@ -186,10 +191,25 @@ const InventorySearch: React.FC = () => {
         }
     };
 
+    useEffect(() => {
+        setSelectedItems(prev =>
+            prev.filter(id => {
+                const item = inventoryItems.find(inv => inv.Inventory_ID === id);
+                return item && !item.IsMasterStock;
+            })
+        );
+    }, [inventoryItems]);
+
     // 刪除選中的項目
     const handleDelete = async () => {
         if (selectedItems.length === 0) {
             setError("請先選擇要刪除的項目");
+            return;
+        }
+
+        const selectedRecords = inventoryItems.filter(item => selectedItems.includes(item.Inventory_ID));
+        if (selectedRecords.some(item => item.IsMasterStock)) {
+            setError("主商品庫存請至主商品庫存作業中管理");
             return;
         }
 
@@ -209,11 +229,15 @@ const InventorySearch: React.FC = () => {
                 try {
                     await deleteInventoryItem(id);
                 } catch (err) {
+                    if (isNoPermissionError(err)) {
+                        notifyNoPermission();
+                        return;
+                    }
                     console.error(`刪除庫存項目 ID=${id} 失敗:`, err);
                     failedCount++;
                 }
             }
-            
+
             // 重新獲取庫存數據
             await fetchInventoryData();
             await loadMasterSummary();
@@ -229,6 +253,10 @@ const InventorySearch: React.FC = () => {
                 setError("刪除操作失敗，請稍後再試");
             }
         } catch (err) {
+            if (isNoPermissionError(err)) {
+                notifyNoPermission();
+                return;
+            }
             console.error("批量刪除庫存項目失敗:", err);
             setError("刪除操作失敗，請稍後再試");
         } finally {
@@ -243,6 +271,16 @@ const InventorySearch: React.FC = () => {
         }
         if (selectedItems.length !== 1) {
             setError("請選擇一個項目進行修改");
+            return;
+        }
+
+        const targetItem = inventoryItems.find(item => item.Inventory_ID === selectedItems[0]);
+        if (!targetItem) {
+            setError("找不到選擇的庫存項目");
+            return;
+        }
+        if (targetItem.IsMasterStock) {
+            setError("主商品庫存請至主商品庫存作業中維護");
             return;
         }
 

@@ -1,4 +1,6 @@
 import pymysql
+from pymysql import MySQLError
+from functools import lru_cache
 from app.config import DB_CONFIG
 from datetime import datetime
 
@@ -130,6 +132,7 @@ def connect_to_db():
 def get_all_inventory(store_id=None):
     """獲取所有庫存記錄，可依店鋪篩選"""
     conn = connect_to_db()
+    result = []
     try:
         with conn.cursor() as cursor:
             query = """
@@ -182,13 +185,17 @@ def get_all_inventory(store_id=None):
             return result
     except Exception as e:
         print(f"獲取庫存記錄錯誤: {e}")
-        return []
+        result = []
     finally:
         conn.close()
+
+    master_rows = _fetch_master_inventory_rows(store_id)
+    return (result or []) + master_rows
 
 def search_inventory(keyword, store_id=None):
     """搜尋庫存記錄，可依店鋪篩選"""
     conn = connect_to_db()
+    result = []
     try:
         with conn.cursor() as cursor:
             query = """
@@ -242,9 +249,12 @@ def search_inventory(keyword, store_id=None):
             return result
     except Exception as e:
         print(f"搜尋庫存記錄錯誤: {e}")
-        return []
+        result = []
     finally:
         conn.close()
+
+    master_rows = _fetch_master_inventory_rows(store_id, keyword)
+    return (result or []) + master_rows
 
 def get_inventory_by_id(inventory_id):
     """根據ID獲取庫存記錄"""
@@ -397,7 +407,14 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     st.store_name AS StoreName,
                     '' AS SaleStaff,
                     i.buyer AS Buyer,
-                    i.voucher AS Voucher
+                    i.voucher AS Voucher,
+                    '庫存' AS Category,
+                    CASE
+                        WHEN i.stock_in > 0 AND COALESCE(i.stock_out, 0) = 0 THEN '入庫'
+                        WHEN i.stock_out > 0 THEN '出庫'
+                        WHEN i.stock_loan > 0 THEN '借出'
+                        ELSE '調整'
+                    END AS TxnType
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN staff s ON i.staff_id = s.staff_id
@@ -491,7 +508,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    CASE WHEN ps.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE NULL END AS Category
+                    CASE WHEN ps.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE '產品銷售' END AS Category,
+                    '銷售出庫' AS TxnType
                 FROM product_sell ps
                 LEFT JOIN product p ON ps.product_id = p.product_id
                 LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
@@ -519,7 +537,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    '套組銷售' AS Category
+                    '套組銷售' AS Category,
+                    '銷售出庫' AS TxnType
                 FROM product_sell ps
                 JOIN product_bundle_items pbi
                   ON pbi.bundle_id = SUBSTRING_INDEX(SUBSTRING(ps.note, LOCATE('[bundle:', ps.note) + 8), ']', 1)
@@ -599,7 +618,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    CASE WHEN ts.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE NULL END AS Category
+                    CASE WHEN ts.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE '療程銷售' END AS Category,
+                    '銷售出庫' AS TxnType
                 FROM therapy_sell ts
                 LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
                 LEFT JOIN staff sf ON ts.staff_id = sf.staff_id
@@ -627,7 +647,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    '套組銷售' AS Category
+                    '套組銷售' AS Category,
+                    '銷售出庫' AS TxnType
                 FROM therapy_sell ts
                 JOIN therapy_bundle_items tbi
                   ON tbi.bundle_id = SUBSTRING_INDEX(SUBSTRING(ts.note, LOCATE('[bundle:', ts.note) + 8), ']', 1)
