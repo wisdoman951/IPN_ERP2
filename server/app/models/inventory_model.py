@@ -389,7 +389,14 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     st.store_name AS StoreName,
                     '' AS SaleStaff,
                     i.buyer AS Buyer,
-                    i.voucher AS Voucher
+                    i.voucher AS Voucher,
+                    '庫存' AS Category,
+                    CASE
+                        WHEN i.stock_in > 0 AND COALESCE(i.stock_out, 0) = 0 THEN '入庫'
+                        WHEN i.stock_out > 0 THEN '出庫'
+                        WHEN i.stock_loan > 0 THEN '借出'
+                        ELSE '調整'
+                    END AS TxnType
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN staff s ON i.staff_id = s.staff_id
@@ -483,7 +490,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    CASE WHEN ps.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE NULL END AS Category
+                    CASE WHEN ps.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE '產品銷售' END AS Category,
+                    '銷售出庫' AS TxnType
                 FROM product_sell ps
                 LEFT JOIN product p ON ps.product_id = p.product_id
                 LEFT JOIN staff sf ON ps.staff_id = sf.staff_id
@@ -511,7 +519,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    '套組銷售' AS Category
+                    '套組銷售' AS Category,
+                    '銷售出庫' AS TxnType
                 FROM product_sell ps
                 JOIN product_bundle_items pbi
                   ON pbi.bundle_id = SUBSTRING_INDEX(SUBSTRING(ps.note, LOCATE('[bundle:', ps.note) + 8), ']', 1)
@@ -591,7 +600,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    CASE WHEN ts.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE NULL END AS Category
+                    CASE WHEN ts.note LIKE '%%[bundle:%%' THEN '套組銷售' ELSE '療程銷售' END AS Category,
+                    '銷售出庫' AS TxnType
                 FROM therapy_sell ts
                 LEFT JOIN therapy t ON ts.therapy_id = t.therapy_id
                 LEFT JOIN staff sf ON ts.staff_id = sf.staff_id
@@ -619,7 +629,8 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                     sf.name AS SaleStaff,
                     mb.name AS Buyer,
                     '' AS Voucher,
-                    '套組銷售' AS Category
+                    '套組銷售' AS Category,
+                    '銷售出庫' AS TxnType
                 FROM therapy_sell ts
                 JOIN therapy_bundle_items tbi
                   ON tbi.bundle_id = SUBSTRING_INDEX(SUBSTRING(ts.note, LOCATE('[bundle:', ts.note) + 8), ']', 1)
@@ -630,6 +641,60 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
                 {t_bundle_where}
             """
             cursor.execute(therapy_bundle_q, t_bundle_params)
+            records.extend(cursor.fetchall())
+
+            # -------- 主商品進出紀錄（進貨 / 統一出貨） --------
+            master_conditions = ["st.master_product_id IS NOT NULL"]
+            master_params = []
+            if store_id:
+                master_conditions.append("st.store_id = %s")
+                master_params.append(store_id)
+            if start_date:
+                master_conditions.append("DATE(st.created_at) >= %s")
+                master_params.append(start_date)
+            if end_date:
+                master_conditions.append("DATE(st.created_at) <= %s")
+                master_params.append(end_date)
+            if sale_staff:
+                master_conditions.append("sf.name LIKE %s")
+                master_params.append(f"%{sale_staff}%")
+            if product_id:
+                master_conditions.append("st.master_product_id = %s")
+                master_params.append(product_id)
+            master_where = " WHERE " + " AND ".join(master_conditions)
+
+            master_tx_q = f"""
+                SELECT
+                    st.txn_id + 3000000 AS Inventory_ID,
+                    mp.name AS Name,
+                    NULL AS Unit,
+                    NULL AS Price,
+                    CASE WHEN st.txn_type = 'OUTBOUND' THEN -ABS(st.quantity) ELSE st.quantity END AS quantity,
+                    CASE WHEN st.txn_type = 'INBOUND' THEN st.quantity ELSE 0 END AS stock_in,
+                    CASE WHEN st.txn_type = 'OUTBOUND' THEN ABS(st.quantity) ELSE 0 END AS stock_out,
+                    CASE WHEN st.txn_type = 'ADJUST' THEN st.quantity ELSE 0 END AS stock_loan,
+                    0 AS stock_threshold,
+                    st.created_at AS Date,
+                    sf.name AS StaffName,
+                    '' AS Supplier,
+                    st.store_id AS Store_ID,
+                    sto.store_name AS StoreName,
+                    CASE WHEN st.txn_type = 'OUTBOUND' THEN sf.name ELSE '' END AS SaleStaff,
+                    '' AS Buyer,
+                    st.reference_no AS Voucher,
+                    '主商品' AS Category,
+                    CASE
+                        WHEN st.txn_type = 'INBOUND' THEN '進貨'
+                        WHEN st.txn_type = 'OUTBOUND' THEN '出貨'
+                        ELSE '調整'
+                    END AS TxnType
+                FROM stock_transaction st
+                LEFT JOIN master_product mp ON mp.master_product_id = st.master_product_id
+                LEFT JOIN staff sf ON sf.staff_id = st.staff_id
+                LEFT JOIN store sto ON sto.store_id = st.store_id
+                {master_where}
+            """
+            cursor.execute(master_tx_q, master_params)
             records.extend(cursor.fetchall())
 
             if sale_staff:
