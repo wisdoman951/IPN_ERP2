@@ -67,6 +67,42 @@ def list_master_products_for_inbound(store_type: str | None, keyword: str | None
         conn.close()
 
 
+def list_master_costs(
+    keyword: str | None = None,
+    master_product_id: int | None = None,
+) -> list[dict]:
+    """Return master products with both DIRECT and FRANCHISE cost prices."""
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            query = """
+                SELECT mp.master_product_id,
+                       mp.master_product_code,
+                       mp.name,
+                       COALESCE(MAX(CASE WHEN stp.store_type = 'DIRECT' THEN stp.cost_price END), NULL) AS direct_cost_price,
+                       COALESCE(MAX(CASE WHEN stp.store_type = 'FRANCHISE' THEN stp.cost_price END), NULL) AS franchise_cost_price
+                FROM master_product mp
+                LEFT JOIN store_type_price stp ON stp.master_product_id = mp.master_product_id
+            """
+            params: list = []
+            conditions: list[str] = []
+            if master_product_id:
+                conditions.append("mp.master_product_id = %s")
+                params.append(master_product_id)
+            if keyword:
+                like = f"%{keyword}%"
+                conditions.append("(mp.name LIKE %s OR mp.master_product_code LIKE %s)")
+                params.extend([like, like])
+            if conditions:
+                query += " WHERE " + " AND ".join(conditions)
+            query += " GROUP BY mp.master_product_id ORDER BY mp.name"
+            cursor.execute(query, params)
+            rows = cursor.fetchall()
+            return _convert_decimal_fields(rows, "direct_cost_price", "franchise_cost_price")
+    finally:
+        conn.close()
+
+
 def list_variants_for_outbound(keyword: str | None = None) -> list[dict]:
     conn = connect_to_db()
     try:
@@ -196,6 +232,53 @@ def receive_master_stock(
         raise
     finally:
         conn.close()
+
+
+def upsert_master_cost_price(
+    master_product_id: int,
+    store_type: str,
+    cost_price: float | Decimal | str | int,
+) -> dict:
+    store_type = _normalize_store_type(store_type)
+    if not master_product_id:
+        raise ValueError("必須提供 master_product_id")
+    try:
+        price_value = float(cost_price)
+    except (TypeError, ValueError):
+        raise ValueError("請輸入正確的進貨價")
+    if price_value < 0:
+        raise ValueError("進貨價不能為負數")
+
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT master_product_id FROM master_product WHERE master_product_id = %s",
+                (master_product_id,),
+            )
+            if cursor.fetchone() is None:
+                raise ValueError("找不到指定的主商品")
+
+            cursor.execute(
+                """
+                INSERT INTO store_type_price (master_product_id, store_type, cost_price)
+                VALUES (%s, %s, %s)
+                ON DUPLICATE KEY UPDATE cost_price = VALUES(cost_price)
+                """,
+                (master_product_id, store_type, price_value),
+            )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+    return {
+        "master_product_id": master_product_id,
+        "store_type": store_type,
+        "cost_price": price_value,
+    }
 
 
 def ship_variant_stock(

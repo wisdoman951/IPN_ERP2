@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { Container, Row, Col, Form, Button, Modal, ListGroup } from "react-bootstrap";
+import { Container, Row, Col, Form, Button, Modal, ListGroup, Spinner } from "react-bootstrap";
 import { getAllStaffs, Staff } from "../../services/StaffService";
 import {
   getMasterProductsForInbound,
@@ -7,7 +7,8 @@ import {
   MasterProductInboundItem,
   getInventoryById,
   updateInventoryItem,
-  exportInventory
+  exportInventory,
+  updateMasterProductCost
 } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import { useNavigate, useSearchParams } from "react-router-dom";
@@ -24,6 +25,13 @@ const InventoryEntryForm = () => {
   const [productSearch, setProductSearch] = useState('');
   const [showProductModal, setShowProductModal] = useState(false);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [showCostModal, setShowCostModal] = useState(false);
+  const [costInput, setCostInput] = useState('');
+  const [savingCost, setSavingCost] = useState(false);
+  const [canEditCost, setCanEditCost] = useState(false);
+  const [isAdminStore, setIsAdminStore] = useState(false);
+  const storedStoreType = (localStorage.getItem('store_type') || 'DIRECT').toUpperCase() as 'DIRECT' | 'FRANCHISE';
+  const [costStoreType, setCostStoreType] = useState<'DIRECT' | 'FRANCHISE'>(storedStoreType);
 
   const [formData, setFormData] = useState({
     product_id: "",
@@ -38,17 +46,23 @@ const InventoryEntryForm = () => {
     note: ""
   });
 
-  useEffect(() => {
+  const refreshMasterProducts = useCallback(() => {
     setLoadingProducts(true);
-    Promise.all([getMasterProductsForInbound(), getAllStaffs()])
-      .then(([masters, staffsRes]) => {
-        setMasterProducts(masters);
-        setStaffs(staffsRes);
-      })
+    return getMasterProductsForInbound()
+      .then(setMasterProducts)
       .catch((error) => {
         console.error("載入主商品資料失敗", error);
       })
       .finally(() => setLoadingProducts(false));
+  }, []);
+
+  useEffect(() => {
+    refreshMasterProducts();
+    getAllStaffs()
+      .then(setStaffs)
+      .catch((error) => {
+        console.error("載入人員資料失敗", error);
+      });
 
     if (editingId) {
       getInventoryById(Number(editingId)).then((data) => {
@@ -68,7 +82,14 @@ const InventoryEntryForm = () => {
         }
       });
     }
-  }, [editingId]);
+  }, [editingId, refreshMasterProducts]);
+
+  useEffect(() => {
+    const permission = localStorage.getItem('permission');
+    const storeLevel = localStorage.getItem('store_level');
+    setCanEditCost(permission !== 'therapist');
+    setIsAdminStore(storeLevel === '總店' || permission === 'admin');
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -159,6 +180,48 @@ const InventoryEntryForm = () => {
     return Number(selectedProduct.cost_price).toLocaleString();
   }, [selectedProduct]);
 
+  const handleOpenCostModal = useCallback(() => {
+    if (!selectedProduct) {
+      alert('請先選擇品項');
+      return;
+    }
+    if (!canEditCost) {
+      alert('您沒有權限設定進貨價');
+      return;
+    }
+    setCostInput(selectedProduct.cost_price ? String(selectedProduct.cost_price) : '');
+    setCostStoreType(isAdminStore ? costStoreType : storedStoreType);
+    setShowCostModal(true);
+  }, [selectedProduct, canEditCost, isAdminStore, costStoreType, storedStoreType]);
+
+  const handleSaveCost = useCallback(async () => {
+    if (!selectedProduct) return;
+    const numericValue = Number(costInput);
+    if (!Number.isFinite(numericValue) || numericValue < 0) {
+      alert('請輸入有效的進貨價');
+      return;
+    }
+    setSavingCost(true);
+    try {
+      const payload: { master_product_id: number; cost_price: number; store_type?: 'DIRECT' | 'FRANCHISE' } = {
+        master_product_id: selectedProduct.master_product_id,
+        cost_price: numericValue,
+      };
+      if (isAdminStore) {
+        payload.store_type = costStoreType;
+      }
+      await updateMasterProductCost(payload);
+      await refreshMasterProducts();
+      alert('進貨價已更新');
+      setShowCostModal(false);
+    } catch (error) {
+      console.error('進貨價更新失敗', error);
+      alert('進貨價更新失敗，請稍後再試');
+    } finally {
+      setSavingCost(false);
+    }
+  }, [selectedProduct, costInput, costStoreType, isAdminStore, refreshMasterProducts]);
+
   const handleProductSelect = useCallback((product: MasterProductInboundItem) => {
     setFormData(prev => ({ ...prev, product_id: String(product.master_product_id) }));
     setShowProductModal(false);
@@ -217,12 +280,21 @@ const InventoryEntryForm = () => {
             <Col xs={12} md={6}>
               <Form.Group controlId="purchase_price">
                 <Form.Label>進貨價錢</Form.Label>
-                <Form.Control
-                  type="text"
-                  value={purchasePriceDisplay}
-                  readOnly
-                  placeholder="尚未提供"
-                />
+                <div className="d-flex gap-2">
+                  <Form.Control
+                    type="text"
+                    value={purchasePriceDisplay}
+                    readOnly
+                    placeholder="尚未提供"
+                  />
+                  <Button
+                    variant="outline-secondary"
+                    onClick={handleOpenCostModal}
+                    disabled={!canEditCost}
+                  >
+                    設定進貨價
+                  </Button>
+                </div>
               </Form.Group>
             </Col>
           </Row>
@@ -440,6 +512,61 @@ const InventoryEntryForm = () => {
         <Modal.Footer>
           <Button variant="secondary" onClick={handleCloseProductModal}>
             關閉
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal
+        show={showCostModal}
+        onHide={() => setShowCostModal(false)}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>設定進貨價</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {selectedProduct ? (
+            <>
+              <p className="mb-2">{selectedProduct.name}</p>
+              {isAdminStore && (
+                <Form.Group className="mb-3">
+                  <Form.Label>套用店型</Form.Label>
+                  <Form.Select
+                    value={costStoreType}
+                    onChange={(e) => setCostStoreType(e.target.value as 'DIRECT' | 'FRANCHISE')}
+                  >
+                    <option value="DIRECT">直營店</option>
+                    <option value="FRANCHISE">加盟店</option>
+                  </Form.Select>
+                </Form.Group>
+              )}
+              <Form.Group>
+                <Form.Label>進貨價</Form.Label>
+                <Form.Control
+                  type="number"
+                  min="0"
+                  value={costInput}
+                  onChange={(e) => setCostInput(e.target.value)}
+                />
+                <Form.Text className="text-muted">
+                  將更新{isAdminStore ? '所選店型' : (storedStoreType === 'FRANCHISE' ? '加盟店' : '直營店')}的進貨成本。
+                </Form.Text>
+              </Form.Group>
+            </>
+          ) : (
+            <p className="mb-0">請先選擇品項</p>
+          )}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowCostModal(false)}>
+            取消
+          </Button>
+          <Button
+            variant="primary"
+            onClick={handleSaveCost}
+            disabled={savingCost || !selectedProduct}
+          >
+            {savingCost && <Spinner animation="border" size="sm" className="me-2" />}儲存
           </Button>
         </Modal.Footer>
       </Modal>
