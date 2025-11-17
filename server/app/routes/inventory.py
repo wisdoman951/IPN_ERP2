@@ -255,6 +255,18 @@ def delete_inventory(inventory_id):
         if not ctx["is_admin"] and existing.get("Store_ID") != ctx["store_id"]:
             return jsonify({"error": "無權刪除其他分店的庫存紀錄"}), 403
 
+        # ---- 你漏掉的地方在這裡 ----
+        success = delete_inventory_item(inventory_id)
+        if success:
+            return jsonify({"message": "庫存記錄刪除成功", "success": True}), 200
+        else:
+            return jsonify({"error": "庫存記錄刪除失敗"}), 400
+
+    except Exception as e:
+        print(e)
+        return jsonify({"error": str(e)}), 500
+
+
 
 @inventory_bp.route("/master/products", methods=["GET"])
 @auth_required
