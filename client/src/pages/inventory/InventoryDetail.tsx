@@ -36,6 +36,7 @@ const InventoryDetail: React.FC = () => {
   const [searchParams] = useSearchParams();
   const productId = searchParams.get("productId");
   const productName = searchParams.get("productName");
+  const masterProductId = searchParams.get("masterProductId");
   const [records, setRecords] = useState<RecordRow[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [startDate, setStartDate] = useState("");
@@ -48,12 +49,15 @@ const InventoryDetail: React.FC = () => {
   });
 
   const handleSearch = () => {
+    const storeId = localStorage.getItem('store_id');
     getInventoryRecords({
       start_date: startDate || undefined,
       end_date: endDate || undefined,
       sale_staff: saleStaff || undefined,
       buyer: buyer || undefined,
-      productId: productId ? Number(productId) : undefined,
+      productId: !masterProductId && productId ? Number(productId) : undefined,
+      masterProductId: masterProductId ? Number(masterProductId) : undefined,
+      storeId: storeId ? Number(storeId) : undefined,
     }).then((res) => setRecords(res));
   };
 
@@ -89,13 +93,16 @@ const InventoryDetail: React.FC = () => {
 
   const handleExport = async () => {
     try {
+      const storeId = localStorage.getItem('store_id');
       const blob = await exportInventory({
         start_date: startDate || undefined,
         end_date: endDate || undefined,
         sale_staff: saleStaff || undefined,
         buyer: buyer || undefined,
         detail: true,
-        productId: productId ? Number(productId) : undefined,
+        productId: !masterProductId && productId ? Number(productId) : undefined,
+        masterProductId: masterProductId ? Number(masterProductId) : undefined,
+        storeId: storeId ? Number(storeId) : undefined,
       });
       downloadBlob(blob, `庫存報表_${new Date().toISOString().split('T')[0]}.xlsx`);
     } catch (err) {
@@ -106,7 +113,7 @@ const InventoryDetail: React.FC = () => {
 
   useEffect(() => {
     handleSearch();
-  }, [productId]);
+  }, [productId, masterProductId]);
 
   const content = (
     <Container fluid className="p-4">

@@ -2,6 +2,127 @@ import pymysql
 from app.config import DB_CONFIG
 from datetime import datetime
 
+
+def _normalize_legacy_rows(rows):
+    for row in rows:
+        stock_in = row.get('StockIn') or 0
+        stock_qty = row.get('StockQuantity') or 0
+        row['StockIn'] = stock_in
+        row['StockQuantity'] = stock_qty
+        row['StockOut'] = stock_in - stock_qty
+        row['StockLoan'] = row.get('StockLoan') or 0
+        row['StockThreshold'] = row.get('StockThreshold') or 0
+        row['IsMaster'] = row.get('IsMaster') or 0
+        row['MasterProduct_ID'] = row.get('MasterProduct_ID')
+        last_sold = row.get('LastSoldTime') or row.get('StockInTime')
+        if isinstance(last_sold, datetime):
+            row['UnsoldDays'] = (datetime.now() - last_sold).days
+        else:
+            row['UnsoldDays'] = None
+    return rows
+
+
+def _fetch_master_inventory_rows(cursor, store_id=None, keyword=None):
+    rows = []
+    if store_id:
+        query = """
+            SELECT
+                (mp.master_product_id * 1000000 + %s) AS Inventory_ID,
+                mp.master_product_id AS Product_ID,
+                mp.master_product_id AS MasterProduct_ID,
+                mp.name AS ProductName,
+                mp.master_product_code AS ProductCode,
+                COALESCE(ms.quantity_on_hand, 0) AS StockQuantity,
+                COALESCE(tx.total_inbound, 0) AS StockIn,
+                COALESCE(tx.total_outbound, 0) AS StockOut,
+                0 AS StockLoan,
+                %s AS Store_ID,
+                COALESCE(st.store_name, '未指定門市') AS StoreName,
+                5 AS StockThreshold,
+                COALESCE(tx.last_inbound_time, ms.updated_at) AS StockInTime,
+                tx.last_outbound_time AS LastSoldTime,
+                COALESCE(tx.total_outbound, 0) AS SoldQuantity,
+                1 AS IsMaster
+            FROM master_product mp
+            LEFT JOIN master_stock ms
+                   ON ms.master_product_id = mp.master_product_id
+                  AND ms.store_id = %s
+            LEFT JOIN (
+                SELECT master_product_id,
+                       SUM(CASE WHEN txn_type = 'INBOUND' THEN quantity ELSE 0 END) AS total_inbound,
+                       SUM(CASE WHEN txn_type = 'OUTBOUND' THEN -quantity ELSE 0 END) AS total_outbound,
+                       MAX(CASE WHEN txn_type = 'INBOUND' THEN created_at END) AS last_inbound_time,
+                       MAX(CASE WHEN txn_type = 'OUTBOUND' THEN created_at END) AS last_outbound_time
+                FROM stock_transaction
+                WHERE store_id = %s
+                GROUP BY master_product_id
+            ) tx ON tx.master_product_id = mp.master_product_id
+            LEFT JOIN store st ON st.store_id = %s
+            WHERE mp.status = 'ACTIVE'
+        """
+        params = [store_id, store_id, store_id, store_id, store_id]
+        if keyword:
+            query += " AND (mp.name LIKE %s OR mp.master_product_code LIKE %s)"
+            like = f"%{keyword}%"
+            params.extend([like, like])
+        query += " ORDER BY mp.name"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+    else:
+        query = """
+            SELECT
+                (mp.master_product_id * 1000000 + COALESCE(ms.store_id, 0)) AS Inventory_ID,
+                mp.master_product_id AS Product_ID,
+                mp.master_product_id AS MasterProduct_ID,
+                mp.name AS ProductName,
+                mp.master_product_code AS ProductCode,
+                COALESCE(ms.quantity_on_hand, 0) AS StockQuantity,
+                COALESCE(tx.total_inbound, 0) AS StockIn,
+                COALESCE(tx.total_outbound, 0) AS StockOut,
+                0 AS StockLoan,
+                COALESCE(ms.store_id, tx.store_id, 0) AS Store_ID,
+                COALESCE(st.store_name, '未指定門市') AS StoreName,
+                5 AS StockThreshold,
+                COALESCE(tx.last_inbound_time, ms.updated_at) AS StockInTime,
+                tx.last_outbound_time AS LastSoldTime,
+                COALESCE(tx.total_outbound, 0) AS SoldQuantity,
+                1 AS IsMaster
+            FROM master_product mp
+            LEFT JOIN master_stock ms
+                   ON ms.master_product_id = mp.master_product_id
+            LEFT JOIN (
+                SELECT master_product_id,
+                       store_id,
+                       SUM(CASE WHEN txn_type = 'INBOUND' THEN quantity ELSE 0 END) AS total_inbound,
+                       SUM(CASE WHEN txn_type = 'OUTBOUND' THEN -quantity ELSE 0 END) AS total_outbound,
+                       MAX(CASE WHEN txn_type = 'INBOUND' THEN created_at END) AS last_inbound_time,
+                       MAX(CASE WHEN txn_type = 'OUTBOUND' THEN created_at END) AS last_outbound_time
+                FROM stock_transaction
+                GROUP BY master_product_id, store_id
+            ) tx ON tx.master_product_id = mp.master_product_id
+               AND (tx.store_id = ms.store_id OR ms.store_id IS NULL)
+            LEFT JOIN store st ON st.store_id = COALESCE(ms.store_id, tx.store_id)
+            WHERE mp.status = 'ACTIVE'
+        """
+        params = []
+        if keyword:
+            query += " AND (mp.name LIKE %s OR mp.master_product_code LIKE %s)"
+            like = f"%{keyword}%"
+            params.extend([like, like])
+        query += " ORDER BY mp.name, COALESCE(ms.store_id, tx.store_id)"
+        cursor.execute(query, params)
+        rows = cursor.fetchall()
+
+    for row in rows:
+        row['StockIn'] = row.get('StockIn') or 0
+        row['StockOut'] = row.get('StockOut') or 0
+        row['StockLoan'] = 0
+        row['StockQuantity'] = row.get('StockQuantity') or 0
+        row['StockThreshold'] = row.get('StockThreshold') or 0
+        row['IsMaster'] = 1
+        row['UnsoldDays'] = None
+    return rows
+
 def connect_to_db():
     """連接到數據庫"""
     return pymysql.connect(**DB_CONFIG, cursorclass=pymysql.cursors.DictCursor)
@@ -15,6 +136,7 @@ def get_all_inventory(store_id=None):
                 SELECT
                     MAX(i.inventory_id) AS Inventory_ID,
                     p.product_id AS Product_ID,
+                    NULL AS MasterProduct_ID,
                     p.name AS ProductName,
                     p.code AS ProductCode,
                     SUM(i.quantity) AS StockQuantity,
@@ -26,7 +148,8 @@ def get_all_inventory(store_id=None):
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
                     COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
                     MAX(sales.last_sold) AS LastSoldTime,
-                    MAX(i.date) AS StockInTime
+                    MAX(i.date) AS StockInTime,
+                    0 AS IsMaster
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
@@ -53,15 +176,9 @@ def get_all_inventory(store_id=None):
 
             cursor.execute(query, params)
             result = cursor.fetchall()
-            for row in result:
-                stock_in = row.get('StockIn') or 0
-                stock_qty = row.get('StockQuantity') or 0
-                row['StockOut'] = stock_in - stock_qty
-                last_sold = row.get('LastSoldTime') or row.get('StockInTime')
-                if isinstance(last_sold, datetime):
-                    row['UnsoldDays'] = (datetime.now() - last_sold).days
-                else:
-                    row['UnsoldDays'] = None
+            result = _normalize_legacy_rows(result)
+            master_rows = _fetch_master_inventory_rows(cursor, store_id)
+            result.extend(master_rows)
             return result
     except Exception as e:
         print(f"獲取庫存記錄錯誤: {e}")
@@ -78,6 +195,7 @@ def search_inventory(keyword, store_id=None):
                 SELECT
                     MAX(i.inventory_id) AS Inventory_ID,
                     p.product_id AS Product_ID,
+                    NULL AS MasterProduct_ID,
                     p.name AS ProductName,
                     p.code AS ProductCode,
                     SUM(i.quantity) AS StockQuantity,
@@ -89,7 +207,8 @@ def search_inventory(keyword, store_id=None):
                     MAX(IFNULL(i.stock_threshold, 5)) AS StockThreshold,
                     COALESCE(MAX(sales.total_sold), 0) AS SoldQuantity,
                     MAX(sales.last_sold) AS LastSoldTime,
-                    MAX(i.date) AS StockInTime
+                    MAX(i.date) AS StockInTime,
+                    0 AS IsMaster
                 FROM inventory i
                 LEFT JOIN product p ON i.product_id = p.product_id
                 LEFT JOIN store st ON i.store_id = st.store_id
@@ -117,15 +236,9 @@ def search_inventory(keyword, store_id=None):
 
             cursor.execute(query, params)
             result = cursor.fetchall()
-            for row in result:
-                stock_in = row.get('StockIn') or 0
-                stock_qty = row.get('StockQuantity') or 0
-                row['StockOut'] = stock_in - stock_qty
-                last_sold = row.get('LastSoldTime') or row.get('StockInTime')
-                if isinstance(last_sold, datetime):
-                    row['UnsoldDays'] = (datetime.now() - last_sold).days
-                else:
-                    row['UnsoldDays'] = None
+            result = _normalize_legacy_rows(result)
+            master_rows = _fetch_master_inventory_rows(cursor, store_id, keyword)
+            result.extend(master_rows)
             return result
     except Exception as e:
         print(f"搜尋庫存記錄錯誤: {e}")
@@ -247,14 +360,24 @@ def get_low_stock_inventory(store_id=None):
         conn.close()
 
 def get_inventory_history(store_id=None, start_date=None, end_date=None,
-                          sale_staff=None, buyer=None, product_id=None):
+                          sale_staff=None, buyer=None, product_id=None,
+                          master_product_id=None):
     """獲取庫存進出明細，可依店鋪、日期區間、銷售人、購買人與產品篩選。
     為了同時呈現銷售(產品與療程)造成的庫存變化，
-    此函式會合併 inventory、product_sell 以及 therapy_sell 的紀錄。"""
+    此函式會合併 inventory、product_sell、therapy_sell 以及 stock_transaction 的紀錄。"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
             records = []
+            derived_master_id = master_product_id
+            if derived_master_id is None and product_id:
+                cursor.execute(
+                    "SELECT master_product_id FROM product_variant WHERE variant_id = %s",
+                    (product_id,)
+                )
+                mapped = cursor.fetchone()
+                if mapped:
+                    derived_master_id = mapped['master_product_id']
 
             # -------- 庫存異動記錄 --------
             base_q = """
@@ -516,6 +639,52 @@ def get_inventory_history(store_id=None, start_date=None, end_date=None,
             """
             cursor.execute(therapy_bundle_q, t_bundle_params)
             records.extend(cursor.fetchall())
+
+            txn_conditions = ["stx.txn_type IN ('INBOUND','OUTBOUND')"]
+            txn_params = []
+            if store_id:
+                txn_conditions.append("stx.store_id = %s")
+                txn_params.append(store_id)
+            if start_date:
+                txn_conditions.append("DATE(stx.created_at) >= %s")
+                txn_params.append(start_date)
+            if end_date:
+                txn_conditions.append("DATE(stx.created_at) <= %s")
+                txn_params.append(end_date)
+            if derived_master_id:
+                txn_conditions.append("stx.master_product_id = %s")
+                txn_params.append(derived_master_id)
+            txn_where = " WHERE " + " AND ".join(txn_conditions)
+            txn_query = f"""
+                SELECT
+                    stx.txn_id + 3000000 AS Inventory_ID,
+                    mp.name AS Name,
+                    NULL AS Unit,
+                    NULL AS Price,
+                    stx.quantity AS quantity,
+                    NULL AS stock_in,
+                    NULL AS stock_out,
+                    NULL AS stock_loan,
+                    NULL AS StockThreshold,
+                    stx.created_at AS Date,
+                    sf.name AS StaffName,
+                    NULL AS Supplier,
+                    st.store_name AS StoreName,
+                    '' AS SaleStaff,
+                    NULL AS Buyer,
+                    stx.reference_no AS Voucher,
+                    CASE WHEN stx.txn_type = 'INBOUND' THEN '進貨' ELSE '出貨' END AS Category
+                FROM stock_transaction stx
+                JOIN master_product mp ON mp.master_product_id = stx.master_product_id
+                LEFT JOIN staff sf ON sf.staff_id = stx.staff_id
+                LEFT JOIN store st ON st.store_id = stx.store_id
+            """ + txn_where
+            cursor.execute(txn_query, txn_params)
+            txn_records = cursor.fetchall()
+            if master_product_id:
+                records = txn_records
+            else:
+                records.extend(txn_records)
 
             if sale_staff:
                 records = [r for r in records if r.get('SaleStaff') and sale_staff.lower() in r.get('SaleStaff', '').lower()]
