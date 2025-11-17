@@ -280,7 +280,7 @@ const InventoryEntryForm = () => {
                     type="text"
                     readOnly
                     placeholder="請選擇品項"
-                    value={selectedProduct ? `[${selectedProduct.product_code ?? ""}] ${selectedProduct.product_name}` : ""}
+                    value={selectedProduct ? selectedProduct.product_name : ""}
                   />
                   <Button
                     variant="info"
@@ -507,7 +507,7 @@ const InventoryEntryForm = () => {
                       onClick={() => handleProductSelect(item)}
                     >
                       <div className="d-flex justify-content-between align-items-center">
-                        <span>[{item.product_code ?? ""}] {item.product_name}</span>
+                        <span>{item.product_name}</span>
                         <small className="text-muted">庫存 {item.inventory_quantity}</small>
                       </div>
                     </ListGroup.Item>
@@ -527,7 +527,7 @@ const InventoryEntryForm = () => {
                       onClick={() => handleProductSelect(item)}
                     >
                       <div className="d-flex justify-content-between align-items-center">
-                        <span>[{item.product_code ?? ""}] {item.product_name}</span>
+                        <span>{item.product_name}</span>
                         <small className="text-muted">庫存 {item.inventory_quantity}</small>
                       </div>
                     </ListGroup.Item>
