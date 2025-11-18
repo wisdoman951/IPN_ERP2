@@ -51,9 +51,12 @@ export interface ProductSellData {
 }
 
 // 獲取所有產品及庫存
-export const getAllProducts = async (): Promise<Product[]> => {
+export const getAllProducts = async (status: string = 'PUBLISHED'): Promise<Product[]> => {
   try {
-    const response = await axios.get(`${API_URL}/products`, getAuthHeaders());
+    const response = await axios.get(`${API_URL}/products`, {
+      params: status ? { status } : undefined,
+      ...getAuthHeaders()
+    });
     if (Array.isArray(response.data)) {
       return response.data as Product[];
     }

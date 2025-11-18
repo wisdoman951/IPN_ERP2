@@ -45,6 +45,15 @@ const InventorySearch: React.FC = () => {
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
     const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
+    const isAdminUser = (() => {
+        try {
+            return localStorage.getItem('permission') === 'admin';
+        } catch (error) {
+            console.error("獲取用戶權限失敗:", error);
+            return false;
+        }
+    })();
+
     // 從 localStorage 中獲取用戶所屬店鋪ID
     const getUserStoreId = (): number | undefined => {
         try {
@@ -373,24 +382,16 @@ const InventorySearch: React.FC = () => {
                 {/* 下方按鈕 */}
                 <Row className="justify-content-end my-4 g-3">
                     <Col xs="auto">
-                        <Button 
-                            variant="info" 
+                        <Button
+                            variant="info"
                             className="text-white px-4 me-2"
                             onClick={handleExport}
                             disabled={loading}
                         >
                             報表匯出
                         </Button>
-                        <Button 
-                            variant="info" 
-                            className="text-white px-4 me-2"
-                            onClick={handleDelete}
-                            disabled={loading || selectedItems.length === 0}
-                        >
-                            刪除
-                        </Button>
-                        <Button 
-                            variant="info" 
+                        <Button
+                            variant="info"
                             className="text-white px-4 me-2 btn btn-info"
                             onClick={handleEdit}
                             disabled={loading || selectedItems.length !== 1}

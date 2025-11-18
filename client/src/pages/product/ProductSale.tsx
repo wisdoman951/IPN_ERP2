@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import IconButton from "../../components/IconButton";
 import { base_url } from "../../services/BASE_URL";
+import NoPermissionModal from "../../components/NoPermissionModal";
 
 interface ProductSale {
   Order_ID: number;
@@ -26,6 +27,8 @@ const ProductSale: React.FC = () => {
     const [sales, setSales] = useState<ProductSale[]>([]);
     const [selectedSales, setSelectedSales] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
+    const [showNoPermissionModal, setShowNoPermissionModal] = useState(false);
+    const [noPermissionMessage, setNoPermissionMessage] = useState("無操作權限");
 
     useEffect(() => {
         fetchSales();
@@ -57,6 +60,11 @@ const ProductSale: React.FC = () => {
         }
     };
 
+    const showNoPermission = (message?: string) => {
+        setNoPermissionMessage(message || "無操作權限");
+        setShowNoPermissionModal(true);
+    };
+
     const handleDelete = async () => {
         if (selectedSales.length === 0) {
             alert("請先選擇要刪除的記錄！");
@@ -83,7 +91,7 @@ const ProductSale: React.FC = () => {
                         const message = serverMessage === "無操作權限"
                             ? "沒有權限刪除"
                             : (serverMessage || "沒有權限刪除");
-                        alert(message);
+                        showNoPermission(message);
                     } else if (serverMessage) {
                         alert(serverMessage);
                     } else {
@@ -273,6 +281,11 @@ const ProductSale: React.FC = () => {
                     </Row>
                 </Container>
             </Col>
+            <NoPermissionModal
+                show={showNoPermissionModal}
+                onHide={() => setShowNoPermissionModal(false)}
+                message={noPermissionMessage}
+            />
         </div>
     );
 };
