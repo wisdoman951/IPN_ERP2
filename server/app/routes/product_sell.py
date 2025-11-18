@@ -195,7 +195,8 @@ def get_products():
         if user and user.get('permission') != 'admin':
             target_store_id = user.get('store_id')
 
-        status = request.args.get("status", 'PUBLISHED')
+        requested_status = request.args.get("status", 'PUBLISHED')
+        status = None if (requested_status and requested_status.upper() == 'ALL') else requested_status
         user_permission = user.get('permission') if user else None
         products = get_all_products_with_inventory(
             store_id=target_store_id,
@@ -223,7 +224,8 @@ def search_product():
         if user and user.get('permission') != 'admin':
             target_store_id = user.get('store_id')
 
-        status = request.args.get("status", 'PUBLISHED')
+        requested_status = request.args.get("status", 'PUBLISHED')
+        status = None if (requested_status and requested_status.upper() == 'ALL') else requested_status
         user_permission = user.get('permission') if user else None
         products = search_products_with_inventory(
             keyword,

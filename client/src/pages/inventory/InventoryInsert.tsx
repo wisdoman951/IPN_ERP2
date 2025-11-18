@@ -16,7 +16,7 @@ const InventoryInsert = () => {
   });
 
   useEffect(() => {
-    getAllProducts().then((res) => {
+    getAllProducts('ALL').then((res) => {
       const sorted = [...res].sort((a, b) => {
         const codeA = a.product_code ? parseInt(a.product_code, 10) : 0;
         const codeB = b.product_code ? parseInt(b.product_code, 10) : 0;
