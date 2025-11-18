@@ -7,7 +7,6 @@ import ScrollableTable from "../../components/ScrollableTable";
 import {
     getAllInventory,
     searchInventory,
-    deleteInventoryItem,
     exportInventory,
     getMasterStockSummary,
     getMasterVariants,
@@ -212,70 +211,6 @@ const InventorySearch: React.FC = () => {
             })
         );
     }, [inventoryItems]);
-
-    // 刪除選中的項目
-    const handleDelete = async () => {
-        if (selectedItems.length === 0) {
-            setError("請先選擇要刪除的項目");
-            return;
-        }
-
-        const selectedRecords = inventoryItems.filter(item => selectedItems.includes(item.Inventory_ID));
-        if (selectedRecords.some(item => item.IsMasterStock)) {
-            setError("主商品庫存請至主商品庫存作業中管理");
-            return;
-        }
-
-        if (!checkPermission()) {
-            return;
-        }
-
-        if (!window.confirm(`確定要刪除選中的 ${selectedItems.length} 個項目嗎？`)) {
-            return;
-        }
-
-        setLoading(true);
-        try {
-            let failedCount = 0;
-            
-            for (const id of selectedItems) {
-                try {
-                    await deleteInventoryItem(id);
-                } catch (err) {
-                    if (isNoPermissionError(err)) {
-                        notifyNoPermission();
-                        return;
-                    }
-                    console.error(`刪除庫存項目 ID=${id} 失敗:`, err);
-                    failedCount++;
-                }
-            }
-
-            // 重新獲取庫存數據
-            await fetchInventoryData();
-            await loadMasterSummary();
-            
-            // 清空選中項目
-            setSelectedItems([]);
-            
-            if (failedCount === 0) {
-                setSuccessMessage("所有選中項目均已成功刪除");
-            } else if (failedCount < selectedItems.length) {
-                setSuccessMessage(`部分項目刪除成功，${failedCount} 個項目刪除失敗`);
-            } else {
-                setError("刪除操作失敗，請稍後再試");
-            }
-        } catch (err) {
-            if (isNoPermissionError(err)) {
-                notifyNoPermission();
-                return;
-            }
-            console.error("批量刪除庫存項目失敗:", err);
-            setError("刪除操作失敗，請稍後再試");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     // 跳轉到更新頁面
     const handleEdit = () => {
@@ -564,24 +499,16 @@ const InventorySearch: React.FC = () => {
                 {/* 下方按鈕 */}
                 <Row className="justify-content-end my-4 g-3">
                     <Col xs="auto">
-                        <Button 
-                            variant="info" 
+                        <Button
+                            variant="info"
                             className="text-white px-4 me-2"
                             onClick={handleExport}
                             disabled={loading}
                         >
                             報表匯出
                         </Button>
-                        <Button 
-                            variant="info" 
-                            className="text-white px-4 me-2"
-                            onClick={handleDelete}
-                            disabled={loading || selectedItems.length === 0}
-                        >
-                            刪除
-                        </Button>
-                        <Button 
-                            variant="info" 
+                        <Button
+                            variant="info"
                             className="text-white px-4 me-2 btn btn-info"
                             onClick={handleEdit}
                             disabled={loading || selectedItems.length !== 1}
