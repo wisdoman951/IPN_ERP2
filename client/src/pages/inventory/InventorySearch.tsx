@@ -56,6 +56,15 @@ const InventorySearch: React.FC = () => {
     const [variantLoading, setVariantLoading] = useState<Record<number, boolean>>({});
     const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
+    const isAdminUser = (() => {
+        try {
+            return localStorage.getItem('permission') === 'admin';
+        } catch (error) {
+            console.error("獲取用戶權限失敗:", error);
+            return false;
+        }
+    })();
+
     // 從 localStorage 中獲取用戶所屬店鋪ID
     const getUserStoreId = (): number | undefined => {
         try {
@@ -72,6 +81,9 @@ const InventorySearch: React.FC = () => {
     
     const userStoreId = getUserStoreId();
     const loadMasterSummary = useCallback(async (keywordParam?: string) => {
+        if (!isAdminUser) {
+            return;
+        }
         setSummaryLoading(true);
         try {
             const params: { keyword?: string; storeId?: number } = {};
@@ -87,7 +99,7 @@ const InventorySearch: React.FC = () => {
         } finally {
             setSummaryLoading(false);
         }
-    }, [userStoreId]);
+    }, [userStoreId, isAdminUser]);
 
     // 載入庫存資料
     useEffect(() => {
@@ -363,117 +375,119 @@ const InventorySearch: React.FC = () => {
                         </Col>
                     </Row>
                 </Container>
-                <Card className="mb-4">
-                    <Card.Header className="d-flex justify-content-between align-items-center">
-                        <div className="d-flex align-items-center gap-2">
-                            <span className="fw-semibold mb-0">主商品庫存總覽</span>
-                            <Button
-                                variant="link"
-                                className="p-0"
-                                onClick={() => setIsSummaryExpanded(prev => !prev)}
-                                aria-controls="master-stock-summary"
-                                aria-expanded={isSummaryExpanded}
-                            >
-                                {isSummaryExpanded ? "收合主商品庫存總覽" : "展開主商品庫存總覽"}
-                            </Button>
-                        </div>
-                        <small className="text-muted">庫存依據您登入的店別彙總</small>
-                    </Card.Header>
-                    <Collapse in={isSummaryExpanded}>
-                        <div id="master-stock-summary">
-                    <Card.Body>
-                        {summaryError && (
-                            <Alert variant="danger" onClose={() => setSummaryError(null)} dismissible>
-                                {summaryError}
-                            </Alert>
-                        )}
-                        <Table responsive hover size="sm" className="mb-0">
-                            <thead>
-                                <tr>
-                                    <th style={{ width: "120px" }}>動作</th>
-                                    <th>產品編號</th>
-                                    <th>品項</th>
-                                    <th className="text-end">庫存數量</th>
-                                    <th className="text-end">更新時間</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {summaryLoading ? (
+                {isAdminUser && (
+                    <Card className="mb-4">
+                        <Card.Header className="d-flex justify-content-between align-items-center">
+                            <div className="d-flex align-items-center gap-2">
+                                <span className="fw-semibold mb-0">主商品庫存總覽</span>
+                                <Button
+                                    variant="link"
+                                    className="p-0"
+                                    onClick={() => setIsSummaryExpanded(prev => !prev)}
+                                    aria-controls="master-stock-summary"
+                                    aria-expanded={isSummaryExpanded}
+                                >
+                                    {isSummaryExpanded ? "收合主商品庫存總覽" : "展開主商品庫存總覽"}
+                                </Button>
+                            </div>
+                            <small className="text-muted">庫存依據您登入的店別彙總</small>
+                        </Card.Header>
+                        <Collapse in={isSummaryExpanded}>
+                            <div id="master-stock-summary">
+                        <Card.Body>
+                            {summaryError && (
+                                <Alert variant="danger" onClose={() => setSummaryError(null)} dismissible>
+                                    {summaryError}
+                                </Alert>
+                            )}
+                            <Table responsive hover size="sm" className="mb-0">
+                                <thead>
                                     <tr>
-                                        <td colSpan={5} className="text-center py-4">
-                                            <Spinner animation="border" variant="info" />
-                                        </td>
+                                        <th style={{ width: "120px" }}>動作</th>
+                                        <th>產品編號</th>
+                                        <th>品項</th>
+                                        <th className="text-end">庫存數量</th>
+                                        <th className="text-end">更新時間</th>
                                     </tr>
-                                ) : masterSummary.length > 0 ? (
-                                    masterSummary.map(item => (
-                                        <React.Fragment key={item.master_product_id}>
-                                            <tr>
-                                                <td>
-                                                    <Button
-                                                        variant="link"
-                                                        className="p-0"
-                                                        onClick={() => toggleMasterVariants(item.master_product_id)}
-                                                        disabled={!!variantLoading[item.master_product_id]}
-                                                    >
-                                                        {expandedMasters[item.master_product_id] ? "收合明細" : "展開明細"}
-                                                    </Button>
-                                                </td>
-                                                <td>{item.master_product_code}</td>
-                                                <td>{item.name}</td>
-                                                <td className="text-end">{item.quantity_on_hand ?? 0}</td>
-                                                <td className="text-end">{formatDateTime(item.updated_at)}</td>
-                                            </tr>
-                                            {expandedMasters[item.master_product_id] && (
-                                                <tr className="bg-light">
-                                                    <td colSpan={5}>
-                                                        {variantLoading[item.master_product_id] ? (
-                                                            <div className="text-center py-3">
-                                                                <Spinner animation="border" variant="info" size="sm" />
-                                                            </div>
-                                                        ) : variantDetails[item.master_product_id] && variantDetails[item.master_product_id].length > 0 ? (
-                                                            <Table responsive size="sm" className="mb-0">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th>尾碼編號</th>
-                                                                        <th>品項名稱</th>
-                                                                        <th className="text-end">建議售價</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {variantDetails[item.master_product_id].map(variant => (
-                                                                        <tr key={variant.variant_id}>
-                                                                            <td>{variant.variant_code}</td>
-                                                                            <td>{variant.display_name}</td>
-                                                                            <td className="text-end">
-                                                                                {variant.sale_price !== undefined && variant.sale_price !== null
-                                                                                    ? Number(variant.sale_price).toLocaleString()
-                                                                                    : "-"}
-                                                                            </td>
-                                                                        </tr>
-                                                                    ))}
-                                                                </tbody>
-                                                            </Table>
-                                                        ) : (
-                                                            <div className="text-muted">尚無尾碼明細</div>
-                                                        )}
+                                </thead>
+                                <tbody>
+                                    {summaryLoading ? (
+                                        <tr>
+                                            <td colSpan={5} className="text-center py-4">
+                                                <Spinner animation="border" variant="info" />
+                                            </td>
+                                        </tr>
+                                    ) : masterSummary.length > 0 ? (
+                                        masterSummary.map(item => (
+                                            <React.Fragment key={item.master_product_id}>
+                                                <tr>
+                                                    <td>
+                                                        <Button
+                                                            variant="link"
+                                                            className="p-0"
+                                                            onClick={() => toggleMasterVariants(item.master_product_id)}
+                                                            disabled={!!variantLoading[item.master_product_id]}
+                                                        >
+                                                            {expandedMasters[item.master_product_id] ? "收合明細" : "展開明細"}
+                                                        </Button>
                                                     </td>
+                                                    <td>{item.master_product_code}</td>
+                                                    <td>{item.name}</td>
+                                                    <td className="text-end">{item.quantity_on_hand ?? 0}</td>
+                                                    <td className="text-end">{formatDateTime(item.updated_at)}</td>
                                                 </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan={5} className="text-center text-muted py-4">
-                                            尚無主商品庫存資料
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </Table>
-                    </Card.Body>
-                        </div>
-                    </Collapse>
-                </Card>
+                                                {expandedMasters[item.master_product_id] && (
+                                                    <tr className="bg-light">
+                                                        <td colSpan={5}>
+                                                            {variantLoading[item.master_product_id] ? (
+                                                                <div className="text-center py-3">
+                                                                    <Spinner animation="border" variant="info" size="sm" />
+                                                                </div>
+                                                            ) : variantDetails[item.master_product_id] && variantDetails[item.master_product_id].length > 0 ? (
+                                                                <Table responsive size="sm" className="mb-0">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th>尾碼編號</th>
+                                                                            <th>品項名稱</th>
+                                                                            <th className="text-end">建議售價</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {variantDetails[item.master_product_id].map(variant => (
+                                                                            <tr key={variant.variant_id}>
+                                                                                <td>{variant.variant_code}</td>
+                                                                                <td>{variant.display_name}</td>
+                                                                                <td className="text-end">
+                                                                                    {variant.sale_price !== undefined && variant.sale_price !== null
+                                                                                        ? Number(variant.sale_price).toLocaleString()
+                                                                                        : "-"}
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </Table>
+                                                            ) : (
+                                                                <div className="text-muted">尚無尾碼明細</div>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan={5} className="text-center text-muted py-4">
+                                                尚無主商品庫存資料
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </Table>
+                        </Card.Body>
+                            </div>
+                        </Collapse>
+                    </Card>
+                )}
 
                 <Container>
                     {/* 表格 */}
