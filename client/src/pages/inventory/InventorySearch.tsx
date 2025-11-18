@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { Button, Container, Row, Col, Form, Alert, Spinner, Card, Table, Collapse } from "react-bootstrap";
+import React, { useState, useEffect } from "react";
+import { Button, Container, Row, Col, Form, Alert, Spinner } from "react-bootstrap";
 import { useNavigate, useLocation } from "react-router-dom";
 import Header from "../../components/Header";
 import DynamicContainer from "../../components/DynamicContainer";
@@ -7,11 +7,8 @@ import ScrollableTable from "../../components/ScrollableTable";
 import {
     getAllInventory,
     searchInventory,
-    exportInventory,
-    getMasterStockSummary,
-    getMasterVariants,
-    MasterStockSummaryItem,
-    MasterVariantItem
+    deleteInventoryItem,
+    exportInventory
 } from "../../services/InventoryService";
 import { downloadBlob } from "../../utils/downloadBlob";
 import usePermissionGuard from "../../hooks/usePermissionGuard";
@@ -46,13 +43,6 @@ const InventorySearch: React.FC = () => {
     const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
     const [selectedItems, setSelectedItems] = useState<number[]>([]);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
-    const [masterSummary, setMasterSummary] = useState<MasterStockSummaryItem[]>([]);
-    const [summaryLoading, setSummaryLoading] = useState(false);
-    const [summaryError, setSummaryError] = useState<string | null>(null);
-    const [isSummaryExpanded, setIsSummaryExpanded] = useState(false);
-    const [expandedMasters, setExpandedMasters] = useState<Record<number, boolean>>({});
-    const [variantDetails, setVariantDetails] = useState<Record<number, MasterVariantItem[]>>({});
-    const [variantLoading, setVariantLoading] = useState<Record<number, boolean>>({});
     const { checkPermission, modal: permissionModal } = usePermissionGuard();
 
     const isAdminUser = (() => {
@@ -79,32 +69,11 @@ const InventorySearch: React.FC = () => {
     };
     
     const userStoreId = getUserStoreId();
-    const loadMasterSummary = useCallback(async (keywordParam?: string) => {
-        if (!isAdminUser) {
-            return;
-        }
-        setSummaryLoading(true);
-        try {
-            const params: { keyword?: string; storeId?: number } = {};
-            if (keywordParam) params.keyword = keywordParam;
-            if (userStoreId) params.storeId = userStoreId;
-            const data = await getMasterStockSummary(params);
-            setMasterSummary(Array.isArray(data) ? data : []);
-            setSummaryError(null);
-        } catch (err) {
-            console.error("獲取主庫存失敗:", err);
-            setSummaryError("獲取主庫存失敗，請稍後再試");
-            setMasterSummary([]);
-        } finally {
-            setSummaryLoading(false);
-        }
-    }, [userStoreId, isAdminUser]);
 
     // 載入庫存資料
     useEffect(() => {
-        loadMasterSummary();
         fetchInventoryData();
-    }, [location.key, loadMasterSummary]);
+    }, [location.key]);
 
     // 獲取所有庫存資料
     const fetchInventoryData = async () => {
@@ -125,7 +94,6 @@ const InventorySearch: React.FC = () => {
     // 搜尋庫存資料
     const handleSearch = async () => {
         setLoading(true);
-        loadMasterSummary(keyword);
         try {
             const data = await searchInventory(keyword, userStoreId);
             setInventoryItems(Array.isArray(data) ? data : []);
@@ -136,23 +104,6 @@ const InventorySearch: React.FC = () => {
             setInventoryItems([]);
         } finally {
             setLoading(false);
-        }
-    };
-
-    const toggleMasterVariants = async (masterProductId: number) => {
-        const nextExpanded = !expandedMasters[masterProductId];
-        setExpandedMasters(prev => ({ ...prev, [masterProductId]: nextExpanded }));
-        if (nextExpanded && !variantDetails[masterProductId]) {
-            setVariantLoading(prev => ({ ...prev, [masterProductId]: true }));
-            try {
-                const data = await getMasterVariants(masterProductId);
-                setVariantDetails(prev => ({ ...prev, [masterProductId]: data }));
-            } catch (err) {
-                console.error("載入尾碼明細失敗:", err);
-                alert("載入尾碼明細失敗，請稍後再試");
-            } finally {
-                setVariantLoading(prev => ({ ...prev, [masterProductId]: false }));
-            }
         }
     };
 
@@ -169,23 +120,6 @@ const InventorySearch: React.FC = () => {
             });
         } catch (e) {
             console.error("日期格式化錯誤:", e);
-            return dateStr;
-        }
-    };
-
-    const formatDateTime = (dateStr?: string) => {
-        if (!dateStr) return "";
-        try {
-            const date = new Date(dateStr);
-            return date.toLocaleString('zh-TW', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-        } catch (error) {
-            console.error("時間格式化錯誤:", error);
             return dateStr;
         }
     };
@@ -211,6 +145,69 @@ const InventorySearch: React.FC = () => {
             })
         );
     }, [inventoryItems]);
+
+    // 刪除選中的項目
+    const handleDelete = async () => {
+        if (selectedItems.length === 0) {
+            setError("請先選擇要刪除的項目");
+            return;
+        }
+
+        const selectedRecords = inventoryItems.filter(item => selectedItems.includes(item.Inventory_ID));
+        if (selectedRecords.some(item => item.IsMasterStock)) {
+            setError("主商品庫存請至主商品庫存作業中管理");
+            return;
+        }
+
+        if (!checkPermission()) {
+            return;
+        }
+
+        if (!window.confirm(`確定要刪除選中的 ${selectedItems.length} 個項目嗎？`)) {
+            return;
+        }
+
+        setLoading(true);
+        try {
+            let failedCount = 0;
+            
+            for (const id of selectedItems) {
+                try {
+                    await deleteInventoryItem(id);
+                } catch (err) {
+                    if (isNoPermissionError(err)) {
+                        notifyNoPermission();
+                        return;
+                    }
+                    console.error(`刪除庫存項目 ID=${id} 失敗:`, err);
+                    failedCount++;
+                }
+            }
+
+            // 重新獲取庫存數據
+            await fetchInventoryData();
+
+            // 清空選中項目
+            setSelectedItems([]);
+            
+            if (failedCount === 0) {
+                setSuccessMessage("所有選中項目均已成功刪除");
+            } else if (failedCount < selectedItems.length) {
+                setSuccessMessage(`部分項目刪除成功，${failedCount} 個項目刪除失敗`);
+            } else {
+                setError("刪除操作失敗，請稍後再試");
+            }
+        } catch (err) {
+            if (isNoPermissionError(err)) {
+                notifyNoPermission();
+                return;
+            }
+            console.error("批量刪除庫存項目失敗:", err);
+            setError("刪除操作失敗，請稍後再試");
+        } finally {
+            setLoading(false);
+        }
+    };
 
     // 跳轉到更新頁面
     const handleEdit = () => {
@@ -310,120 +307,6 @@ const InventorySearch: React.FC = () => {
                         </Col>
                     </Row>
                 </Container>
-                {isAdminUser && (
-                    <Card className="mb-4">
-                        <Card.Header className="d-flex justify-content-between align-items-center">
-                            <div className="d-flex align-items-center gap-2">
-                                <span className="fw-semibold mb-0">主商品庫存總覽</span>
-                                <Button
-                                    variant="link"
-                                    className="p-0"
-                                    onClick={() => setIsSummaryExpanded(prev => !prev)}
-                                    aria-controls="master-stock-summary"
-                                    aria-expanded={isSummaryExpanded}
-                                >
-                                    {isSummaryExpanded ? "收合主商品庫存總覽" : "展開主商品庫存總覽"}
-                                </Button>
-                            </div>
-                            <small className="text-muted">庫存依據您登入的店別彙總</small>
-                        </Card.Header>
-                        <Collapse in={isSummaryExpanded}>
-                            <div id="master-stock-summary">
-                        <Card.Body>
-                            {summaryError && (
-                                <Alert variant="danger" onClose={() => setSummaryError(null)} dismissible>
-                                    {summaryError}
-                                </Alert>
-                            )}
-                            <Table responsive hover size="sm" className="mb-0">
-                                <thead>
-                                    <tr>
-                                        <th style={{ width: "120px" }}>動作</th>
-                                        <th>產品編號</th>
-                                        <th>品項</th>
-                                        <th className="text-end">庫存數量</th>
-                                        <th className="text-end">更新時間</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {summaryLoading ? (
-                                        <tr>
-                                            <td colSpan={5} className="text-center py-4">
-                                                <Spinner animation="border" variant="info" />
-                                            </td>
-                                        </tr>
-                                    ) : masterSummary.length > 0 ? (
-                                        masterSummary.map(item => (
-                                            <React.Fragment key={item.master_product_id}>
-                                                <tr>
-                                                    <td>
-                                                        <Button
-                                                            variant="link"
-                                                            className="p-0"
-                                                            onClick={() => toggleMasterVariants(item.master_product_id)}
-                                                            disabled={!!variantLoading[item.master_product_id]}
-                                                        >
-                                                            {expandedMasters[item.master_product_id] ? "收合明細" : "展開明細"}
-                                                        </Button>
-                                                    </td>
-                                                    <td>{item.master_product_code}</td>
-                                                    <td>{item.name}</td>
-                                                    <td className="text-end">{item.quantity_on_hand ?? 0}</td>
-                                                    <td className="text-end">{formatDateTime(item.updated_at)}</td>
-                                                </tr>
-                                                {expandedMasters[item.master_product_id] && (
-                                                    <tr className="bg-light">
-                                                        <td colSpan={5}>
-                                                            {variantLoading[item.master_product_id] ? (
-                                                                <div className="text-center py-3">
-                                                                    <Spinner animation="border" variant="info" size="sm" />
-                                                                </div>
-                                                            ) : variantDetails[item.master_product_id] && variantDetails[item.master_product_id].length > 0 ? (
-                                                                <Table responsive size="sm" className="mb-0">
-                                                                    <thead>
-                                                                        <tr>
-                                                                            <th>尾碼編號</th>
-                                                                            <th>品項名稱</th>
-                                                                            <th className="text-end">建議售價</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {variantDetails[item.master_product_id].map(variant => (
-                                                                            <tr key={variant.variant_id}>
-                                                                                <td>{variant.variant_code}</td>
-                                                                                <td>{variant.display_name}</td>
-                                                                                <td className="text-end">
-                                                                                    {variant.sale_price !== undefined && variant.sale_price !== null
-                                                                                        ? Number(variant.sale_price).toLocaleString()
-                                                                                        : "-"}
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </Table>
-                                                            ) : (
-                                                                <div className="text-muted">尚無尾碼明細</div>
-                                                            )}
-                                                        </td>
-                                                    </tr>
-                                                )}
-                                            </React.Fragment>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan={5} className="text-center text-muted py-4">
-                                                尚無主商品庫存資料
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </Table>
-                        </Card.Body>
-                            </div>
-                        </Collapse>
-                    </Card>
-                )}
-
                 <Container>
                     {/* 表格 */}
                     <ScrollableTable 
