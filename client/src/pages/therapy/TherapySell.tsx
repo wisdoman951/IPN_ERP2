@@ -842,7 +842,9 @@ const TherapySell: React.FC = () => {
             </th>
             <th className="text-center">購買人</th>
             <th className="text-center">購買日期</th>
-            <th className="text-center">購買品項</th>
+            <th className="text-center" style={{ minWidth: '160px', maxWidth: '200px' }}>
+                購買品項
+            </th>
             <th className="text-center">堂數</th>
             <th className="text-center">價錢</th>
             <th className="text-center">
@@ -852,7 +854,7 @@ const TherapySell: React.FC = () => {
                 </span>
             </th>
             <th className="text-center">銷售人員</th>
-            <th className="text-center">
+            <th className="text-center" style={{ minWidth: '90px' }}>
                 <span className="d-inline-flex flex-column lh-sm">
                     <span>銷售</span>
                     <span>類別</span>
@@ -889,7 +891,10 @@ const TherapySell: React.FC = () => {
                     <td className="align-middle">{sale.MemberCode || "-"}</td>
                     <td className="align-middle">{sale.MemberName || "-"}</td>
                     <td className="align-middle">{formatDateToYYYYMMDD(sale.PurchaseDate) || "-"}</td>
-                    <td className="align-middle" style={{ whiteSpace: 'pre-line' }}>
+                    <td
+                        className="align-middle"
+                        style={{ whiteSpace: 'pre-line', minWidth: '160px', maxWidth: '200px' }}
+                    >
                         {sale.purchaseItems && sale.purchaseItems.length > 0 ? (
                             <div className="d-flex flex-column gap-1">
                                 {sale.purchaseItems.map((item, index) => (
@@ -912,7 +917,7 @@ const TherapySell: React.FC = () => {
                         {therapyPaymentMethodValueToDisplayMap[sale.PaymentMethod] || sale.PaymentMethod}
                     </td>
                     <td className="align-middle">{sale.StaffName || "-"}</td>
-                    <td className="align-middle">
+                    <td className="align-middle" style={{ minWidth: '90px' }}>
                         {(() => {
                             const cat = (sale as any).SaleCategory ?? (sale as any).sale_category;
                             return therapySaleCategoryValueToDisplayMap[cat] || cat || "-";

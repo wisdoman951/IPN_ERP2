@@ -823,7 +823,9 @@ const ProductSell: React.FC = () => {
             </th>
             <th className="text-center">購買人</th>
             <th className="text-center">購買日期</th>
-            <th className="text-center">購買品項</th>
+            <th className="text-center" style={{ minWidth: '160px', maxWidth: '200px' }}>
+                購買品項
+            </th>
             <th className="text-center">數量</th>
             <th className="text-center">價錢</th>
             <th className="text-center">
@@ -883,7 +885,12 @@ const ProductSell: React.FC = () => {
                 <td className="align-middle">{sale.member_code || "-"}</td>
                 <td className="align-middle">{sale.member_name || "-"}</td>
                 <td className="align-middle">{formatDateToYYYYMMDD(sale.date) || "-"}</td>
-                <td className="align-middle" style={{ whiteSpace: 'pre-line' }}>{getDisplayName(sale)}</td>
+                <td
+                    className="align-middle"
+                    style={{ whiteSpace: 'pre-line', minWidth: '160px', maxWidth: '200px' }}
+                >
+                    {getDisplayName(sale)}
+                </td>
                 <td className="text-center align-middle">{sale.quantity || "-"}</td>
                 <td className="text-end align-middle">
                     {/* 顯示 final_price，如果沒有則顯示 product_price 或計算值 */}
