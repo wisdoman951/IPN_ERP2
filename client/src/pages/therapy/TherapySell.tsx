@@ -834,7 +834,12 @@ const TherapySell: React.FC = () => {
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
             <th className="text-center">店別</th>
-            <th className="text-center">會員編號</th>
+            <th className="text-center">
+                <span className="d-inline-flex flex-column lh-sm">
+                    <span>會員</span>
+                    <span>編號</span>
+                </span>
+            </th>
             <th className="text-center">購買人</th>
             <th className="text-center">購買日期</th>
             <th className="text-center">購買品項</th>
