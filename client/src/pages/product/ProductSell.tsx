@@ -826,9 +826,19 @@ const ProductSell: React.FC = () => {
             <th className="text-center">購買品項</th>
             <th className="text-center">數量</th>
             <th className="text-center">價錢</th>
-            <th className="text-center">付款方式</th>
+            <th className="text-center">
+                <span className="d-inline-flex flex-column lh-sm">
+                    <span>付款</span>
+                    <span>方式</span>
+                </span>
+            </th>
             <th className="text-center">銷售人員</th>
-            <th className="text-center">銷售類別</th>
+            <th className="text-center">
+                <span className="d-inline-flex flex-column lh-sm">
+                    <span>銷售</span>
+                    <span>類別</span>
+                </span>
+            </th>
             <th className="text-center">備註</th>
         </tr>
     );
