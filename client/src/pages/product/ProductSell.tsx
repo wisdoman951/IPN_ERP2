@@ -814,17 +814,32 @@ const ProductSell: React.FC = () => {
     const tableHeader = (
         <tr>
             <th style={{ width: '50px' }}>勾選</th>
-            <th>店別</th>
-            <th>會員編號</th>
-            <th>購買人</th>
-            <th>購買日期</th>
-            <th>購買品項</th>
-            <th className="text-center">數量</th> {/* 調整對齊 */}
-            <th className="text-end">價錢</th>   {/* 調整對齊和標題 */}
-            <th>付款方式</th>
-            <th>銷售人員</th>
-            <th>銷售類別</th>
-            <th>備註</th>
+            <th className="text-center">店別</th>
+            <th className="text-center">
+                <span className="d-inline-flex flex-column lh-sm">
+                    <span>會員</span>
+                    <span>編號</span>
+                </span>
+            </th>
+            <th className="text-center">購買人</th>
+            <th className="text-center">購買日期</th>
+            <th className="text-center">購買品項</th>
+            <th className="text-center">數量</th>
+            <th className="text-center">價錢</th>
+            <th className="text-center">
+                <span className="d-inline-flex flex-column lh-sm">
+                    <span>付款</span>
+                    <span>方式</span>
+                </span>
+            </th>
+            <th className="text-center">銷售人員</th>
+            <th className="text-center">
+                <span className="d-inline-flex flex-column lh-sm">
+                    <span>銷售</span>
+                    <span>類別</span>
+                </span>
+            </th>
+            <th className="text-center">備註</th>
         </tr>
     );
 
@@ -887,7 +902,7 @@ const ProductSell: React.FC = () => {
                     </td>
                     <td className="align-middle">{sale.staff_name || "-"}</td>
                     <td className="align-middle">{sale.sale_category || "-"}</td>
-                    <td className="align-middle" style={{ maxWidth: '200px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
+                    <td className="align-middle" style={{ maxWidth: '150px', whiteSpace: 'pre-line' }}>{getNote(sale)}</td>
                 </tr>
             );
         })
