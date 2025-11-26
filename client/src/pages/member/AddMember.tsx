@@ -16,7 +16,7 @@ const AddMember: React.FC = () => {
 
     const initialFormState = {
         member_code: "",
-        identity_type: "一般會員",
+        identity_type: "會員",
         name: "",
         birthday: "",
         age: "",
@@ -183,7 +183,6 @@ const AddMember: React.FC = () => {
                                 <option value="B2B合作專案">B2B合作專案</option>
                                 <option value="心耀商">心耀商</option>
                                 <option value="會員">會員</option>
-                                <option value="一般會員">一般會員</option>
                             </Form.Select>
                         </Form.Group>
                     </Col>
