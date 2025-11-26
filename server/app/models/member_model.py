@@ -48,7 +48,7 @@ def _normalize_identity_type(cursor, identity_type_value: str) -> str:
         return identity_type_value
 
     if not _check_identity_type_table(cursor):
-        return identity_type_value or "一般會員"
+        return identity_type_value or "會員"
 
     query = [
         "SELECT identity_type_code",
@@ -70,7 +70,7 @@ def _normalize_identity_type(cursor, identity_type_value: str) -> str:
     try:
         cursor.execute("\n".join(query), tuple(params))
     except pymysql.err.ProgrammingError:
-        return identity_type_value or "一般會員"
+        return identity_type_value or "會員"
     row = cursor.fetchone()
     if row:
         return row["identity_type_code"]
@@ -106,7 +106,7 @@ def create_member(data, store_id: int):
             if blood_type_value == '':
                 blood_type_value = None
 
-            identity_type_value = data.get("identity_type") or data.get("identityType") or "一般會員"
+            identity_type_value = data.get("identity_type") or data.get("identityType") or "會員"
             identity_type_value = _normalize_identity_type(cursor, identity_type_value)
 
             sql = """
@@ -266,7 +266,7 @@ def update_member(member_id, data):
             if blood_type_value == '':
                 blood_type_value = None
 
-            identity_type_value = data.get("identity_type") or data.get("identityType") or "一般會員"
+            identity_type_value = data.get("identity_type") or data.get("identityType") or "會員"
             identity_type_value = _normalize_identity_type(cursor, identity_type_value)
 
             cursor.execute("""

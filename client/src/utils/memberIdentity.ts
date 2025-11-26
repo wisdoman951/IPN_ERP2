@@ -94,11 +94,11 @@ const IDENTITY_DISPLAY_MAP: Record<string, string> = {
   [canonicalizeIdentityValue("會員")]: "會員",
   [canonicalizeIdentityValue("Member")]: "會員",
 
-  [canonicalizeIdentityValue("一般會員")]: "一般會員",
-  [canonicalizeIdentityValue("General Member")]: "一般會員",
-  [canonicalizeIdentityValue("一般售價")]: "一般會員",
-  [canonicalizeIdentityValue("General Price")]: "一般會員",
-  [canonicalizeIdentityValue("General")]: "一般會員",
+  [canonicalizeIdentityValue("一般會員")]: "會員",
+  [canonicalizeIdentityValue("General Member")]: "會員",
+  [canonicalizeIdentityValue("一般售價")]: "一般售價",
+  [canonicalizeIdentityValue("General Price")]: "一般售價",
+  [canonicalizeIdentityValue("General")]: "一般售價",
 };
 
 export const resolveMemberIdentityLabel = (
@@ -120,10 +120,6 @@ export const resolveMemberIdentityLabel = (
   const normalized = normalizeMemberIdentity(trimmed);
   if (!normalized) {
     return trimmed;
-  }
-
-  if (normalized === "一般售價") {
-    return "一般會員";
   }
 
   return MEMBER_IDENTITY_LABELS[normalized];

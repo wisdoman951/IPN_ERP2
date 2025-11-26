@@ -50,7 +50,7 @@ const EditMember: React.FC = () => {
                     // 將從服務獲取的資料填充到表單 state
                     setForm({
                         member_code: data.member_code || "",
-                        identity_type: data.IdentityType || "一般會員",
+                        identity_type: data.IdentityType || "會員",
                         name: data.Name || "",
                         birthday: data.Birth ? new Date(data.Birth).toISOString().split('T')[0] : "",
                         gender: data.Gender || "Male",
@@ -158,7 +158,6 @@ const EditMember: React.FC = () => {
                                     <option value="B2B合作專案">B2B合作專案</option>
                                     <option value="心耀商">心耀商</option>
                                     <option value="會員">會員</option>
-                                    <option value="一般會員">一般會員</option>
                                 </Form.Select>
                             </Form.Group>
                         </Col>

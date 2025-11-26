@@ -66,7 +66,7 @@ def generate_test_data():
     # Generate random test data for a member
     return {
         "name": "Test User " + ''.join(random.choices(string.ascii_letters, k=5)),
-        "identity_type": "一般會員",
+        "identity_type": "會員",
         "birthday": "1990-01-01",
         "address": "Test Address",
         "phone": "0912345678",
