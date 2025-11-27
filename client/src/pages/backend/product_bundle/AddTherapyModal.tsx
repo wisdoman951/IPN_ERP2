@@ -93,6 +93,25 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
         getCategories('therapy').then(setCategories).catch(() => {});
     }, []);
 
+    useEffect(() => {
+        if (!editingTherapy) {
+            setSelectedCategoryIds([]);
+            return;
+        }
+
+        if (editingTherapy.category_ids && editingTherapy.category_ids.length > 0) {
+            setSelectedCategoryIds(editingTherapy.category_ids);
+            return;
+        }
+
+        if (editingTherapy.categories && editingTherapy.categories.length > 0 && categories.length > 0) {
+            const matchedIds = categories
+                .filter(c => editingTherapy.categories?.includes(c.name))
+                .map(c => c.category_id);
+            setSelectedCategoryIds(matchedIds);
+        }
+    }, [editingTherapy, categories]);
+
     const handleStoreCheckChange = (id: number, checked: boolean) => {
         setSelectedStoreIds(prev => checked ? [...prev, id] : prev.filter(sid => sid !== id));
     };

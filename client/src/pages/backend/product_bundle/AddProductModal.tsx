@@ -56,7 +56,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             setPurchasePrice(editingProduct.purchase_price != null ? String(editingProduct.purchase_price) : '');
             setSelectedStoreIds(editingProduct.visible_store_ids || []);
             setSelectedViewerRoles(editingProduct.visible_permissions || []);
-            setSelectedCategoryIds(editingProduct.category_ids || []);
             const baseMap = createDefaultPriceMap();
             const tiers = editingProduct.price_tiers || {};
             const generalPrice = tiers?.['一般售價'] ?? editingProduct.product_price;
@@ -93,6 +92,25 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
     useEffect(() => {
         getCategories('product').then(setCategories).catch(() => {});
     }, []);
+
+    useEffect(() => {
+        if (!editingProduct) {
+            setSelectedCategoryIds([]);
+            return;
+        }
+
+        if (editingProduct.category_ids && editingProduct.category_ids.length > 0) {
+            setSelectedCategoryIds(editingProduct.category_ids);
+            return;
+        }
+
+        if (editingProduct.categories && editingProduct.categories.length > 0 && categories.length > 0) {
+            const matchedIds = categories
+                .filter(c => editingProduct.categories?.includes(c.name))
+                .map(c => c.category_id);
+            setSelectedCategoryIds(matchedIds);
+        }
+    }, [editingProduct, categories]);
 
     const handleStoreCheckChange = (id: number, checked: boolean) => {
         setSelectedStoreIds(prev => checked ? [...prev, id] : prev.filter(sid => sid !== id));
