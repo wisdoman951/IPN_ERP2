@@ -67,10 +67,11 @@ const StressTestForm: React.FC = () => {
     useEffect(() => {
       if (isEditMode && id) {
         setLoading(true);
+        let fetchedMemberCode = "";
         getStressTestByIdWithAnswers(id)
           .then((data) => {
             const fetchedMemberId = data.member_id?.toString() || "";
-            const fetchedMemberCode = data.member_code?.toString() || "";
+            fetchedMemberCode = data.member_code?.toString() || "";
             setMemberId(fetchedMemberId);
             setMemberCode(fetchedMemberCode);
             setMemberName(data.name || "");
@@ -82,7 +83,12 @@ const StressTestForm: React.FC = () => {
             return null;
           })
           .then((member) => {
-            if (member) setMemberName(member.Name);
+            if (member) {
+              setMemberName(member.Name);
+              if (!fetchedMemberCode && member.member_code) {
+                setMemberCode(member.member_code);
+              }
+            }
           })
           .catch(() => setError("載入失敗"))
           .finally(() => setLoading(false));
