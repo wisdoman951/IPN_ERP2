@@ -51,6 +51,7 @@ export interface Product {
     purchase_price?: number | string | null;
     visible_store_ids?: number[];
     categories?: string[];
+    category_ids?: number[];
     visible_permissions?: ViewerRole[];
     price_tiers?: Partial<Record<MemberIdentity, number>>;
 }
@@ -63,6 +64,7 @@ export interface Therapy {
     content?: string;
     visible_store_ids?: number[];
     categories?: string[];
+    category_ids?: number[];
     visible_permissions?: ViewerRole[];
     price_tiers?: Partial<Record<MemberIdentity, number>>;
 }
