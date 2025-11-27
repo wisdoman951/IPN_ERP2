@@ -352,13 +352,20 @@ const ProductBundleManagement: React.FC = () => {
         if (!window.confirm('是否確認要刪除產品資料，將一併刪除銷售資料！')) {
             return null;
         }
-        const account = localStorage.getItem('account');
+
+        const storedAccount = localStorage.getItem('account');
+        if (!storedAccount) {
+            alert('找不到登入帳號資訊，請重新登入後再試。');
+            return null;
+        }
+
         const input = window.prompt('請輸入登入帳號以確認刪除');
-        if (!account || input !== account) {
+        if (!input || input.trim() !== storedAccount.trim()) {
             alert('帳號驗證失敗，刪除已取消');
             return null;
         }
-        return account;
+
+        return storedAccount;
     };
 
     const handleDelete = async (bundleId: number) => {
