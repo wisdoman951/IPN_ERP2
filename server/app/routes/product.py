@@ -8,7 +8,7 @@ product_bp = Blueprint("product", __name__)
 @admin_required
 def add_product():
     data = request.json
-    if not all(k in data for k in ("code", "name", "price")):
+    if not all(k in data for k in ("code", "name")):
         return jsonify({"error": "缺少必要欄位"}), 400
     try:
         product_id = create_product(data)
