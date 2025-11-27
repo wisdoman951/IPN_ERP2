@@ -371,13 +371,21 @@ const ProductBundleManagement: React.FC = () => {
             return null;
         }
 
-        const input = window.prompt('請輸入登入帳號以確認刪除');
-        if (!input || input.trim() !== storedAccount.trim()) {
-            alert('帳號驗證失敗，刪除已取消');
+        const normalizedAccount = storedAccount.trim().toLowerCase();
+        const input = window.prompt('請輸入登入帳號以確認刪除', storedAccount.trim());
+        const normalizedInput = (input ?? '').trim().toLowerCase();
+
+        if (!normalizedInput) {
+            alert('未輸入帳號，刪除已取消');
             return null;
         }
 
-        return storedAccount;
+        if (normalizedInput !== normalizedAccount) {
+            alert('帳號驗證失敗，請確認登入帳號後再試');
+            return null;
+        }
+
+        return storedAccount.trim();
     };
 
     const handleDelete = async (bundleId: number) => {
