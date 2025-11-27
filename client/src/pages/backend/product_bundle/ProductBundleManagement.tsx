@@ -189,6 +189,18 @@ const ProductBundleManagement: React.FC = () => {
         return roles.map(role => VIEWER_ROLE_LABELS[role] ?? role).join(', ');
     };
 
+    const formatBundleContents = (contents?: string) => {
+        if (!contents) return '---';
+        const deduped: string[] = [];
+        contents.split(',').forEach(raw => {
+            const item = raw.trim();
+            if (item && !deduped.includes(item)) {
+                deduped.push(item);
+            }
+        });
+        return deduped.join(', ');
+    };
+
     const fetchBundles = useCallback(async () => {
         setBundleLoading(true);
         setError(null);
@@ -701,7 +713,7 @@ const ProductBundleManagement: React.FC = () => {
                                         <tr key={bundle.bundle_id}>
                                             <td className="align-middle">{bundle.bundle_code}</td>
                                             <td className="align-middle">{bundle.name}</td>
-                                            <td className="align-middle">{bundle.bundle_contents || '---'}</td>
+                                            <td className="align-middle">{formatBundleContents(bundle.bundle_contents)}</td>
                                             <td className="align-middle">
                                                 {bundle.visible_store_ids && bundle.visible_store_ids.length > 0
                                                     ? bundle.visible_store_ids
@@ -818,7 +830,7 @@ const ProductBundleManagement: React.FC = () => {
                                         <tr key={bundle.bundle_id}>
                                             <td className="align-middle">{bundle.bundle_code}</td>
                                             <td className="align-middle">{bundle.name}</td>
-                                            <td className="align-middle">{bundle.bundle_contents || '---'}</td>
+                                            <td className="align-middle">{formatBundleContents(bundle.bundle_contents)}</td>
                                             <td className="align-middle">
                                                 {bundle.visible_store_ids && bundle.visible_store_ids.length > 0
                                                     ? bundle.visible_store_ids
