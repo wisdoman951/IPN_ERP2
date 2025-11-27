@@ -88,6 +88,18 @@ const ProductSelection: React.FC = () => {
     [activeIdentity, resolvedIdentityForMember, restrictedIdentities],
   );
 
+  const dedupeBundleContents = useCallback((contents?: string) => {
+    if (!contents) return contents;
+    const unique: string[] = [];
+    contents.split(',').forEach(raw => {
+      const item = raw.trim();
+      if (item && !unique.includes(item)) {
+        unique.push(item);
+      }
+    });
+    return unique.join(', ');
+  }, []);
+
   const deriveIdentitySet = useCallback(
     (
       tiers: Partial<Record<MemberIdentity, number>> | undefined,
@@ -235,7 +247,7 @@ const ProductSelection: React.FC = () => {
           code: b.bundle_code,
           price: Number(b.selling_price),
           basePrice: Number(b.selling_price),
-          content: b.bundle_contents,
+          content: dedupeBundleContents(b.bundle_contents),
           categories: b.categories || [],
           price_tiers: b.price_tiers,
         }));
