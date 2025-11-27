@@ -151,7 +151,11 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     const calculatedPrice = useMemo(() => {
         const selectedProducts = products.filter(p => selectedProductIds.includes(p.product_id));
         const selectedTherapies = therapies.filter(t => selectedTherapyIds.includes(t.therapy_id));
-        const productTotal = selectedProducts.reduce((sum, p) => sum + Number(p.product_price || 0) * (productQuantities[p.product_id] || 1), 0);
+        const productTotal = selectedProducts.reduce((sum, p) => {
+            const generalPrice = p.price_tiers?.['一般售價'];
+            const parsed = generalPrice === undefined || generalPrice === null ? 0 : Number(generalPrice);
+            return sum + parsed * (productQuantities[p.product_id] || 1);
+        }, 0);
         const therapyTotal = selectedTherapies.reduce((sum, t) => sum + Number(t.price || 0) * (therapyQuantities[t.therapy_id] || 1), 0);
         return productTotal + therapyTotal;
     }, [selectedProductIds, selectedTherapyIds, products, therapies, productQuantities, therapyQuantities]);
@@ -338,7 +342,7 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                                                 id={`prod-check-${p.product_id}`}
                                                 checked={selectedProductIds.includes(p.product_id)}
                                                 onChange={e => handleProductCheckChange(p.product_id, e.target.checked)}
-                                                label={`${p.product_name} - $${p.product_price}`}
+                                                label={`${p.product_name} - $${p.price_tiers?.['一般售價'] ?? '未定價'}`}
                                             />
                                             {selectedProductIds.includes(p.product_id) && (
                                                 <Form.Control

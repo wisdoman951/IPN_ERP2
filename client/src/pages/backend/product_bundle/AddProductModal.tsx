@@ -67,7 +67,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             setSelectedCategoryIds(derivedCategoryIds);
             const baseMap = createDefaultPriceMap();
             const tiers = editingProduct.price_tiers || {};
-            const generalPrice = tiers?.['一般售價'] ?? editingProduct.product_price;
+            const generalPrice = tiers?.['一般售價'];
             baseMap['一般售價'] = {
                 enabled: generalPrice != null && generalPrice !== undefined && generalPrice !== '',
                 value: generalPrice != null && generalPrice !== undefined ? String(generalPrice) : '',
