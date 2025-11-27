@@ -83,6 +83,17 @@ const ProductBundleManagement: React.FC = () => {
         [restrictedIdentities],
     );
 
+    const toNumber = (value: number | string | undefined | null) => {
+        if (value === undefined || value === null || value === '') {
+            return undefined;
+        }
+        const parsed = Number(value);
+        return Number.isNaN(parsed) ? undefined : parsed;
+    };
+
+    const resolveGeneralPrice = (tiers?: Partial<Record<MemberIdentity, number>>) =>
+        toNumber(tiers?.['一般售價']);
+
     const deriveIdentitySet = (
         tiers: Partial<Record<MemberIdentity, number>> | undefined,
         fallbackPrice: number | string | undefined,
@@ -131,14 +142,6 @@ const ProductBundleManagement: React.FC = () => {
         fallbackPrice: number | string | undefined,
         identity: MemberIdentity,
     ): number | undefined => {
-        const toNumber = (value: number | string | undefined | null) => {
-            if (value === undefined || value === null || value === '') {
-                return undefined;
-            }
-            const parsed = Number(value);
-            return Number.isNaN(parsed) ? undefined : parsed;
-        };
-
         if (identity === '一般售價') {
             const general = tiers?.['一般售價'];
             if (general != null) {
@@ -556,7 +559,7 @@ const ProductBundleManagement: React.FC = () => {
             activeProductCategory === 'all' || (product.categories && product.categories.includes(activeProductCategory))
         )
         .filter(product =>
-            matchesIdentityFilter(product.price_tiers, product.product_price, activeProductIdentity)
+            matchesIdentityFilter(product.price_tiers, resolveGeneralPrice(product.price_tiers), activeProductIdentity)
         );
 
     const filteredTherapies = therapies
@@ -939,7 +942,7 @@ const ProductBundleManagement: React.FC = () => {
                                                     : '---'}
                                             </td>
                                             <td className="align-middle">{formatViewerRoles(product.visible_permissions)}</td>
-                                            <td className="align-middle">{formatPriceDisplay(product.price_tiers, product.product_price, activeProductIdentity)}</td>
+                                            <td className="align-middle">{formatPriceDisplay(product.price_tiers, resolveGeneralPrice(product.price_tiers), activeProductIdentity)}</td>
                                             <td className="align-middle">
                                                 <Button variant="link" onClick={() => handleShowEditProductModal(product)}>修改</Button>
                                                 {productStatus === 'PUBLISHED' ? (
