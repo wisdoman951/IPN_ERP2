@@ -411,8 +411,19 @@ const ProductBundleManagement: React.FC = () => {
             await deleteProduct(productId, account);
             setSuccessMessage('刪除成功！');
             fetchProducts();
-        } catch {
-            setError('刪除失敗，請稍後再試。');
+        } catch (err: unknown) {
+            const error = err as { response?: { data?: { error?: string } } };
+            const errorMessage = error.response?.data?.error || '';
+
+            if (
+                errorMessage.includes('Cannot delete or update a parent row') ||
+                errorMessage.includes('inventory_ibfk_1') ||
+                errorMessage.includes('(1451')
+            ) {
+                setError('刪除失敗，庫存尚有資料，或以"下架"方式處理。');
+            } else {
+                setError('刪除失敗，請稍後再試。');
+            }
         }
         setTimeout(() => setSuccessMessage(null), 3000);
     };
