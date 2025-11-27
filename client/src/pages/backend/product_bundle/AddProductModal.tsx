@@ -21,7 +21,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
         const map = {} as Record<MemberIdentity, { enabled: boolean; value: string }>;
         MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
             map[value] = {
-                enabled: value === '一般售價',
+                enabled: false,
                 value: '',
             };
         });
@@ -41,7 +41,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
         map: Record<MemberIdentity, { enabled: boolean; value: string }>,
     ): string | null => {
         for (const { value } of MEMBER_IDENTITY_OPTIONS) {
-            if (value === '一般售價') continue;
             const entry = map[value];
             if (entry?.enabled && !entry.value) {
                 return `已勾選「${value}」，請輸入售價。`;
@@ -62,11 +61,10 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             const tiers = editingProduct.price_tiers || {};
             const generalPrice = tiers?.['一般售價'] ?? editingProduct.product_price;
             baseMap['一般售價'] = {
-                enabled: true,
-                value: generalPrice != null ? String(generalPrice) : '',
+                enabled: generalPrice != null && generalPrice !== undefined && generalPrice !== '',
+                value: generalPrice != null && generalPrice !== undefined ? String(generalPrice) : '',
             };
             MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
-                if (value === '一般售價') return;
                 const tierValue = tiers?.[value];
                 if (tierValue != null) {
                     baseMap[value] = {
@@ -105,9 +103,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
     };
 
     const handleIdentityToggle = (identity: MemberIdentity, checked: boolean) => {
-        if (identity === '一般售價') {
-            return;
-        }
         setPriceMap(prev => {
             const next = {
                 ...prev,
@@ -135,9 +130,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
         setPriceMap(prev => {
             const next = { ...prev } as Record<MemberIdentity, { enabled: boolean; value: string }>;
             MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
-                if (value !== '一般售價') {
-                    next[value] = { ...next[value], enabled: true };
-                }
+                next[value] = { ...next[value], enabled: true };
             });
             setTierValidationMessage(computeTierValidation(next));
             setFormError(null);
@@ -149,9 +142,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
         setPriceMap(prev => {
             const next = { ...prev } as Record<MemberIdentity, { enabled: boolean; value: string }>;
             MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
-                if (value !== '一般售價') {
-                    next[value] = { ...next[value], enabled: false };
-                }
+                next[value] = { ...next[value], enabled: false };
             });
             setTierValidationMessage(computeTierValidation(next));
             setFormError(null);
@@ -160,16 +151,16 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
     };
 
     const handleApplyGeneralPrice = () => {
-        const generalPrice = priceMap['一般售價']?.value ?? '';
-        if (!generalPrice) {
-            setTierValidationMessage('請先輸入一般售價後再套用。');
-            setFormError('請先輸入一般售價後再套用。');
+        const generalEntry = priceMap['一般售價'];
+        const generalPrice = generalEntry?.value ?? '';
+        if (!generalEntry?.enabled || !generalPrice) {
+            setTierValidationMessage('請先勾選並輸入一般售價後再套用。');
+            setFormError('請先勾選並輸入一般售價後再套用。');
             return;
         }
         setPriceMap(prev => {
             const next = { ...prev } as Record<MemberIdentity, { enabled: boolean; value: string }>;
             MEMBER_IDENTITY_OPTIONS.forEach(({ value }) => {
-                if (value === '一般售價') return;
                 if (next[value]?.enabled) {
                     next[value] = { ...next[value], value: generalPrice };
                 }
@@ -183,13 +174,6 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            const generalPriceRaw = priceMap['一般售價']?.value ?? '';
-            const generalPrice = Number(generalPriceRaw);
-            if (!generalPriceRaw || Number.isNaN(generalPrice) || generalPrice < 0) {
-                setFormError('請輸入有效的一般售價');
-                return;
-            }
-
             const tierValidation = computeTierValidation(priceMap);
             if (tierValidation) {
                 setTierValidationMessage(tierValidation);
@@ -197,12 +181,22 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
                 return;
             }
 
-            const priceTiersPayload: { identity_type: MemberIdentity; price: number }[] = [
-                { identity_type: '一般售價', price: generalPrice },
-            ];
+            const priceTiersPayload: { identity_type: MemberIdentity; price: number }[] = [];
+
+            const generalEntry = priceMap['一般售價'];
+            const generalPriceRaw = generalEntry?.value ?? '';
+            const generalPrice = Number(generalPriceRaw);
+            if (generalEntry?.enabled) {
+                if (!generalPriceRaw || Number.isNaN(generalPrice) || generalPrice < 0) {
+                    const message = '請輸入有效的一般售價';
+                    setTierValidationMessage(message);
+                    setFormError(message);
+                    return;
+                }
+                priceTiersPayload.push({ identity_type: '一般售價', price: generalPrice });
+            }
 
             for (const { value } of MEMBER_IDENTITY_OPTIONS) {
-                if (value === '一般售價') continue;
                 const entry = priceMap[value];
                 if (!entry?.enabled) continue;
                 const parsed = Number(entry.value);
@@ -218,7 +212,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             const payload = {
                 code,
                 name,
-                price: generalPrice,
+                price: generalEntry?.enabled ? generalPrice : null,
                 purchase_price: purchasePrice === '' ? null : Number(purchasePrice),
                 visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
                 visible_permissions: selectedViewerRoles.length > 0 ? selectedViewerRoles : null,
@@ -310,23 +304,14 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
                         </div>
                     </Form.Group>
                     <Form.Group className="mb-3">
-                        <Form.Label>一般售價</Form.Label>
-                        <Form.Control
-                            type="number"
-                            min={0}
-                            value={priceMap['一般售價']?.value ?? ''}
-                            onChange={e => handleIdentityPriceChange('一般售價', e.target.value)}
-                        />
-                    </Form.Group>
-                    <Form.Group className="mb-3">
-                        <Form.Label>會員別售價 (可複選)</Form.Label>
+                        <Form.Label>會員別售價 (含一般售價，可複選)</Form.Label>
                         <div className="d-flex justify-content-end gap-2 mb-2 flex-wrap">
                             <Button size="sm" variant="outline-info" onClick={handleSelectAllIdentities}>全部加入</Button>
                             <Button size="sm" variant="outline-secondary" onClick={handleClearIdentities}>全部取消</Button>
                             <Button size="sm" variant="outline-primary" onClick={handleApplyGeneralPrice}>套用一般售價</Button>
                         </div>
                         <div style={{ maxHeight: '200px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
-                            {MEMBER_IDENTITY_OPTIONS.filter(option => option.value !== '一般售價').map(option => {
+                            {MEMBER_IDENTITY_OPTIONS.map(option => {
                                 const entry = priceMap[option.value];
                                 return (
                                     <div key={`identity-${option.value}`} className="d-flex align-items-center mb-2 gap-2">

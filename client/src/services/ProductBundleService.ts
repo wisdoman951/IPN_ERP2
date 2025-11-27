@@ -46,7 +46,7 @@ export interface BundleDetails extends Bundle {
 export interface Product {
     product_id: number;
     product_name: string;
-    product_price: number;
+    product_price?: number | null;
     product_code: string;
     purchase_price?: number | string | null;
     visible_store_ids?: number[];
