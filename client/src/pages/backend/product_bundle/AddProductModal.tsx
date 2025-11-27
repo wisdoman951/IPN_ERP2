@@ -56,7 +56,15 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             setPurchasePrice(editingProduct.purchase_price != null ? String(editingProduct.purchase_price) : '');
             setSelectedStoreIds(editingProduct.visible_store_ids || []);
             setSelectedViewerRoles(editingProduct.visible_permissions || []);
-            setSelectedCategoryIds(editingProduct.category_ids || []);
+            const derivedCategoryIds =
+                (editingProduct.category_ids && editingProduct.category_ids.length > 0)
+                    ? editingProduct.category_ids
+                    : (editingProduct.categories && categories.length > 0)
+                        ? categories
+                            .filter(cat => editingProduct.categories?.includes(cat.name))
+                            .map(cat => cat.category_id)
+                        : [];
+            setSelectedCategoryIds(derivedCategoryIds);
             const baseMap = createDefaultPriceMap();
             const tiers = editingProduct.price_tiers || {};
             const generalPrice = tiers?.['一般售價'] ?? editingProduct.product_price;
@@ -88,7 +96,7 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             setTierValidationMessage(computeTierValidation(defaultMap));
             setFormError(null);
         }
-    }, [editingProduct]);
+    }, [editingProduct, categories]);
 
     useEffect(() => {
         getCategories('product').then(setCategories).catch(() => {});

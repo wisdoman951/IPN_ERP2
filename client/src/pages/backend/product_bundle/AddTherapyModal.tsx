@@ -55,7 +55,15 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
             setName(editingTherapy.name);
             setSelectedStoreIds(editingTherapy.visible_store_ids || []);
             setSelectedViewerRoles(editingTherapy.visible_permissions || []);
-            setSelectedCategoryIds(editingTherapy.category_ids || []);
+            const derivedCategoryIds =
+                (editingTherapy.category_ids && editingTherapy.category_ids.length > 0)
+                    ? editingTherapy.category_ids
+                    : (editingTherapy.categories && categories.length > 0)
+                        ? categories
+                            .filter(cat => editingTherapy.categories?.includes(cat.name))
+                            .map(cat => cat.category_id)
+                        : [];
+            setSelectedCategoryIds(derivedCategoryIds);
             const baseMap = createDefaultPriceMap();
             const tiers = editingTherapy.price_tiers || {};
             const generalPrice = tiers?.['一般售價'] ?? editingTherapy.price;
@@ -87,7 +95,7 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
             setTierValidationMessage(computeTierValidation(defaultMap));
             setFormError(null);
         }
-    }, [editingTherapy]);
+    }, [editingTherapy, categories]);
 
     useEffect(() => {
         getCategories('therapy').then(setCategories).catch(() => {});
