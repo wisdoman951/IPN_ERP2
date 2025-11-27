@@ -4,8 +4,26 @@ import { Button, Col, Form, Row, Card, Alert } from "react-bootstrap";
 import { useNavigate, useParams } from "react-router-dom";
 import Header from "../../../components/Header";
 import DynamicContainer from "../../../components/DynamicContainer";
-import { getMemberByCode } from '../../../services/MemberService';
+import { getMemberByCode, getMemberById } from '../../../services/MemberService';
 import { getStressTestByIdWithAnswers, addStressTestWithAnswers, updateStressTestWithAnswers } from '../../../services/StressTestService';
+
+// 將後端回傳的日期轉成 <input type="date"> 可接受的 yyyy-MM-dd 格式
+const formatDateForInput = (value: string | Date | undefined | null): string => {
+  if (!value) return "";
+
+  if (typeof value === "string") {
+    const isoMatch = value.match(/^\d{4}-\d{2}-\d{2}/);
+    if (isoMatch) return isoMatch[0];
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
 
 // 問卷題目（1-20題）
 const questions = [
@@ -56,9 +74,7 @@ const StressTestForm: React.FC = () => {
             setMemberId(fetchedMemberId);
             setMemberCode(fetchedMemberCode);
             setMemberName(data.name || "");
-            setTestDate((typeof data.test_date === "string" && data.test_date.length >= 10)
-                ? data.test_date.slice(0, 10)
-                : "");
+            setTestDate(formatDateForInput(data.test_date));
             setAnswers(data.answers || {});
             if (fetchedMemberId) {
               return getMemberById(fetchedMemberId);
