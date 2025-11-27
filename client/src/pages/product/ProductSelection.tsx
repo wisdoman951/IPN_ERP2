@@ -412,7 +412,11 @@ const ProductSelection: React.FC = () => {
         filtered = filtered.filter(item => item.categories?.includes(activeProductTab));
       }
     }
-    filtered = filtered.filter(item => matchesIdentityFilter(item, activeIdentity));
+    filtered = filtered
+      .filter(item => matchesIdentityFilter(item, activeIdentity))
+      .filter(item =>
+        resolvePriceForIdentity(item.price_tiers, item.basePrice, pricingIdentity) !== undefined,
+      );
     if (activeIdentity === '一般售價') {
       filtered = filtered.filter(item => {
         if (item.type !== 'bundle') {
@@ -442,6 +446,7 @@ const ProductSelection: React.FC = () => {
     activeProductTab,
     activeBundleTab,
     activeIdentity,
+    pricingIdentity,
     matchesIdentityFilter,
     resolvePriceForIdentity,
   ]);
