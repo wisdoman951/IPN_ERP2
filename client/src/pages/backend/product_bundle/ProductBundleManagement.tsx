@@ -407,6 +407,7 @@ const ProductBundleManagement: React.FC = () => {
         const account = confirmDeletion();
         if (!account) return;
         setSuccessMessage(null);
+        setError(null);
         try {
             await deleteProduct(productId, account);
             setSuccessMessage('刪除成功！');
@@ -420,7 +421,13 @@ const ProductBundleManagement: React.FC = () => {
                 errorMessage.includes('inventory_ibfk_1') ||
                 errorMessage.includes('(1451')
             ) {
-                setError('刪除失敗，庫存尚有資料，或以"下架"方式處理。');
+                try {
+                    await unpublishProduct(productId);
+                    setSuccessMessage('刪除成功！');
+                    fetchProducts();
+                } catch {
+                    setError('刪除失敗，請稍後再試。');
+                }
             } else {
                 setError('刪除失敗，請稍後再試。');
             }
