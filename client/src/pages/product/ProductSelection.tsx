@@ -200,18 +200,25 @@ const ProductSelection: React.FC = () => {
           getCategories('product_bundle')
         ]);
 
-        const products: ItemBase[] = productData.map((p: Product) => ({
-          type: 'product',
-          product_id: p.product_id,
-          name: p.product_name,
-          code: p.product_code,
-          price: Number(p.product_price),
-          basePrice: Number(p.product_price),
-          inventory_id: p.inventory_id,
-          stock_quantity: p.inventory_quantity,
-          categories: p.categories || [],
-          price_tiers: p.price_tiers,
-        }));
+        const products: ItemBase[] = productData.map((p: Product) => {
+          const generalPrice =
+            p.price_tiers?.['一般售價'] !== undefined && p.price_tiers?.['一般售價'] !== null
+              ? Number(p.price_tiers?.['一般售價'])
+              : undefined;
+
+          return {
+            type: 'product',
+            product_id: p.product_id,
+            name: p.product_name,
+            code: p.product_code,
+            price: generalPrice,
+            basePrice: generalPrice,
+            inventory_id: p.inventory_id,
+            stock_quantity: p.inventory_quantity,
+            categories: p.categories || [],
+            price_tiers: p.price_tiers,
+          };
+        });
 
         const storeId = Number(getStoreId());
         const filteredBundles = storeId
@@ -405,7 +412,11 @@ const ProductSelection: React.FC = () => {
         filtered = filtered.filter(item => item.categories?.includes(activeProductTab));
       }
     }
-    filtered = filtered.filter(item => matchesIdentityFilter(item, activeIdentity));
+    filtered = filtered
+      .filter(item => matchesIdentityFilter(item, activeIdentity))
+      .filter(item =>
+        resolvePriceForIdentity(item.price_tiers, item.basePrice, pricingIdentity) !== undefined,
+      );
     if (activeIdentity === '一般售價') {
       filtered = filtered.filter(item => {
         if (item.type !== 'bundle') {
@@ -435,6 +446,7 @@ const ProductSelection: React.FC = () => {
     activeProductTab,
     activeBundleTab,
     activeIdentity,
+    pricingIdentity,
     matchesIdentityFilter,
     resolvePriceForIdentity,
   ]);

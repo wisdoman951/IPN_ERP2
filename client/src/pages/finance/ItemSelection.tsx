@@ -109,6 +109,9 @@ const ItemSelection: React.FC = () => {
 
         if (type === 'Product') {
             const product = item as Product;
+            const generalPrice = product.price_tiers?.['一般售價'];
+            const parsedPrice = generalPrice === undefined || generalPrice === null ? 0 : Number(generalPrice);
+
             newItem = {
                 product_id: product.product_id,
                 therapy_id: null,
@@ -117,8 +120,8 @@ const ItemSelection: React.FC = () => {
                 item_code: product.product_code,
                 unit: "個",
                 quantity: 1,
-                unit_price: Number(product.product_price),
-                subtotal: Number(product.product_price),
+                unit_price: parsedPrice,
+                subtotal: parsedPrice,
             };
         } else if (type === 'Therapy') {
             const therapy = item as TherapyPackage;
@@ -230,7 +233,7 @@ const ItemSelection: React.FC = () => {
                                 {loading ? <Spinner animation="border" /> :
                                     filterItems(products as any, activeProductCat).map(p => (
                                         <ListGroup.Item key={`prod-${(p as any).product_id}`} action onClick={() => handleSelectItem(p as any, 'Product')}>
-                                            [{(p as any).product_code ?? ''}] {(p as any).product_name} - {formatCurrency((p as any).product_price)}
+                                            [{(p as any).product_code ?? ''}] {(p as any).product_name} - {formatCurrency((p as any).price_tiers?.['一般售價'])}
                                         </ListGroup.Item>
                                     ))}
                             </ListGroup>
