@@ -55,7 +55,7 @@ const AddTherapyModal: React.FC<AddTherapyModalProps> = ({ show, onHide, editing
             setName(editingTherapy.name);
             setSelectedStoreIds(editingTherapy.visible_store_ids || []);
             setSelectedViewerRoles(editingTherapy.visible_permissions || []);
-            setSelectedCategoryIds([]);
+            setSelectedCategoryIds(editingTherapy.category_ids || []);
             const baseMap = createDefaultPriceMap();
             const tiers = editingTherapy.price_tiers || {};
             const generalPrice = tiers?.['一般售價'] ?? editingTherapy.price;
