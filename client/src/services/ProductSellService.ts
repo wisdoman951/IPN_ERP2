@@ -22,7 +22,7 @@ export interface Product {
   product_id: number;
   product_code?: string;
   product_name: string;
-  product_price: number;
+  product_price?: number | null;
   purchase_price?: number | string | null;
   inventory_id: number;
   inventory_quantity: number;
