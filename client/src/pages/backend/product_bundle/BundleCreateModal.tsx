@@ -35,9 +35,20 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
     const [selectedCategoryIds, setSelectedCategoryIds] = useState<number[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [productSearch, setProductSearch] = useState('');
+    const [therapySearch, setTherapySearch] = useState('');
     // 新增數量 state
     const [productQuantities, setProductQuantities] = useState<{ [id: number]: number }>({});
     const [therapyQuantities, setTherapyQuantities] = useState<{ [id: number]: number }>({});
+
+    const hasGeneralPrice = (product: Product) => {
+        const generalPrice = product.price_tiers?.['一般售價'];
+        if (generalPrice === null || generalPrice === undefined) {
+            return false;
+        }
+        const parsed = Number(generalPrice);
+        return !Number.isNaN(parsed);
+    };
 
     const createDefaultPriceMap = () => {
         const map = {} as Record<MemberIdentity, { enabled: boolean; value: string }>;
@@ -59,7 +70,9 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
             resetStates();
 
             // 載入下拉選單資料
-            fetchProductsForDropdown().then(setProducts).catch(() => setError("無法載入產品列表"));
+            fetchProductsForDropdown()
+                .then(data => setProducts(data.filter(hasGeneralPrice)))
+                .catch(() => setError("無法載入產品列表"));
             fetchTherapiesForDropdown().then(setTherapies).catch(() => setError("無法載入療程列表"));
             fetchAllStores()
                 .then(data => setStores(data.filter(s => s.store_name !== '總店')))
@@ -129,6 +142,8 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
         setProductQuantities({});
         setTherapyQuantities({});
         setBundlePriceMap(createDefaultPriceMap());
+        setProductSearch('');
+        setTherapySearch('');
     };
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -159,6 +174,24 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
         const therapyTotal = selectedTherapies.reduce((sum, t) => sum + Number(t.price || 0) * (therapyQuantities[t.therapy_id] || 1), 0);
         return productTotal + therapyTotal;
     }, [selectedProductIds, selectedTherapyIds, products, therapies, productQuantities, therapyQuantities]);
+
+    const filteredProducts = useMemo(
+        () =>
+            products.filter(hasGeneralPrice).filter(p => {
+                const keyword = productSearch.toLowerCase();
+                return p.product_name.toLowerCase().includes(keyword) || p.product_code.toLowerCase().includes(keyword);
+            }),
+        [products, productSearch],
+    );
+
+    const filteredTherapies = useMemo(
+        () =>
+            therapies.filter(t => {
+                const keyword = therapySearch.toLowerCase();
+                return t.name.toLowerCase().includes(keyword) || t.code.toLowerCase().includes(keyword);
+            }),
+        [therapies, therapySearch],
+    );
 
     const handleProductCheckChange = (id: number, checked: boolean) => {
         setSelectedProductIds(prev => checked ? [...prev, id] : prev.filter(pid => pid !== id));
@@ -330,19 +363,29 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                         </div>
                     </Form.Group>
                     
-                    <Row>
-                        <Col md={6}>
+                    <Row className="g-3">
+                        <Col lg={7}>
                             <Form.Group className="mb-3">
-                                <Form.Label>選擇產品 (可複選)</Form.Label>
-                                <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
-                                    {products.map(p => (
+                                <div className="d-flex justify-content-between align-items-center mb-2 gap-2">
+                                    <Form.Label className="mb-0">選擇產品 (可複選)</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        size="sm"
+                                        placeholder="搜尋產品名稱或編號"
+                                        value={productSearch}
+                                        onChange={e => setProductSearch(e.target.value)}
+                                        style={{ maxWidth: 240 }}
+                                    />
+                                </div>
+                                <div style={{ maxHeight: '260px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                                    {filteredProducts.map(p => (
                                         <div key={`prod-row-${p.product_id}`} className="d-flex align-items-center mb-2">
-                                            <Form.Check 
+                                            <Form.Check
                                                 type="checkbox"
                                                 id={`prod-check-${p.product_id}`}
                                                 checked={selectedProductIds.includes(p.product_id)}
                                                 onChange={e => handleProductCheckChange(p.product_id, e.target.checked)}
-                                                label={`${p.product_name} - $${p.price_tiers?.['一般售價'] ?? '未定價'}`}
+                                                label={`${p.product_name} - $${Number(p.price_tiers?.['一般售價'] ?? 0).toLocaleString()}`}
                                             />
                                             {selectedProductIds.includes(p.product_id) && (
                                                 <Form.Control
@@ -356,21 +399,34 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                                             )}
                                         </div>
                                     ))}
+                                    {filteredProducts.length === 0 && (
+                                        <div className="text-muted text-center py-2">沒有符合條件的產品</div>
+                                    )}
                                 </div>
                             </Form.Group>
                         </Col>
-                        <Col md={6}>
+                        <Col lg={5}>
                            <Form.Group className="mb-3">
-                                <Form.Label>選擇療程 (可複選)</Form.Label>
-                                <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
-                                    {therapies.map(t => (
+                                <div className="d-flex justify-content-between align-items-center mb-2 gap-2">
+                                    <Form.Label className="mb-0">選擇療程 (可複選)</Form.Label>
+                                    <Form.Control
+                                        type="text"
+                                        size="sm"
+                                        placeholder="搜尋療程名稱或編號"
+                                        value={therapySearch}
+                                        onChange={e => setTherapySearch(e.target.value)}
+                                        style={{ maxWidth: 240 }}
+                                    />
+                                </div>
+                                <div style={{ maxHeight: '260px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                                    {filteredTherapies.map(t => (
                                         <div key={`thrp-row-${t.therapy_id}`} className="d-flex align-items-center mb-2">
-                                            <Form.Check 
+                                            <Form.Check
                                                 type="checkbox"
                                                 id={`thrp-check-${t.therapy_id}`}
                                                 checked={selectedTherapyIds.includes(t.therapy_id)}
                                                 onChange={e => handleTherapyCheckChange(t.therapy_id, e.target.checked)}
-                                                label={`${t.name} - $${t.price}`}
+                                                label={`${t.name} - $${Number(t.price ?? 0).toLocaleString()}`}
                                             />
                                             {selectedTherapyIds.includes(t.therapy_id) && (
                                                 <Form.Control
@@ -384,40 +440,49 @@ const BundleCreateModal: React.FC<BundleCreateModalProps> = ({ show, onHide, onS
                                             )}
                                         </div>
                                     ))}
+                                    {filteredTherapies.length === 0 && (
+                                        <div className="text-muted text-center py-2">沒有符合條件的療程</div>
+                                    )}
                                 </div>
                             </Form.Group>
                         </Col>
                     </Row>
-                    <Form.Group className="mb-3">
-                        <Form.Label>限定分店 (可複選)</Form.Label>
-                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
-                            {stores.map(s => (
-                                <Form.Check
-                                    key={`store-${s.store_id}`}
-                                    type="checkbox"
-                                    id={`store-check-${s.store_id}`}
-                                    label={s.store_name}
-                                    checked={selectedStoreIds.includes(s.store_id)}
-                                    onChange={e => handleStoreCheckChange(s.store_id, e.target.checked)}
-                                />
-                            ))}
-                        </div>
-                    </Form.Group>
-                    <Form.Group className="mb-3">
-                        <Form.Label>限定可見身份 (可複選)</Form.Label>
-                        <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
-                            {VIEWER_ROLE_OPTIONS.map(option => (
-                                <Form.Check
-                                    key={`bundle-viewer-${option.value}`}
-                                    type="checkbox"
-                                    id={`bundle-viewer-${option.value}`}
-                                    label={option.label}
-                                    checked={selectedViewerRoles.includes(option.value)}
-                                    onChange={e => handleViewerRoleChange(option.value, e.target.checked)}
-                                />
-                            ))}
-                        </div>
-                    </Form.Group>
+                    <Row className="g-3">
+                        <Col md={6}>
+                            <Form.Group className="mb-3">
+                                <Form.Label>限定可見身份 (可複選)</Form.Label>
+                                <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                                    {VIEWER_ROLE_OPTIONS.map(option => (
+                                        <Form.Check
+                                            key={`bundle-viewer-${option.value}`}
+                                            type="checkbox"
+                                            id={`bundle-viewer-${option.value}`}
+                                            label={option.label}
+                                            checked={selectedViewerRoles.includes(option.value)}
+                                            onChange={e => handleViewerRoleChange(option.value, e.target.checked)}
+                                        />
+                                    ))}
+                                </div>
+                            </Form.Group>
+                        </Col>
+                        <Col md={6}>
+                            <Form.Group className="mb-3">
+                                <Form.Label>限定分店 (可複選)</Form.Label>
+                                <div style={{ maxHeight: '180px', overflowY: 'auto', border: '1px solid #dee2e6', padding: '0.5rem' }}>
+                                    {stores.map(s => (
+                                        <Form.Check
+                                            key={`store-${s.store_id}`}
+                                            type="checkbox"
+                                            id={`store-check-${s.store_id}`}
+                                            label={s.store_name}
+                                            checked={selectedStoreIds.includes(s.store_id)}
+                                            onChange={e => handleStoreCheckChange(s.store_id, e.target.checked)}
+                                        />
+                                    ))}
+                                </div>
+                            </Form.Group>
+                        </Col>
+                    </Row>
 
                     <Form.Group className="mb-3">
                         <Form.Label>試算金額 (唯讀)</Form.Label>
