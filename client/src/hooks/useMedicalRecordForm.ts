@@ -263,9 +263,9 @@ export const useMedicalRecordForm = (id?: string) => {
         setForm(prevForm => ({ ...prevForm, [name]: value }));
     };
     const preNavigationCheck = async () => {
-        if (!form.memberId || !form.name || !form.height || !form.weight || !form.cosmeticSurgery) {
-            setValidated(true); 
-            setError("請先填寫完整的必要基本資料（會員、身高、體重、微整型）。");
+        if (!form.memberId || !form.name || !form.cosmeticSurgery) {
+            setValidated(true);
+            setError("請先填寫完整的必要基本資料（會員、微整型）。");
             return false;
         }
         if (form.cosmeticSurgery === "Yes" && !form.cosmeticDesc) {

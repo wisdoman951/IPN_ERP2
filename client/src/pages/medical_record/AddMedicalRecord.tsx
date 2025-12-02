@@ -55,15 +55,13 @@ const AddMedicalRecord = () => {
                             <Col md={6}>
                                 <Form.Group className="mb-3">
                                     <Form.Label>身高</Form.Label>
-                                    <Form.Control type="text" name="height" value={form.height} onChange={handleChange} required />
-                                    <Form.Control.Feedback type="invalid">請輸入身高</Form.Control.Feedback>
+                                    <Form.Control type="text" name="height" value={form.height} onChange={handleChange} />
                                 </Form.Group>
                             </Col>
                             <Col md={6}>
                                 <Form.Group className="mb-3">
                                     <Form.Label>體重</Form.Label>
-                                    <Form.Control type="text" name="weight" value={form.weight} onChange={handleChange} required />
-                                    <Form.Control.Feedback type="invalid">請輸入體重</Form.Control.Feedback>
+                                    <Form.Control type="text" name="weight" value={form.weight} onChange={handleChange} />
                                 </Form.Group>
                             </Col>
                             <Col md={6}>
@@ -163,7 +161,7 @@ const AddMedicalRecord = () => {
                                 type="submit" // "確認" 按鈕觸發 handleSubmit
                                 variant="info" // 您可以根據喜好調整 variant，例如 "primary"
                                 className="text-white"
-                                disabled={submitLoading || !form.name || !form.height || !form.weight || !form.cosmeticSurgery || (form.cosmeticSurgery === "Yes" && !form.cosmeticDesc) || !form.symptomSummary || !form.familySummary || !form.healthStatusSummary}
+                                disabled={submitLoading || !form.name || !form.cosmeticSurgery || (form.cosmeticSurgery === "Yes" && !form.cosmeticDesc) || !form.symptomSummary || !form.familySummary || !form.healthStatusSummary}
                             >
                                 {submitLoading ? "處理中..." : "確認"} {/* 文字修改為 "確認" */}
                             </Button>
