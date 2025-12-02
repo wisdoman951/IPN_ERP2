@@ -313,6 +313,13 @@ export const useMedicalRecordForm = (id?: string) => {
             else if (isSummaryRequired && !form.familySummary) setError("請選擇家族病史。");
             return;
         }
+        const normalizeNumberField = (value: string | undefined | null) => {
+            if (value === undefined || value === null) return null;
+            const trimmed = String(value).trim();
+            if (trimmed === "") return null;      // 前端沒填 → 傳 null
+            const num = Number(trimmed);
+            return Number.isNaN(num) ? null : num; // 防止亂字串
+        };
 
         if (isContraindicated) {
             if (!window.confirm("注意：此對象已被標記為不適用對象，您確定要提交嗎？")) {
@@ -326,9 +333,10 @@ export const useMedicalRecordForm = (id?: string) => {
         const dataToSubmit = {
             id: parseInt(id ?? "0"),
             memberId: form.memberId,
-            height: form.height,
-            weight: form.weight,
-            bloodPressure: form.bloodPressure,
+            height: normalizeNumberField(form.height),
+            weight: normalizeNumberField(form.weight),
+            // 如果血壓也是數字欄位，也可以一起轉
+            bloodPressure: normalizeNumberField(form.bloodPressure),
             remark: form.remark,
             cosmeticSurgery: form.cosmeticSurgery,
             cosmeticDesc: form.cosmeticDesc || "",
