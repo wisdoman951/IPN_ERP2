@@ -141,7 +141,7 @@ def _derive_master_product_name(name: str | None) -> str:
 
 def _upsert_master_product(cursor, master_product_code: str, name: str, status: str) -> int:
     cursor.execute(
-        "SELECT master_product_id FROM master_product WHERE master_product_code = %s",
+        "SELECT master_product_id, name, status FROM master_product WHERE master_product_code = %s",
         (master_product_code,),
     )
     row = cursor.fetchone()
