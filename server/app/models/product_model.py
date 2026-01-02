@@ -123,7 +123,7 @@ def _sync_master_product_entities(cursor, product_id: int, data: dict):
 def _derive_master_product_code(code: str | None) -> str:
     if not code:
         raise ValueError("建立主商品時必須提供產品編號")
-    return code[:5].upper()
+    return code.upper()
 
 
 def _derive_master_product_name(name: str | None) -> str:
