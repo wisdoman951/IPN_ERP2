@@ -555,9 +555,11 @@ def master_stock_inbound():
 
     data = request.json or {}
     master_product_id = _safe_int(data.get("master_product_id"))
+    product_id = _safe_int(data.get("product_id"))
+    inventory_item_id = _safe_int(data.get("inventory_item_id"))
     quantity = _safe_int(data.get("quantity"))
-    if not master_product_id or not quantity:
-        return jsonify({"error": "master_product_id 與 quantity 為必填"}), 400
+    if not any([master_product_id, product_id, inventory_item_id]) or not quantity:
+        return jsonify({"error": "需要 inventory_item_id / master_product_id / product_id 並提供 quantity"}), 400
 
     user_info = get_user_from_token(request)
     try:
@@ -571,12 +573,13 @@ def master_stock_inbound():
 
     try:
         stock = receive_master_stock(
-            master_product_id,
+            master_product_id or inventory_item_id,
             quantity,
             store_id,
             staff_id,
             data.get("reference_no"),
             data.get("note"),
+            variant_id=product_id,
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400

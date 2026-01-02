@@ -90,9 +90,10 @@ def update_product(product_id: int, data: dict):
 
 
 def _sync_master_product_entities(cursor, product_id: int, data: dict):
-    """Ensure master product, variant, and store-type costs stay in sync."""
-    master_product_code = _derive_master_product_code(data.get("code"))
-    master_product_name = _derive_master_product_name(data.get("name"))
+    """Ensure inventory item + master product mapping stays in sync."""
+    inventory_item_id = _get_or_create_inventory_item(cursor, data)
+    master_product_code = (data.get("code") or "").strip().upper()
+    master_product_name = (data.get("name") or "").strip()
     product_status = data.get("status", "PUBLISHED")
     master_status = "ACTIVE" if product_status == "PUBLISHED" else "INACTIVE"
 
@@ -101,6 +102,7 @@ def _sync_master_product_entities(cursor, product_id: int, data: dict):
         master_product_code,
         master_product_name,
         master_status,
+        inventory_item_id,
     )
 
     _upsert_product_variant(
@@ -120,26 +122,41 @@ def _sync_master_product_entities(cursor, product_id: int, data: dict):
     )
 
 
-def _derive_master_product_code(code: str | None) -> str:
-    if not code:
-        raise ValueError("建立主商品時必須提供產品編號")
-    # Use a shared prefix so related SKUs (e.g. PCP0701/PCP0702/PCP0703)
-    # aggregate under the same master product without flooding inbound
-    # inventory screens with every variant code. Defaults to the first
-    # 5 characters, which mirrors the previous grouping behavior that kept
-    # inbound purchase lists concise.
-    normalized = code.strip().upper()
-    return normalized[:5] if len(normalized) > 5 else normalized
+def _get_or_create_inventory_item(cursor, data: dict) -> int:
+    explicit_id = data.get("inventory_item_id")
+    if explicit_id:
+        cursor.execute(
+            "SELECT inventory_item_id FROM inventory_items WHERE inventory_item_id = %s",
+            (explicit_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return row["inventory_item_id"]
+        raise ValueError("指定的 inventory_item_id 不存在")
 
-
-def _derive_master_product_name(name: str | None) -> str:
+    name = (data.get("name") or "").strip()
     if not name:
-        return ""
-    base = name.split("-", 1)[0].strip(" -")
-    return base or name
+        raise ValueError("建立庫存單位時必須提供產品名稱")
+
+    cursor.execute(
+        "SELECT inventory_item_id FROM inventory_items WHERE name = %s",
+        (name,),
+    )
+    row = cursor.fetchone()
+    if row:
+        return row["inventory_item_id"]
+
+    cursor.execute(
+        "INSERT INTO inventory_items (inventory_code, name, status) VALUES (%s, %s, 'ACTIVE')",
+        ((data.get("code") or None), name),
+    )
+    return cursor.lastrowid
 
 
-def _upsert_master_product(cursor, master_product_code: str, name: str, status: str) -> int:
+def _upsert_master_product(cursor, master_product_code: str, name: str, status: str, inventory_item_id: int) -> int:
+    if not master_product_code:
+        raise ValueError("建立主商品時必須提供產品編號")
+
     cursor.execute(
         "SELECT master_product_id, name, status FROM master_product WHERE master_product_code = %s",
         (master_product_code,),
@@ -149,19 +166,16 @@ def _upsert_master_product(cursor, master_product_code: str, name: str, status: 
         master_product_id = row["master_product_id"]
         updates = []
         params = []
-        existing_name = row.get("name")
         desired_name = name or master_product_code
 
-        # Avoid overwriting an existing master product name derived from the
-        # first SKU in a group. Only update the name when it is empty or still
-        # matches the default code-derived placeholder.
-        if (existing_name or "").strip() in {"", master_product_code} and desired_name != existing_name:
+        if desired_name and row.get("name") != desired_name:
             updates.append("name = %s")
             params.append(desired_name)
-
         if row.get("status") != status:
             updates.append("status = %s")
             params.append(status)
+        updates.append("inventory_item_id = %s")
+        params.append(inventory_item_id)
 
         if updates:
             params.append(master_product_id)
@@ -172,8 +186,8 @@ def _upsert_master_product(cursor, master_product_code: str, name: str, status: 
         return master_product_id
 
     cursor.execute(
-        "INSERT INTO master_product (master_product_code, name, status) VALUES (%s, %s, %s)",
-        (master_product_code, name or master_product_code, status),
+        "INSERT INTO master_product (master_product_code, name, status, inventory_item_id) VALUES (%s, %s, %s, %s)",
+        (master_product_code, name or master_product_code, status, inventory_item_id),
     )
     return cursor.lastrowid
 
@@ -215,11 +229,11 @@ def _sync_store_type_price(cursor, master_product_id: int, purchase_price):
     for store_type in ("DIRECT", "FRANCHISE"):
         cursor.execute(
             """
-            INSERT INTO store_type_price (master_product_id, store_type, cost_price)
-            VALUES (%s, %s, %s)
-            ON DUPLICATE KEY UPDATE cost_price = VALUES(cost_price)
+            INSERT INTO store_type_price (master_product_id, inventory_item_id, store_type, cost_price)
+            SELECT %s, mp.inventory_item_id, %s, %s FROM master_product mp WHERE mp.master_product_id = %s
+            ON DUPLICATE KEY UPDATE cost_price = VALUES(cost_price), inventory_item_id = VALUES(inventory_item_id)
             """,
-            (master_product_id, store_type, purchase_price),
+            (master_product_id, store_type, purchase_price, master_product_id),
         )
 
 

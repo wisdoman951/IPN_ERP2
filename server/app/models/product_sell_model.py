@@ -51,6 +51,22 @@ def _get_master_product_id_for_variant(cursor, variant_id: int | None):
     return row["master_product_id"] if row else None
 
 
+def _get_inventory_item_id_for_variant(cursor, variant_id: int | None):
+    if variant_id is None:
+        return None
+    cursor.execute(
+        """
+        SELECT p.inventory_item_id
+        FROM product_variant pv
+        JOIN product p ON p.product_id = pv.variant_id
+        WHERE pv.variant_id = %s
+        """,
+        (variant_id,),
+    )
+    row = cursor.fetchone()
+    return row["inventory_item_id"] if row else None
+
+
 def _adjust_master_stock_for_variant(
     cursor,
     variant_id: int | None,
@@ -64,7 +80,8 @@ def _adjust_master_stock_for_variant(
         return
 
     master_product_id = _get_master_product_id_for_variant(cursor, variant_id)
-    if master_product_id is None:
+    inventory_item_id = _get_inventory_item_id_for_variant(cursor, variant_id)
+    if inventory_item_id is None:
         return
 
     store_scoped = _master_stock_supports_store_level()
@@ -74,27 +91,27 @@ def _adjust_master_stock_for_variant(
 
     if store_scoped:
         select_query = (
-            "SELECT quantity_on_hand FROM master_stock WHERE master_product_id = %s AND store_id = %s FOR UPDATE"
+            "SELECT quantity_on_hand FROM master_stock WHERE inventory_item_id = %s AND store_id = %s FOR UPDATE"
         )
-        select_params = (master_product_id, store_value)
+        select_params = (inventory_item_id, store_value)
     else:
-        select_query = "SELECT quantity_on_hand FROM master_stock WHERE master_product_id = %s FOR UPDATE"
-        select_params = (master_product_id,)
+        select_query = "SELECT quantity_on_hand FROM master_stock WHERE inventory_item_id = %s FOR UPDATE"
+        select_params = (inventory_item_id,)
 
     cursor.execute(select_query, select_params)
     row = cursor.fetchone()
     if row is None:
         if store_scoped:
             cursor.execute(
-                "INSERT INTO master_stock (master_product_id, store_id, quantity_on_hand) VALUES (%s, %s, 0)"
+                "INSERT INTO master_stock (inventory_item_id, master_product_id, store_id, quantity_on_hand) VALUES (%s, %s, %s, 0)"
                 " ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand",
-                (master_product_id, store_value),
+                (inventory_item_id, master_product_id, store_value),
             )
         else:
             cursor.execute(
-                "INSERT INTO master_stock (master_product_id, quantity_on_hand) VALUES (%s, 0)"
+                "INSERT INTO master_stock (inventory_item_id, master_product_id, quantity_on_hand) VALUES (%s, %s, 0)"
                 " ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand",
-                (master_product_id,),
+                (inventory_item_id, master_product_id),
             )
         cursor.execute(select_query, select_params)
         row = cursor.fetchone()
@@ -106,16 +123,16 @@ def _adjust_master_stock_for_variant(
 
     if store_scoped:
         update_query = (
-            "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, updated_at = NOW()"
-            " WHERE master_product_id = %s AND store_id = %s"
+            "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, master_product_id = %s, updated_at = NOW()"
+            " WHERE inventory_item_id = %s AND store_id = %s"
         )
-        update_params = (quantity_change, master_product_id, store_value)
+        update_params = (quantity_change, master_product_id, inventory_item_id, store_value)
     else:
         update_query = (
-            "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, updated_at = NOW()"
-            " WHERE master_product_id = %s"
+            "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, master_product_id = %s, updated_at = NOW()"
+            " WHERE inventory_item_id = %s"
         )
-        update_params = (quantity_change, master_product_id)
+        update_params = (quantity_change, master_product_id, inventory_item_id)
     cursor.execute(update_query, update_params)
 
     txn_type = "ADJUST"
@@ -126,11 +143,12 @@ def _adjust_master_stock_for_variant(
 
     cursor.execute(
         """
-        INSERT INTO stock_transaction (master_product_id, variant_id, store_id, staff_id, txn_type, quantity, reference_no, note)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+        INSERT INTO stock_transaction (master_product_id, inventory_item_id, variant_id, store_id, staff_id, txn_type, quantity, reference_no, note)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """,
         (
             master_product_id,
+            inventory_item_id,
             variant_id,
             store_value if store_scoped else None,
             staff_id,
@@ -156,7 +174,8 @@ def _build_master_stock_join_clause(store_id):
             SELECT pv.variant_id AS product_id,
                    SUM(ms.quantity_on_hand) AS quantity_on_hand
             FROM product_variant pv
-            JOIN master_stock ms ON ms.master_product_id = pv.master_product_id
+            JOIN product p2 ON p2.product_id = pv.variant_id
+            JOIN master_stock ms ON ms.inventory_item_id = p2.inventory_item_id
             {where_clause}
             GROUP BY pv.variant_id
         ) ms_inventory ON ms_inventory.product_id = p.product_id
