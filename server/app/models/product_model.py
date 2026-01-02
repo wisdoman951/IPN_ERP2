@@ -123,7 +123,13 @@ def _sync_master_product_entities(cursor, product_id: int, data: dict):
 def _derive_master_product_code(code: str | None) -> str:
     if not code:
         raise ValueError("建立主商品時必須提供產品編號")
-    return code.upper()
+    # Use a shared prefix so related SKUs (e.g. PCP0701/PCP0702/PCP0703)
+    # aggregate under the same master product without flooding inbound
+    # inventory screens with every variant code. Defaults to the first
+    # 5 characters, which mirrors the previous grouping behavior that kept
+    # inbound purchase lists concise.
+    normalized = code.strip().upper()
+    return normalized[:5] if len(normalized) > 5 else normalized
 
 
 def _derive_master_product_name(name: str | None) -> str:
@@ -141,10 +147,28 @@ def _upsert_master_product(cursor, master_product_code: str, name: str, status: 
     row = cursor.fetchone()
     if row:
         master_product_id = row["master_product_id"]
-        cursor.execute(
-            "UPDATE master_product SET name = %s, status = %s WHERE master_product_id = %s",
-            (name or master_product_code, status, master_product_id),
-        )
+        updates = []
+        params = []
+        existing_name = row.get("name")
+        desired_name = name or master_product_code
+
+        # Avoid overwriting an existing master product name derived from the
+        # first SKU in a group. Only update the name when it is empty or still
+        # matches the default code-derived placeholder.
+        if (existing_name or "").strip() in {"", master_product_code} and desired_name != existing_name:
+            updates.append("name = %s")
+            params.append(desired_name)
+
+        if row.get("status") != status:
+            updates.append("status = %s")
+            params.append(status)
+
+        if updates:
+            params.append(master_product_id)
+            cursor.execute(
+                f"UPDATE master_product SET {', '.join(updates)} WHERE master_product_id = %s",
+                params,
+            )
         return master_product_id
 
     cursor.execute(
