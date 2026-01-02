@@ -123,8 +123,6 @@ def _sync_master_product_entities(cursor, product_id: int, data: dict):
 def _derive_master_product_code(code: str | None) -> str:
     if not code:
         raise ValueError("建立主商品時必須提供產品編號")
-    # Use the full product code to avoid grouping distinct custom codes under
-    # the same master product (e.g. PCP0701/PCP0702/PCP0703).
     return code.upper()
 
 
