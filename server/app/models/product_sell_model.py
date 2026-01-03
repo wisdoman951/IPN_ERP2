@@ -171,6 +171,7 @@ def _build_master_stock_join_clause(store_id):
     store_id_value = _normalize_int(store_id)
     params: list[int] = []
     where_clause = ""
+
     if store_scoped and store_id_value is not None:
         where_clause = "WHERE ms.store_id = %s"
         params.append(store_id_value)
@@ -179,8 +180,7 @@ def _build_master_stock_join_clause(store_id):
         LEFT JOIN (
             SELECT {_product_code_prefix_expr("p2.code")} AS code_prefix,
                    SUM(ms.quantity_on_hand) AS quantity_on_hand
-            FROM product_variant pv
-            JOIN product p2 ON p2.product_id = pv.variant_id
+            FROM product p2
             JOIN master_stock ms ON ms.inventory_item_id = p2.inventory_item_id
             {where_clause}
             GROUP BY code_prefix
