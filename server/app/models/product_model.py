@@ -47,6 +47,23 @@ def create_product(data: dict):
         conn.close()
 
 
+def find_products_with_prefix(code_prefix: str) -> list[dict]:
+    """列出與指定產品編號前綴相符的產品。"""
+    if not code_prefix:
+        return []
+
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT product_id, name, code FROM product WHERE LEFT(code, %s) = %s",
+                (len(code_prefix), code_prefix),
+            )
+            return list(cursor.fetchall())
+    finally:
+        conn.close()
+
+
 def update_product(product_id: int, data: dict):
     """更新產品資料"""
     conn = connect_to_db()
