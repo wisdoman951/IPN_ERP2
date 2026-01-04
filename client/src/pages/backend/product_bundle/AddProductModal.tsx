@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Form, Button, Alert } from 'react-bootstrap';
+import axios from 'axios';
 import { addProduct, updateProduct } from '../../../services/ProductService';
 import { Product as ProductItem } from '../../../services/ProductBundleService';
 import { getCategories, Category } from '../../../services/CategoryService';
@@ -181,53 +182,54 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        try {
-            const tierValidation = computeTierValidation(priceMap);
-            if (tierValidation) {
-                setTierValidationMessage(tierValidation);
-                setFormError(tierValidation);
+        const tierValidation = computeTierValidation(priceMap);
+        if (tierValidation) {
+            setTierValidationMessage(tierValidation);
+            setFormError(tierValidation);
+            return;
+        }
+
+        const priceTiersPayload: { identity_type: MemberIdentity; price: number }[] = [];
+
+        const generalEntry = priceMap['一般售價'];
+        const generalPriceRaw = generalEntry?.value ?? '';
+        const generalPrice = Number(generalPriceRaw);
+        if (generalEntry?.enabled) {
+            if (!generalPriceRaw || Number.isNaN(generalPrice) || generalPrice < 0) {
+                const message = '請輸入有效的一般售價';
+                setTierValidationMessage(message);
+                setFormError(message);
                 return;
             }
+            priceTiersPayload.push({ identity_type: '一般售價', price: generalPrice });
+        }
 
-            const priceTiersPayload: { identity_type: MemberIdentity; price: number }[] = [];
-
-            const generalEntry = priceMap['一般售價'];
-            const generalPriceRaw = generalEntry?.value ?? '';
-            const generalPrice = Number(generalPriceRaw);
-            if (generalEntry?.enabled) {
-                if (!generalPriceRaw || Number.isNaN(generalPrice) || generalPrice < 0) {
-                    const message = '請輸入有效的一般售價';
-                    setTierValidationMessage(message);
-                    setFormError(message);
-                    return;
-                }
-                priceTiersPayload.push({ identity_type: '一般售價', price: generalPrice });
+        for (const { value } of MEMBER_IDENTITY_OPTIONS) {
+            if (value === '一般售價') continue;
+            const entry = priceMap[value];
+            if (!entry?.enabled) continue;
+            const parsed = Number(entry.value);
+            if (!entry.value || Number.isNaN(parsed) || parsed < 0) {
+                const message = `請輸入有效的「${value}」售價`;
+                setTierValidationMessage(message);
+                setFormError(message);
+                return;
             }
+            priceTiersPayload.push({ identity_type: value, price: parsed });
+        }
 
-            for (const { value } of MEMBER_IDENTITY_OPTIONS) {
-                if (value === '一般售價') continue;
-                const entry = priceMap[value];
-                if (!entry?.enabled) continue;
-                const parsed = Number(entry.value);
-                if (!entry.value || Number.isNaN(parsed) || parsed < 0) {
-                    const message = `請輸入有效的「${value}」售價`;
-                    setTierValidationMessage(message);
-                    setFormError(message);
-                    return;
-                }
-                priceTiersPayload.push({ identity_type: value, price: parsed });
-            }
+        const payload = {
+            code,
+            name,
+            price: generalEntry?.enabled ? generalPrice : null,
+            purchase_price: purchasePrice === '' ? null : Number(purchasePrice),
+            visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
+            visible_permissions: selectedViewerRoles.length > 0 ? selectedViewerRoles : null,
+            category_ids: selectedCategoryIds,
+            price_tiers: priceTiersPayload,
+        };
 
-            const payload = {
-                code,
-                name,
-                price: generalEntry?.enabled ? generalPrice : null,
-                purchase_price: purchasePrice === '' ? null : Number(purchasePrice),
-                visible_store_ids: selectedStoreIds.length > 0 ? selectedStoreIds : null,
-                visible_permissions: selectedViewerRoles.length > 0 ? selectedViewerRoles : null,
-                category_ids: selectedCategoryIds,
-                price_tiers: priceTiersPayload,
-            };
+        try {
             if (editingProduct) {
                 await updateProduct(editingProduct.product_id, payload);
             } else {
@@ -237,6 +239,32 @@ const AddProductModal: React.FC<AddProductModalProps> = ({ show, onHide, editing
             setTierValidationMessage(null);
             onHide();
         } catch (err) {
+            if (!editingProduct && axios.isAxiosError(err)) {
+                const { status, data } = err.response || {};
+                if (status === 409 && data?.requires_confirmation) {
+                    const conflictList = Array.isArray(data.conflicts)
+                        ? data.conflicts.map((item: any) => `${item.name}（${item.code}）`).join('\n')
+                        : '';
+                    const confirmationMessage = `${data.error || '偵測到產品編號前綴與其他商品相同。'}${conflictList ? `\n\n已存在的商品：\n${conflictList}` : ''}\n\n若為同一商品僅不同編號，請確認後繼續新增。`;
+                    const shouldForceCreate = window.confirm(confirmationMessage);
+
+                    if (shouldForceCreate) {
+                        try {
+                            await addProduct({ ...payload, force_create: true });
+                            setFormError(null);
+                            setTierValidationMessage(null);
+                            onHide();
+                            return;
+                        } catch {
+                            setFormError('新增產品失敗');
+                            return;
+                        }
+                    }
+
+                    setFormError('已取消新增，請確認產品編號前綴是否正確。');
+                    return;
+                }
+            }
             setFormError(editingProduct ? '更新產品失敗' : '新增產品失敗');
         }
     };
