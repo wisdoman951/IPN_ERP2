@@ -1,6 +1,8 @@
-from flask import Blueprint, request, jsonify, send_file
-import pandas as pd
+import logging
 import io
+
+import pandas as pd
+from flask import Blueprint, request, jsonify, send_file
 
 from app.models.inventory_model import (
     get_all_inventory,
@@ -28,6 +30,8 @@ from app.models.master_stock_model import (
 )
 
 from app.middleware import auth_required, get_user_from_token
+
+logger = logging.getLogger(__name__)
 
 inventory_bp = Blueprint("inventory", __name__)
 
@@ -570,6 +574,15 @@ def master_stock_inbound():
     inventory_item_id = _safe_int(data.get("inventory_item_id"))
     quantity = _safe_int(data.get("quantity"))
     apply_prefix_bundle = _safe_bool(data.get("apply_prefix_bundle"))
+    logger.debug(
+        "master_stock_inbound payload=%s | parsed master_product_id=%s variant_id=%s inventory_item_id=%s quantity=%s apply_prefix_bundle=%s",
+        data,
+        master_product_id,
+        product_id,
+        inventory_item_id,
+        quantity,
+        apply_prefix_bundle,
+    )
     if not any([master_product_id, product_id, inventory_item_id]) or not quantity:
         return jsonify({"error": "需要 inventory_item_id / master_product_id / product_id 並提供 quantity"}), 400
 
@@ -580,6 +593,14 @@ def master_stock_inbound():
         return jsonify({"error": str(exc)}), 403
     if not store_id:
         return jsonify({"error": "請提供有效的 store_id"}), 400
+
+    logger.debug(
+        "master_stock_inbound store context | requested_store_id=%s resolved_store_id=%s user_info_store_id=%s",
+        data.get("store_id"),
+        store_id,
+        user_info.get("store_id"),
+        extra={"user_id": user_info.get("staff_id")},
+    )
 
     staff_id = _safe_int(data.get("staff_id")) or _safe_int(user_info.get("staff_id"))
 

@@ -141,7 +141,10 @@ def _resolve_inventory_item_id(
     """Find a valid inventory_item_id for the given identifiers."""
 
     logger.debug(
-        "Resolving inventory_item_id",
+        "Resolving inventory_item_id (master_product_id=%s, variant_id=%s, inventory_item_id=%s)",
+        master_product_id,
+        variant_id,
+        inventory_item_id,
         extra={
             "master_product_id": master_product_id,
             "variant_id": variant_id,
@@ -156,7 +159,8 @@ def _resolve_inventory_item_id(
         row = cursor.fetchone()
         if row:
             logger.debug(
-                "Resolved inventory_item_id directly from inventory_items",
+                "Resolved inventory_item_id directly from inventory_items: %s",
+                row["inventory_item_id"],
                 extra={"resolved_inventory_item_id": row["inventory_item_id"]},
             )
             return row["inventory_item_id"]
@@ -169,7 +173,8 @@ def _resolve_inventory_item_id(
         row = cursor.fetchone()
         if row and row.get("inventory_item_id"):
             logger.debug(
-                "Resolved inventory_item_id from master_product",
+                "Resolved inventory_item_id from master_product: %s",
+                row.get("inventory_item_id"),
                 extra={"resolved_inventory_item_id": row.get("inventory_item_id")},
             )
             return row["inventory_item_id"]
@@ -187,7 +192,8 @@ def _resolve_inventory_item_id(
         row = cursor.fetchone()
         if row and row.get("inventory_item_id"):
             logger.debug(
-                "Resolved inventory_item_id from product_variant via product",
+                "Resolved inventory_item_id from product_variant via product: %s",
+                row.get("inventory_item_id"),
                 extra={"resolved_inventory_item_id": row.get("inventory_item_id")},
             )
             return row["inventory_item_id"]
@@ -204,13 +210,17 @@ def _resolve_inventory_item_id(
         row = cursor.fetchone()
         if row and row.get("inventory_item_id"):
             logger.debug(
-                "Resolved inventory_item_id from product_variant via master_product",
+                "Resolved inventory_item_id from product_variant via master_product: %s",
+                row.get("inventory_item_id"),
                 extra={"resolved_inventory_item_id": row.get("inventory_item_id")},
             )
             return row["inventory_item_id"]
 
     logger.warning(
-        "Failed to resolve inventory_item_id",
+        "Failed to resolve inventory_item_id (master_product_id=%s, variant_id=%s, inventory_item_id=%s)",
+        master_product_id,
+        variant_id,
+        inventory_item_id,
         extra={
             "master_product_id": master_product_id,
             "variant_id": variant_id,
@@ -474,6 +484,15 @@ def receive_master_stock(
                 master_product_id=master_product_id,
                 variant_id=variant_id,
                 inventory_item_id=inventory_item_id,
+            )
+
+            logger.debug(
+                "Resolved inventory_item_id for inbound: %s",
+                inventory_item_id,
+                extra={
+                    "master_product_id": master_product_id,
+                    "variant_id": variant_id,
+                },
             )
 
             family_ids: list[int] = [inventory_item_id]
