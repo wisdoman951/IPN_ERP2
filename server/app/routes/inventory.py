@@ -43,6 +43,14 @@ def _safe_int(value):
         return None
 
 
+def _safe_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.lower() in {"1", "true", "yes", "y"}
+    return False
+
+
 def _get_auth_context():
     """
     從 token 取得使用者資訊，統一判斷是否為 admin / 總店。
@@ -443,10 +451,13 @@ def export_inventory():
 def list_master_products_route():
     """進貨視窗：僅顯示 master 商品，並依店型顯示成本價。"""
     keyword = request.args.get("q")
+    merge_prefix = _safe_bool(request.args.get("merge_prefix"))
     ctx = _get_auth_context()
     store_type = ctx["store_type"]
     store_id = ctx["store_id"]
-    products = list_master_products_for_inbound(store_type, store_id, keyword)
+    products = list_master_products_for_inbound(
+        store_type, store_id, keyword, merge_prefix=merge_prefix
+    )
     return jsonify(products)
 
 
@@ -558,6 +569,7 @@ def master_stock_inbound():
     product_id = _safe_int(data.get("product_id"))
     inventory_item_id = _safe_int(data.get("inventory_item_id"))
     quantity = _safe_int(data.get("quantity"))
+    apply_prefix_bundle = _safe_bool(data.get("apply_prefix_bundle"))
     if not any([master_product_id, product_id, inventory_item_id]) or not quantity:
         return jsonify({"error": "需要 inventory_item_id / master_product_id / product_id 並提供 quantity"}), 400
 
@@ -581,6 +593,7 @@ def master_stock_inbound():
             data.get("note"),
             variant_id=product_id,
             inventory_item_id=inventory_item_id,
+            apply_prefix_bundle=apply_prefix_bundle,
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400

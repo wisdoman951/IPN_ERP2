@@ -1,8 +1,12 @@
-import pymysql
 import json
 from typing import Iterable
-from app.config import DB_CONFIG
+
+import pymysql
 from pymysql.cursors import DictCursor
+
+from app.config import DB_CONFIG
+
+PREFIX_LENGTH = 5
 
 
 def connect_to_db():
@@ -15,6 +19,10 @@ def create_product(data: dict):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            master_product_code, preferred_inventory_item_id = _prepare_master_context(
+                cursor, data
+            )
+
             query = (
                 "INSERT INTO product (code, name, price, purchase_price, visible_store_ids, visible_permissions, status) "
                 "VALUES (%s, %s, %s, %s, %s, %s, 'PUBLISHED')"
@@ -29,7 +37,13 @@ def create_product(data: dict):
             ))
             product_id = conn.insert_id()
 
-            _sync_master_product_entities(cursor, product_id, data)
+            _sync_master_product_entities(
+                cursor,
+                product_id,
+                data,
+                master_product_code_override=master_product_code,
+                preferred_inventory_item_id=preferred_inventory_item_id,
+            )
 
             _sync_product_price_tiers(cursor, product_id, data.get("price_tiers"))
 
@@ -54,6 +68,9 @@ def update_product(product_id: int, data: dict):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
+            master_product_code, preferred_inventory_item_id = _prepare_master_context(
+                cursor, data
+            )
             query = (
                 "UPDATE product SET code=%s, name=%s, price=%s, purchase_price=%s, visible_store_ids=%s, visible_permissions=%s WHERE product_id=%s"
             )
@@ -80,7 +97,13 @@ def update_product(product_id: int, data: dict):
 
             _sync_product_price_tiers(cursor, product_id, data.get("price_tiers"))
 
-            _sync_master_product_entities(cursor, product_id, data)
+            _sync_master_product_entities(
+                cursor,
+                product_id,
+                data,
+                master_product_code_override=master_product_code,
+                preferred_inventory_item_id=preferred_inventory_item_id,
+            )
         conn.commit()
     except Exception as e:
         conn.rollback()
@@ -89,10 +112,19 @@ def update_product(product_id: int, data: dict):
         conn.close()
 
 
-def _sync_master_product_entities(cursor, product_id: int, data: dict):
+def _sync_master_product_entities(
+    cursor,
+    product_id: int,
+    data: dict,
+    *,
+    master_product_code_override: str | None = None,
+    preferred_inventory_item_id: int | None = None,
+):
     """Ensure inventory item + master product mapping stays in sync."""
-    inventory_item_id = _get_or_create_inventory_item(cursor, data)
-    master_product_code = (data.get("code") or "").strip().upper()
+    inventory_item_id = _get_or_create_inventory_item(
+        cursor, data, preferred_inventory_item_id
+    )
+    master_product_code = (master_product_code_override or data.get("code") or "").strip().upper()
     master_product_name = (data.get("name") or "").strip()
     product_status = data.get("status", "PUBLISHED")
     master_status = "ACTIVE" if product_status == "PUBLISHED" else "INACTIVE"
@@ -103,6 +135,11 @@ def _sync_master_product_entities(cursor, product_id: int, data: dict):
         master_product_name,
         master_status,
         inventory_item_id,
+    )
+
+    cursor.execute(
+        "UPDATE product SET inventory_item_id = %s WHERE product_id = %s",
+        (inventory_item_id, product_id),
     )
 
     _upsert_product_variant(
@@ -122,7 +159,46 @@ def _sync_master_product_entities(cursor, product_id: int, data: dict):
     )
 
 
-def _get_or_create_inventory_item(cursor, data: dict) -> int:
+def _prepare_master_context(cursor, data: dict) -> tuple[str, int | None]:
+    """Handle prefix-based validation/merging before syncing master data."""
+
+    master_product_code = (data.get("code") or "").strip().upper()
+    if not master_product_code:
+        raise ValueError("建立主商品時必須提供產品編號")
+
+    prefix = master_product_code[:PREFIX_LENGTH]
+    cursor.execute(
+        """
+        SELECT master_product_id, master_product_code, inventory_item_id, name
+        FROM master_product
+        WHERE master_product_code LIKE %s
+        ORDER BY master_product_id ASC
+        LIMIT 10
+        """,
+        (f"{prefix}%",),
+    )
+    existing = cursor.fetchall() or []
+
+    if existing:
+        merge_requested = bool(data.get("merge_with_prefix"))
+        force_new = bool(data.get("force_new_prefix"))
+        codes = [row["master_product_code"] for row in existing]
+        if merge_requested:
+            chosen = existing[0]
+            return chosen["master_product_code"], chosen.get("inventory_item_id")
+        if not force_new and master_product_code not in codes:
+            names = "、".join({row.get("name") or row.get("master_product_code") for row in existing})
+            raise ValueError(
+                f"已存在相同前綴({prefix})的主商品：{', '.join(codes)}（{names}）。"
+                " 若為同品項請帶 merge_with_prefix=true 共用庫存，若確定是不同商品請帶 force_new_prefix=true。"
+            )
+
+    return master_product_code, None
+
+
+def _get_or_create_inventory_item(
+    cursor, data: dict, preferred_inventory_item_id: int | None = None
+) -> int:
     explicit_id = data.get("inventory_item_id")
     if explicit_id:
         cursor.execute(
@@ -133,6 +209,15 @@ def _get_or_create_inventory_item(cursor, data: dict) -> int:
         if row:
             return row["inventory_item_id"]
         raise ValueError("指定的 inventory_item_id 不存在")
+
+    if preferred_inventory_item_id:
+        cursor.execute(
+            "SELECT inventory_item_id FROM inventory_items WHERE inventory_item_id = %s",
+            (preferred_inventory_item_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return row["inventory_item_id"]
 
     name = (data.get("name") or "").strip()
     if not name:
