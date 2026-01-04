@@ -97,6 +97,46 @@ def _resolve_inventory_item_id(cursor, *, master_product_id: int | None = None, 
     raise ValueError("無法推導 inventory_item_id，請確認商品設定")
 
 
+def _resolve_master_product_id(
+    cursor,
+    *,
+    master_product_id: int | None = None,
+    inventory_item_id: int | None = None,
+    variant_id: int | None = None,
+) -> int:
+    """Find a valid master_product_id for the given identifiers."""
+
+    if master_product_id is not None:
+        cursor.execute(
+            "SELECT master_product_id FROM master_product WHERE master_product_id = %s",
+            (master_product_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return row["master_product_id"]
+        raise ValueError("找不到對應的 master 商品，請確認 master_product_id")
+
+    if variant_id is not None:
+        cursor.execute(
+            "SELECT master_product_id FROM product_variant WHERE variant_id = %s",
+            (variant_id,),
+        )
+        row = cursor.fetchone()
+        if row and row.get("master_product_id"):
+            return row["master_product_id"]
+
+    if inventory_item_id is not None:
+        cursor.execute(
+            "SELECT master_product_id FROM master_product WHERE inventory_item_id = %s",
+            (inventory_item_id,),
+        )
+        row = cursor.fetchone()
+        if row and row.get("master_product_id"):
+            return row["master_product_id"]
+
+    raise ValueError("找不到對應的 master 商品，請確認商品設定")
+
+
 def list_master_products_for_inbound(
     store_type: str | None,
     store_id: int | str | None,
@@ -292,6 +332,13 @@ def receive_master_stock(
     try:
         with conn.cursor() as cursor:
             inventory_item_id = _resolve_inventory_item_id(cursor, master_product_id=master_product_id, variant_id=variant_id)
+
+            master_product_id = _resolve_master_product_id(
+                cursor,
+                master_product_id=master_product_id,
+                inventory_item_id=inventory_item_id,
+                variant_id=variant_id,
+            )
 
             cursor.execute(
                 "SELECT quantity_on_hand FROM master_stock WHERE inventory_item_id = %s AND store_id = %s FOR UPDATE",
