@@ -210,6 +210,28 @@ def _build_inventory_prefix_join_clause(store_id):
     """
     return join_clause, params
 
+
+def _build_inventory_product_join_clause(store_id):
+    params: list[int] = []
+    where_clause = ""
+    store_id_value = _normalize_int(store_id)
+    if store_id_value is not None:
+        where_clause = "WHERE i.store_id = %s"
+        params.append(store_id_value)
+
+    join_clause = f"""
+        LEFT JOIN (
+            SELECT p2.product_id,
+                   SUM(i.quantity) AS quantity
+            FROM product p2
+            LEFT JOIN inventory i ON p2.product_id = i.product_id
+            {where_clause}
+            GROUP BY p2.product_id
+        ) inv_direct ON inv_direct.product_id = p.product_id
+    """
+
+    return join_clause, params
+
 def get_all_product_sells(store_id=None):
     """獲取產品銷售紀錄，可選用 store_id 過濾"""
     conn = connect_to_db()
@@ -852,7 +874,8 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 p.visible_permissions,
                 CASE
                     WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL THEN MAX(ms_inventory.quantity_on_hand)
-                    ELSE COALESCE(MAX(inv_inventory.quantity), 0)
+                    WHEN MAX(inv_inventory.quantity) IS NOT NULL THEN MAX(inv_inventory.quantity)
+                    ELSE COALESCE(MAX(inv_direct.quantity), 0)
                 END AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
@@ -880,13 +903,15 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
         params: list = []
 
         inventory_join_clause, inventory_params = _build_inventory_prefix_join_clause(store_id)
+        direct_inventory_join_clause, direct_inventory_params = _build_inventory_product_join_clause(store_id)
         master_join_clause, master_params = _build_master_stock_join_clause(store_id)
 
         query = (
-            base_query.replace("{inventory_join}", inventory_join_clause)
+            base_query.replace("{inventory_join}", inventory_join_clause + direct_inventory_join_clause)
             .replace("{master_join}", master_join_clause)
         )
         params.extend(inventory_params)
+        params.extend(direct_inventory_params)
         params.extend(master_params)
         if status:
             query += " WHERE p.status = %s"
@@ -950,7 +975,8 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 p.visible_permissions,
                 CASE
                     WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL THEN MAX(ms_inventory.quantity_on_hand)
-                    ELSE COALESCE(MAX(inv_inventory.quantity), 0)
+                    WHEN MAX(inv_inventory.quantity) IS NOT NULL THEN MAX(inv_inventory.quantity)
+                    ELSE COALESCE(MAX(inv_direct.quantity), 0)
                 END AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
@@ -979,8 +1005,10 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
         conditions = []
 
         inventory_join_clause, inventory_params = _build_inventory_prefix_join_clause(store_id)
+        direct_inventory_join_clause, direct_inventory_params = _build_inventory_product_join_clause(store_id)
         master_join_clause, master_params = _build_master_stock_join_clause(store_id)
         params.extend(inventory_params)
+        params.extend(direct_inventory_params)
         params.extend(master_params)
 
         if keyword:
@@ -991,7 +1019,7 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
             params.append(status)
 
         query = (
-            base_query.replace("{inventory_join}", inventory_join_clause)
+            base_query.replace("{inventory_join}", inventory_join_clause + direct_inventory_join_clause)
             .replace("{master_join}", master_join_clause)
         )
 
