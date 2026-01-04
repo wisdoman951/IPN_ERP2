@@ -62,7 +62,22 @@ def _run_with_price_table(operation: Callable[[str], T]) -> T:
     raise RuntimeError("price table operation failed without executing")
 
 
-def _resolve_inventory_item_id(cursor, *, master_product_id: int | None = None, variant_id: int | None = None) -> int:
+def _resolve_inventory_item_id(
+    cursor,
+    *,
+    master_product_id: int | None = None,
+    variant_id: int | None = None,
+    inventory_item_id: int | None = None,
+) -> int:
+    if inventory_item_id is not None:
+        cursor.execute(
+            "SELECT inventory_item_id FROM inventory_items WHERE inventory_item_id = %s",
+            (inventory_item_id,),
+        )
+        row = cursor.fetchone()
+        if row:
+            return row["inventory_item_id"]
+
     if master_product_id is not None:
         cursor.execute(
             "SELECT inventory_item_id FROM master_product WHERE master_product_id = %s",
@@ -70,14 +85,6 @@ def _resolve_inventory_item_id(cursor, *, master_product_id: int | None = None, 
         )
         row = cursor.fetchone()
         if row and row.get("inventory_item_id"):
-            return row["inventory_item_id"]
-        # allow passing inventory_item_id directly for new API paths
-        cursor.execute(
-            "SELECT inventory_item_id FROM inventory_items WHERE inventory_item_id = %s",
-            (master_product_id,),
-        )
-        row = cursor.fetchone()
-        if row:
             return row["inventory_item_id"]
 
     if variant_id is not None:
@@ -321,6 +328,7 @@ def receive_master_stock(
     reference_no: str | None = None,
     note: str | None = None,
     variant_id: int | None = None,
+    inventory_item_id: int | None = None,
 ) -> dict:
     if quantity is None or int(quantity) <= 0:
         raise ValueError("進貨數量必須大於 0")
@@ -331,7 +339,19 @@ def receive_master_stock(
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            inventory_item_id = _resolve_inventory_item_id(cursor, master_product_id=master_product_id, variant_id=variant_id)
+            inventory_item_id = _resolve_inventory_item_id(
+                cursor,
+                master_product_id=master_product_id,
+                variant_id=variant_id,
+                inventory_item_id=inventory_item_id,
+            )
+
+            master_product_id = _resolve_master_product_id(
+                cursor,
+                master_product_id=master_product_id,
+                inventory_item_id=inventory_item_id,
+                variant_id=variant_id,
+            )
 
             master_product_id = _resolve_master_product_id(
                 cursor,
