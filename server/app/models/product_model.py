@@ -15,18 +15,33 @@ def create_product(data: dict):
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = (
-                "INSERT INTO product (code, name, price, purchase_price, visible_store_ids, visible_permissions, status) "
-                "VALUES (%s, %s, %s, %s, %s, %s, 'PUBLISHED')"
-            )
-            cursor.execute(query, (
+            has_inventory_link = _product_has_inventory_item_id(cursor)
+
+            if has_inventory_link:
+                query = (
+                    "INSERT INTO product (code, name, price, purchase_price, visible_store_ids, visible_permissions, status, inventory_item_id) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, 'PUBLISHED', %s)"
+                )
+            else:
+                query = (
+                    "INSERT INTO product (code, name, price, purchase_price, visible_store_ids, visible_permissions, status) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, 'PUBLISHED')"
+                )
+
+            params = [
                 data.get("code"),
                 data.get("name"),
                 data.get("price"),
                 data.get("purchase_price"),
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
                 json.dumps(data.get("visible_permissions")) if data.get("visible_permissions") is not None else None,
-            ))
+            ]
+
+            if has_inventory_link:
+                inventory_item_id = data.get("inventory_item_id")
+                params.append(inventory_item_id if inventory_item_id is not None else 0)
+
+            cursor.execute(query, params)
             product_id = conn.insert_id()
 
             _sync_product_price_tiers(cursor, product_id, data.get("price_tiers"))
@@ -47,23 +62,66 @@ def create_product(data: dict):
         conn.close()
 
 
+def find_products_with_prefix(code_prefix: str) -> list[dict]:
+    """列出與指定產品編號前綴相符的產品。"""
+    if not code_prefix:
+        return []
+
+    conn = connect_to_db()
+    try:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT product_id, name, code FROM product WHERE LEFT(code, %s) = %s",
+                (len(code_prefix), code_prefix),
+            )
+            return list(cursor.fetchall())
+    finally:
+        conn.close()
+
+
 def update_product(product_id: int, data: dict):
     """更新產品資料"""
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
-            query = (
-                "UPDATE product SET code=%s, name=%s, price=%s, purchase_price=%s, visible_store_ids=%s, visible_permissions=%s WHERE product_id=%s"
-            )
-            cursor.execute(query, (
+            has_inventory_link = _product_has_inventory_item_id(cursor)
+
+            if has_inventory_link:
+                cursor.execute(
+                    "SELECT inventory_item_id FROM product WHERE product_id = %s",
+                    (product_id,),
+                )
+                existing_row = cursor.fetchone()
+                current_inventory_item_id = (
+                    existing_row.get("inventory_item_id") if existing_row else None
+                )
+
+                query = (
+                    "UPDATE product SET code=%s, name=%s, price=%s, purchase_price=%s, visible_store_ids=%s, visible_permissions=%s, inventory_item_id=%s WHERE product_id=%s"
+                )
+            else:
+                current_inventory_item_id = None
+                query = (
+                    "UPDATE product SET code=%s, name=%s, price=%s, purchase_price=%s, visible_store_ids=%s, visible_permissions=%s WHERE product_id=%s"
+                )
+
+            params = [
                 data.get("code"),
                 data.get("name"),
                 data.get("price"),
                 data.get("purchase_price"),
                 json.dumps(data.get("visible_store_ids")) if data.get("visible_store_ids") is not None else None,
                 json.dumps(data.get("visible_permissions")) if data.get("visible_permissions") is not None else None,
-                product_id,
-            ))
+            ]
+
+            if has_inventory_link:
+                params.append(
+                    data.get("inventory_item_id", current_inventory_item_id)
+                )
+
+            params.append(product_id)
+
+            cursor.execute(query, params)
 
             if "category_ids" in data:
                 cursor.execute(
@@ -104,6 +162,12 @@ def _sync_product_price_tiers(cursor, product_id: int, tiers: Iterable[dict] | N
             "INSERT INTO product_price_tier (product_id, identity_type, price) VALUES (%s, %s, %s)",
             values,
         )
+
+
+def _product_has_inventory_item_id(cursor) -> bool:
+    """Check if the product table has an inventory_item_id column."""
+    cursor.execute("SHOW COLUMNS FROM product LIKE 'inventory_item_id'")
+    return cursor.fetchone() is not None
 
 
 def delete_product(product_id: int):
