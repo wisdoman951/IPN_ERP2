@@ -1,6 +1,7 @@
 """Master stock management helpers."""
 from __future__ import annotations
 
+import logging
 from decimal import Decimal
 from typing import Iterable, Callable, TypeVar
 
@@ -13,6 +14,9 @@ VALID_STORE_TYPES = {"DIRECT", "FRANCHISE"}
 PRICE_TABLE_CANDIDATES: tuple[str, ...] = ("store_type_price", "stock_type_price")
 PREFIX_LENGTH = 5
 T = TypeVar("T")
+
+
+logger = logging.getLogger(__name__)
 
 
 def connect_to_db():
@@ -134,6 +138,16 @@ def _resolve_inventory_item_id(
     variant_id: int | None = None,
     inventory_item_id: int | None = None,
 ) -> int:
+    """Find a valid inventory_item_id for the given identifiers."""
+
+    logger.debug(
+        "Resolving inventory_item_id",
+        extra={
+            "master_product_id": master_product_id,
+            "variant_id": variant_id,
+            "inventory_item_id": inventory_item_id,
+        },
+    )
     if inventory_item_id is not None:
         cursor.execute(
             "SELECT inventory_item_id FROM inventory_items WHERE inventory_item_id = %s",
@@ -141,6 +155,10 @@ def _resolve_inventory_item_id(
         )
         row = cursor.fetchone()
         if row:
+            logger.debug(
+                "Resolved inventory_item_id directly from inventory_items",
+                extra={"resolved_inventory_item_id": row["inventory_item_id"]},
+            )
             return row["inventory_item_id"]
 
     if master_product_id is not None:
@@ -150,6 +168,10 @@ def _resolve_inventory_item_id(
         )
         row = cursor.fetchone()
         if row and row.get("inventory_item_id"):
+            logger.debug(
+                "Resolved inventory_item_id from master_product",
+                extra={"resolved_inventory_item_id": row.get("inventory_item_id")},
+            )
             return row["inventory_item_id"]
 
     if variant_id is not None:
@@ -164,6 +186,10 @@ def _resolve_inventory_item_id(
         )
         row = cursor.fetchone()
         if row and row.get("inventory_item_id"):
+            logger.debug(
+                "Resolved inventory_item_id from product_variant via product",
+                extra={"resolved_inventory_item_id": row.get("inventory_item_id")},
+            )
             return row["inventory_item_id"]
 
         cursor.execute(
@@ -177,8 +203,20 @@ def _resolve_inventory_item_id(
         )
         row = cursor.fetchone()
         if row and row.get("inventory_item_id"):
+            logger.debug(
+                "Resolved inventory_item_id from product_variant via master_product",
+                extra={"resolved_inventory_item_id": row.get("inventory_item_id")},
+            )
             return row["inventory_item_id"]
 
+    logger.warning(
+        "Failed to resolve inventory_item_id",
+        extra={
+            "master_product_id": master_product_id,
+            "variant_id": variant_id,
+            "inventory_item_id": inventory_item_id,
+        },
+    )
     raise ValueError("無法推導 inventory_item_id，請確認商品設定")
 
 
@@ -417,6 +455,17 @@ def receive_master_stock(
     store_id_value = _normalize_store_id(store_id)
     if store_id_value is None:
         raise ValueError("請提供有效的 store_id")
+    logger.debug(
+        "Processing receive_master_stock",
+        extra={
+            "master_product_id": master_product_id,
+            "variant_id": variant_id,
+            "inventory_item_id": inventory_item_id,
+            "store_id": store_id_value,
+            "quantity": qty,
+            "apply_prefix_bundle": apply_prefix_bundle,
+        },
+    )
     conn = connect_to_db()
     try:
         with conn.cursor() as cursor:
