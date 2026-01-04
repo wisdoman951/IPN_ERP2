@@ -573,13 +573,14 @@ def master_stock_inbound():
 
     try:
         stock = receive_master_stock(
-            master_product_id or inventory_item_id,
+            master_product_id,
             quantity,
             store_id,
             staff_id,
             data.get("reference_no"),
             data.get("note"),
             variant_id=product_id,
+            inventory_item_id=inventory_item_id,
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 400
