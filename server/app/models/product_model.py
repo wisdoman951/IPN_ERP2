@@ -69,7 +69,7 @@ def update_product(product_id: int, data: dict):
     try:
         with conn.cursor() as cursor:
             master_product_code, preferred_inventory_item_id = _prepare_master_context(
-                cursor, data
+                cursor, data, product_id=product_id
             )
             query = (
                 "UPDATE product SET code=%s, name=%s, price=%s, purchase_price=%s, visible_store_ids=%s, visible_permissions=%s WHERE product_id=%s"
@@ -159,12 +159,35 @@ def _sync_master_product_entities(
     )
 
 
-def _prepare_master_context(cursor, data: dict) -> tuple[str, int | None]:
-    """Handle prefix-based validation/merging before syncing master data."""
+def _prepare_master_context(
+    cursor, data: dict, *, product_id: int | None = None
+) -> tuple[str, int | None]:
+    """Handle prefix-based validation/merging before syncing master data.
+
+    - 更新商品時優先沿用既有 master / inventory 設定，避免同商品被迫選參數。
+    - 新增商品時若需要共用前綴，可帶 merge_with_prefix=true；若確定不同商品則帶
+      force_new_prefix=true。
+    """
 
     master_product_code = (data.get("code") or "").strip().upper()
     if not master_product_code:
         raise ValueError("建立主商品時必須提供產品編號")
+
+    current_inventory_item_id = None
+    current_master_product_id = None
+    if product_id:
+        cursor.execute(
+            "SELECT inventory_item_id, code FROM product WHERE product_id = %s",
+            (product_id,),
+        )
+        current_product = cursor.fetchone() or {}
+        current_inventory_item_id = current_product.get("inventory_item_id")
+        cursor.execute(
+            "SELECT master_product_id FROM product_variant WHERE variant_id = %s",
+            (product_id,),
+        )
+        variant_row = cursor.fetchone() or {}
+        current_master_product_id = variant_row.get("master_product_id")
 
     prefix = master_product_code[:PREFIX_LENGTH]
     cursor.execute(
@@ -183,17 +206,40 @@ def _prepare_master_context(cursor, data: dict) -> tuple[str, int | None]:
         merge_requested = bool(data.get("merge_with_prefix"))
         force_new = bool(data.get("force_new_prefix"))
         codes = [row["master_product_code"] for row in existing]
-        if merge_requested:
+
+        chosen = None
+        if current_master_product_id:
+            chosen = next(
+                (row for row in existing if row["master_product_id"] == current_master_product_id),
+                None,
+            )
+        if chosen is None and master_product_code in codes:
+            chosen = next(
+                (row for row in existing if row["master_product_code"] == master_product_code),
+                None,
+            )
+        if chosen is None and current_inventory_item_id:
+            chosen = next(
+                (row for row in existing if row["inventory_item_id"] == current_inventory_item_id),
+                None,
+            )
+        if merge_requested and chosen is None:
             chosen = existing[0]
+
+        if chosen and not force_new:
             return chosen["master_product_code"], chosen.get("inventory_item_id")
-        if not force_new and master_product_code not in codes:
+
+        if force_new:
+            return master_product_code, None
+
+        if not merge_requested and master_product_code not in codes:
             names = "、".join({row.get("name") or row.get("master_product_code") for row in existing})
             raise ValueError(
                 f"已存在相同前綴({prefix})的主商品：{', '.join(codes)}（{names}）。"
                 " 若為同品項請帶 merge_with_prefix=true 共用庫存，若確定是不同商品請帶 force_new_prefix=true。"
             )
 
-    return master_product_code, None
+    return master_product_code, current_inventory_item_id
 
 
 def _get_or_create_inventory_item(
