@@ -11,6 +11,7 @@ from app.config import DB_CONFIG
 
 VALID_STORE_TYPES = {"DIRECT", "FRANCHISE"}
 PRICE_TABLE_CANDIDATES: tuple[str, ...] = ("store_type_price", "stock_type_price")
+PREFIX_LENGTH = 5
 T = TypeVar("T")
 
 
@@ -45,6 +46,10 @@ def _convert_decimal_fields(rows: Iterable[dict], *fields: str) -> list[dict]:
     return converted
 
 
+def _normalize_name_for_prefix(value: str | None) -> str:
+    return (value or "").strip().lower()
+
+
 def _run_with_price_table(operation: Callable[[str], T]) -> T:
     """Execute DB operations that depend on the store-type price table name."""
     last_missing_table_error: pymysql.err.ProgrammingError | None = None
@@ -60,6 +65,66 @@ def _run_with_price_table(operation: Callable[[str], T]) -> T:
     if last_missing_table_error:
         raise last_missing_table_error
     raise RuntimeError("price table operation failed without executing")
+
+
+def _collect_prefix_family(cursor, inventory_item_id: int) -> tuple[list[dict], bool]:
+    """Return inventory items sharing the same prefix and flag name conflicts."""
+
+    cursor.execute(
+        "SELECT inventory_item_id, inventory_code, name FROM inventory_items WHERE inventory_item_id = %s",
+        (inventory_item_id,),
+    )
+    base = cursor.fetchone()
+    if not base:
+        return [], False
+
+    prefix = (base.get("inventory_code") or "")[:PREFIX_LENGTH]
+    if not prefix:
+        return [base], False
+
+    cursor.execute(
+        "SELECT inventory_item_id, inventory_code, name FROM inventory_items WHERE inventory_code LIKE %s",
+        (f"{prefix}%",),
+    )
+    family = cursor.fetchall() or []
+    normalized_names = {
+        _normalize_name_for_prefix(row.get("name")) for row in family if row.get("name")
+    }
+    has_conflict = len([n for n in normalized_names if n]) > 1
+    return family, has_conflict
+
+
+def _annotate_prefix_conflicts(rows: list[dict], merge_prefix: bool) -> list[dict]:
+    grouped: dict[str, list[dict]] = {}
+    for row in rows:
+        prefix = (row.get("master_product_code") or "")[:PREFIX_LENGTH]
+        key = prefix or str(row.get("inventory_item_id"))
+        grouped.setdefault(key, []).append(dict(row))
+
+    result: list[dict] = []
+    for prefix, items in grouped.items():
+        if len(items) == 1:
+            result.append(items[0])
+            continue
+
+        normalized_names = {
+            _normalize_name_for_prefix(item.get("name")) for item in items if item.get("name")
+        }
+        has_conflict = len([n for n in normalized_names if n]) > 1
+
+        if merge_prefix and not has_conflict:
+            merged = dict(items[0])
+            merged["master_product_code"] = prefix
+            merged["merged_inventory_item_ids"] = [i["inventory_item_id"] for i in items]
+            merged["quantity_on_hand"] = sum(i.get("quantity_on_hand", 0) or 0 for i in items)
+            result.append(merged)
+            continue
+
+        for item in items:
+            item["prefix_conflict"] = has_conflict
+            result.append(item)
+
+    return result
 
 
 def _resolve_inventory_item_id(
@@ -93,6 +158,19 @@ def _resolve_inventory_item_id(
             SELECT p.inventory_item_id
             FROM product_variant pv
             JOIN product p ON p.product_id = pv.variant_id
+            WHERE pv.variant_id = %s
+            """,
+            (variant_id,),
+        )
+        row = cursor.fetchone()
+        if row and row.get("inventory_item_id"):
+            return row["inventory_item_id"]
+
+        cursor.execute(
+            """
+            SELECT mp.inventory_item_id
+            FROM product_variant pv
+            JOIN master_product mp ON mp.master_product_id = pv.master_product_id
             WHERE pv.variant_id = %s
             """,
             (variant_id,),
@@ -148,6 +226,7 @@ def list_master_products_for_inbound(
     store_type: str | None,
     store_id: int | str | None,
     keyword: str | None = None,
+    merge_prefix: bool = False,
 ) -> list[dict]:
     """Return active inventory items with store-type-specific cost price."""
     store_type = _normalize_store_type(store_type)
@@ -183,7 +262,8 @@ def list_master_products_for_inbound(
                 rows = cursor.fetchall()
                 return _convert_decimal_fields(rows, "cost_price")
 
-            return _run_with_price_table(_execute)
+            rows = _run_with_price_table(_execute)
+            return _annotate_prefix_conflicts(rows, merge_prefix)
     finally:
         conn.close()
 
@@ -329,6 +409,7 @@ def receive_master_stock(
     note: str | None = None,
     variant_id: int | None = None,
     inventory_item_id: int | None = None,
+    apply_prefix_bundle: bool = False,
 ) -> dict:
     if quantity is None or int(quantity) <= 0:
         raise ValueError("進貨數量必須大於 0")
@@ -346,54 +427,62 @@ def receive_master_stock(
                 inventory_item_id=inventory_item_id,
             )
 
-            master_product_id = _resolve_master_product_id(
-                cursor,
-                master_product_id=master_product_id,
-                inventory_item_id=inventory_item_id,
-                variant_id=variant_id,
-            )
+            family_ids: list[int] = [inventory_item_id]
+            if apply_prefix_bundle:
+                family, has_conflict = _collect_prefix_family(cursor, inventory_item_id)
+                if has_conflict:
+                    raise ValueError("同前綴商品名稱不一致，請先確認是否要合併")
+                family_ids = [row["inventory_item_id"] for row in family] or [inventory_item_id]
 
-            master_product_id = _resolve_master_product_id(
-                cursor,
-                master_product_id=master_product_id,
-                inventory_item_id=inventory_item_id,
-                variant_id=variant_id,
-            )
+            results: list[dict] = []
+            for inv_id in family_ids:
+                resolved_master_id = _resolve_master_product_id(
+                    cursor,
+                    master_product_id=master_product_id,
+                    inventory_item_id=inv_id,
+                    variant_id=variant_id,
+                )
 
-            cursor.execute(
-                "SELECT quantity_on_hand FROM master_stock WHERE inventory_item_id = %s AND store_id = %s FOR UPDATE",
-                (inventory_item_id, store_id_value),
-            )
-            row = cursor.fetchone()
-            current_qty = row["quantity_on_hand"] if row else 0
-            if row is None:
+                cursor.execute(
+                    "SELECT quantity_on_hand FROM master_stock WHERE inventory_item_id = %s AND store_id = %s FOR UPDATE",
+                    (inv_id, store_id_value),
+                )
+                row = cursor.fetchone()
+                current_qty = row["quantity_on_hand"] if row else 0
+                if row is None:
+                    cursor.execute(
+                        """
+                        INSERT INTO master_stock (inventory_item_id, master_product_id, store_id, quantity_on_hand)
+                        VALUES (%s, %s, %s, 0)
+                        ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand
+                        """,
+                        (inv_id, resolved_master_id, store_id_value),
+                    )
+                cursor.execute(
+                    "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, master_product_id = %s, updated_at = NOW()"
+                    " WHERE inventory_item_id = %s AND store_id = %s",
+                    (qty, resolved_master_id, inv_id, store_id_value),
+                )
                 cursor.execute(
                     """
-                    INSERT INTO master_stock (inventory_item_id, master_product_id, store_id, quantity_on_hand)
-                    VALUES (%s, %s, %s, 0)
-                    ON DUPLICATE KEY UPDATE quantity_on_hand = quantity_on_hand
+                    INSERT INTO stock_transaction (master_product_id, inventory_item_id, store_id, staff_id, txn_type, quantity, reference_no, note)
+                    VALUES (%s, %s, %s, %s, 'INBOUND', %s, %s, %s)
                     """,
-                    (inventory_item_id, master_product_id, store_id_value),
+                    (resolved_master_id, inv_id, store_id_value, staff_id, qty, reference_no, note),
                 )
-            cursor.execute(
-                "UPDATE master_stock SET quantity_on_hand = quantity_on_hand + %s, master_product_id = %s, updated_at = NOW()"
-                " WHERE inventory_item_id = %s AND store_id = %s",
-                (qty, master_product_id, inventory_item_id, store_id_value),
-            )
-            cursor.execute(
-                """
-                INSERT INTO stock_transaction (master_product_id, inventory_item_id, store_id, staff_id, txn_type, quantity, reference_no, note)
-                VALUES (%s, %s, %s, %s, 'INBOUND', %s, %s, %s)
-                """,
-                (master_product_id, inventory_item_id, store_id_value, staff_id, qty, reference_no, note),
-            )
+
+                results.append(
+                    {
+                        "master_product_id": resolved_master_id,
+                        "inventory_item_id": inv_id,
+                        "store_id": store_id_value,
+                        "quantity_on_hand": current_qty + qty,
+                    }
+                )
         conn.commit()
-        return {
-            "master_product_id": master_product_id,
-            "inventory_item_id": inventory_item_id,
-            "store_id": store_id_value,
-            "quantity_on_hand": current_qty + qty,
-        }
+        if len(results) == 1:
+            return results[0]
+        return {"bundled": results}
     except Exception:
         conn.rollback()
         raise
