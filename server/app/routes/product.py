@@ -50,6 +50,8 @@ def add_product():
     try:
         product_id = create_product(data)
         return jsonify({"message": "產品新增成功", "product_id": product_id}), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         if "Duplicate entry" in str(e):
             return jsonify({"error": "產品編號重複"}), 409
@@ -63,6 +65,8 @@ def update_product_route(product_id):
     try:
         update_product(product_id, data)
         return jsonify({"message": "產品更新成功"})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
