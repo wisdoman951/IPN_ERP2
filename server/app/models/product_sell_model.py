@@ -803,11 +803,12 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 p.purchase_price AS purchase_price,
                 p.visible_store_ids,
                 p.visible_permissions,
-                CASE
-                    WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL AND MAX(ms_inventory.quantity_on_hand) != 0
-                        THEN MAX(ms_inventory.quantity_on_hand)
-                    ELSE COALESCE(SUM(i.quantity), 0)
-                END AS inventory_quantity,
+                COALESCE(MAX(ms_inventory.quantity_on_hand), 0) AS master_quantity_debug,
+                COALESCE(SUM(i.quantity), 0) AS inventory_sum_debug,
+                GREATEST(
+                    COALESCE(MAX(ms_inventory.quantity_on_hand), 0),
+                    COALESCE(SUM(i.quantity), 0)
+                ) AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
                 COALESCE(
@@ -851,6 +852,18 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
     conn.close()
     filtered = []
     for row in result:
+        print(
+            "[InventoryDebug] products store_filter=%s product_id=%s master_quantity=%s inventory_sum=%s final_quantity=%s"
+            % (
+                store_id_value,
+                row.get('product_id'),
+                row.get('master_quantity_debug'),
+                row.get('inventory_sum_debug'),
+                row.get('inventory_quantity'),
+            )
+        )
+        row.pop('master_quantity_debug', None)
+        row.pop('inventory_sum_debug', None)
         store_ids = None
         permissions = None
         if row.get('visible_store_ids'):
@@ -902,11 +915,12 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 p.purchase_price AS purchase_price,
                 p.visible_store_ids,
                 p.visible_permissions,
-                CASE
-                    WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL AND MAX(ms_inventory.quantity_on_hand) != 0
-                        THEN MAX(ms_inventory.quantity_on_hand)
-                    ELSE COALESCE(SUM(i.quantity), 0)
-                END AS inventory_quantity,
+                COALESCE(MAX(ms_inventory.quantity_on_hand), 0) AS master_quantity_debug,
+                COALESCE(SUM(i.quantity), 0) AS inventory_sum_debug,
+                GREATEST(
+                    COALESCE(MAX(ms_inventory.quantity_on_hand), 0),
+                    COALESCE(SUM(i.quantity), 0)
+                ) AS inventory_quantity,
                 0 AS inventory_id,
                 GROUP_CONCAT(c.name) AS categories,
                 COALESCE(
@@ -961,6 +975,19 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
     conn.close()
     filtered = []
     for row in result:
+        print(
+            "[InventoryDebug] search store_filter=%s keyword=%s product_id=%s master_quantity=%s inventory_sum=%s final_quantity=%s"
+            % (
+                store_id_value,
+                keyword,
+                row.get('product_id'),
+                row.get('master_quantity_debug'),
+                row.get('inventory_sum_debug'),
+                row.get('inventory_quantity'),
+            )
+        )
+        row.pop('master_quantity_debug', None)
+        row.pop('inventory_sum_debug', None)
         store_ids = None
         permissions = None
         if row.get('visible_store_ids'):
