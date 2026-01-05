@@ -804,7 +804,8 @@ def get_all_products_with_inventory(store_id=None, status: str | None = 'PUBLISH
                 p.visible_store_ids,
                 p.visible_permissions,
                 CASE
-                    WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL THEN MAX(ms_inventory.quantity_on_hand)
+                    WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL AND MAX(ms_inventory.quantity_on_hand) != 0
+                        THEN MAX(ms_inventory.quantity_on_hand)
                     ELSE COALESCE(SUM(i.quantity), 0)
                 END AS inventory_quantity,
                 0 AS inventory_id,
@@ -902,7 +903,8 @@ def search_products_with_inventory(keyword, store_id=None, status: str | None = 
                 p.visible_store_ids,
                 p.visible_permissions,
                 CASE
-                    WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL THEN MAX(ms_inventory.quantity_on_hand)
+                    WHEN MAX(ms_inventory.quantity_on_hand) IS NOT NULL AND MAX(ms_inventory.quantity_on_hand) != 0
+                        THEN MAX(ms_inventory.quantity_on_hand)
                     ELSE COALESCE(SUM(i.quantity), 0)
                 END AS inventory_quantity,
                 0 AS inventory_id,
