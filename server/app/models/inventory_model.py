@@ -268,7 +268,7 @@ def search_inventory(keyword, store_id=None):
             query += " GROUP BY p.product_id, p.name, p.code, st.store_name ORDER BY p.name"
 
             cursor.execute(query, params)
-            result = cursor.fetchall()
+            result = list(cursor.fetchall())  # 確保後續可安全地使用 list API
             result = _normalize_legacy_rows(result)
 
             # ✅ 一樣用同一個 cursor 抓 master rows + keyword
